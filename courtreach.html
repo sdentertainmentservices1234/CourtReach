@@ -1,0 +1,666 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#141a22">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>CourtReach</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.5.0/dist/tabler-icons.min.css">
+<style>
+:root{--bg:#eef1f4;--panel:#fff;--panel2:#f4f6f8;--ink:#161b22;--mut:#6b7787;--line:#dfe4ea;
+  --navy:#141a22;--gold:#c2a86a;--accent:#33507e;--now:#c1362b;--soon:#c68a24;--later:#3a7d50;
+  --now-bg:#fbeeec;--soon-bg:#f8efd8;--later-bg:#eef5f0;--passed:#8a94a0;--mono:'IBM Plex Mono',monospace}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+.hidden{display:none!important}
+/* ---- login / register ---- */
+#login{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:22px;
+  background:radial-gradient(120% 90% at 50% 0,#1b2430,#0f141b)}
+#login .card{width:100%;max-width:400px;background:var(--panel);border-radius:20px;padding:28px 24px 26px;
+  box-shadow:0 24px 60px rgba(0,0,0,.35)}
+.seal{width:60px;height:60px;border-radius:50%;background:var(--navy);border:2px solid var(--gold);
+  display:flex;align-items:center;justify-content:center;margin:0 auto 14px;
+  font-family:Fraunces,serif;color:var(--gold);font-weight:600;font-size:22px}
+.card h1{font-family:Fraunces,serif;font-weight:600;font-size:23px;margin:0 0 2px;text-align:center;color:var(--ink)}
+.card .sub{color:var(--mut);text-align:center;font-size:13px;margin-bottom:18px}
+.card label{display:block;font-size:12px;color:var(--mut);margin:12px 0 5px;font-weight:500}
+.card input,.card select{width:100%;padding:11px 13px;border-radius:10px;border:1px solid var(--line);
+  background:var(--panel2);color:var(--ink);font-size:15px;appearance:none;-webkit-appearance:none}
+.card input:focus,.card select:focus{outline:none;border-color:var(--accent)}
+.btn{width:100%;padding:12px;border:none;border-radius:10px;background:var(--accent);color:#fff;font-weight:600;font-size:15px;margin-top:18px}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--mut);margin-top:9px}
+.err{color:var(--now);font-size:13px;margin-top:12px;min-height:16px;text-align:center}
+.lg-alt{text-align:center;font-size:13px;color:var(--mut);margin-top:16px}
+.lg-alt button{background:none;border:none;color:var(--accent);font-weight:600;font-size:13px;padding:0}
+/* ---- app shell ---- */
+#app{display:flex;flex-direction:column;height:100vh;max-width:760px;width:100%;margin-inline:auto;background:var(--bg);overflow:hidden}
+@media(min-width:761px){body{background:#d3d8dd}#app{border-inline:1px solid var(--line)}}
+header.top{display:flex;align-items:center;gap:9px;padding:calc(env(safe-area-inset-top,0px) + 12px) 14px 12px;
+  background:linear-gradient(180deg,#1a222c,#12171e);color:#fff;flex:none;border-bottom:1px solid rgba(176,148,86,.4)}
+.top .seal.sm{width:34px;height:34px;margin:0;border-width:1.5px;font-size:13px;flex:none}
+.top .ttl{display:flex;flex-direction:column;min-width:0}
+.top .ttl-main{font-family:Fraunces,serif;font-weight:600;font-size:16px;line-height:1.1;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .ttl small{font-family:Inter;color:#9fb0c0;font-size:9.5px;font-weight:500;letter-spacing:.4px;text-transform:uppercase;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .spacer{flex:1;min-width:4px}
+.iconbtn{background:transparent;border:none;color:#cdd6df;font-size:19px;padding:5px;line-height:1;border-radius:8px}
+.iconbtn:active{background:rgba(255,255,255,.1)}
+#paneTop{flex:none;padding:9px 12px 2px}
+.statusrow{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--mut)}
+.freshdot{width:7px;height:7px;border-radius:50%;background:#4bbd6b}
+.freshdot.off{background:#7d8894}.freshdot.stale{background:var(--soon)}
+main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px calc(66px + env(safe-area-inset-bottom,0px));-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+/* board grid */
+.grid{display:flex;flex-wrap:wrap;gap:8px}
+.cell{flex:1 1 calc(33.33% - 6px);max-width:calc(33.33% - 6px);background:var(--panel);border:1.5px solid var(--line);
+  border-radius:13px;padding:10px 8px;text-align:center;min-width:0}
+.cell.mini{flex:1 1 calc(20% - 6.5px);max-width:calc(20% - 6.5px);padding:8px 5px}
+.cell-ct{display:inline-block;background:var(--navy);color:#fff;font-weight:700;font-size:12px;border-radius:20px;padding:3px 10px;margin-bottom:5px}
+.cell-ct .ctn{color:var(--gold)}
+.cell-item{font-family:Fraunces,serif;font-size:26px;font-weight:600;line-height:1}
+.cell-sub{font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);margin-top:2px}
+.cell.mini .cell-item{font-size:20px}
+.cell-ours{margin-top:6px;border-radius:8px;padding:5px 4px;font-size:11px;font-weight:700;color:#fff;line-height:1.15}
+.cell.ours{border-width:2px}
+.cell.ours.now{border-color:var(--now)}.cell.ours.now .cell-ours{background:linear-gradient(180deg,#d1453a,#a5231a)}
+.cell.ours.soon{border-color:var(--soon)}.cell.ours.soon .cell-ours{background:linear-gradient(180deg,#ca9827,#876010)}
+.cell.ours.later{border-color:var(--later)}.cell.ours.later .cell-ours{background:linear-gradient(180deg,#448c5c,#337046)}
+.cell.ours.passed .cell-ours,.cell.ours.idle .cell-ours{background:var(--passed)}
+.oi{font-family:var(--mono)}
+.empty{text-align:center;color:var(--mut);padding:40px 20px;font-size:14px;line-height:1.5}
+.notice{background:var(--soon-bg);border:1px solid #e6d29a;color:#8a6410;border-radius:11px;padding:11px 13px;font-size:12.5px;margin:0 0 12px;line-height:1.45}
+/* my matters list */
+.mm-row{display:flex;align-items:center;gap:11px;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:12px 13px;margin-bottom:9px}
+.mm-ci{font-family:var(--mono);font-weight:600;font-size:13px;background:var(--panel2);border-radius:8px;padding:5px 9px;flex:none}
+.mm-meta{flex:1;min-width:0;display:flex;flex-direction:column}.mm-t{font-size:14px;font-weight:600}.mm-s{font-size:12px;color:var(--mut);margin-top:2px}
+.mm-del{background:none;border:none;color:var(--now);font-size:12px;font-weight:600}
+.sec-h{font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--mut);margin:6px 2px 9px}
+.big-btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:13px;border-radius:12px;
+  border:none;background:linear-gradient(180deg,#1c242e,#12171e);color:#fff;font-weight:600;font-size:14px;margin-bottom:14px}
+/* collaborate */
+.cwrap{padding:2px 2px 20px}
+.cf-box{display:flex;gap:8px}
+.cf-box input{flex:1;padding:11px 12px;border-radius:11px;border:1px solid var(--line);background:var(--panel2);font-size:15px;color:var(--ink)}
+.cf-find{flex:none;display:flex;align-items:center;gap:5px;padding:0 14px;border-radius:11px;border:none;background:var(--accent);color:#fff;font-weight:600;font-size:13px}
+.cf-err{color:var(--now);font-size:12.5px;min-height:14px;margin:4px 2px}
+#cf_res{margin-top:8px}
+.cf-hit{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:11px 12px}
+.cf-nm{font-size:14px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cf-de,.cf-de2{font-size:11.5px;color:var(--mut)}
+.cf-de2{margin-left:6px}
+.cf-req{flex:none;padding:8px 14px;border-radius:9px;border:none;background:linear-gradient(180deg,#2f8a54,#1e5d37);color:#fff;font-weight:600;font-size:12.5px}
+.cf-state{flex:none;font-size:11px;font-weight:700;color:var(--mut);background:var(--panel2);border-radius:20px;padding:4px 10px}
+.cf-miss{color:var(--mut);font-size:13px}
+.cf-ok{color:#1e5d37;background:#dceee2;border-radius:11px;padding:11px 12px;font-size:13px}
+.bavatar2{flex:none;width:40px;height:40px;border-radius:50%;background:var(--navy);color:var(--gold);display:flex;align-items:center;justify-content:center;font-family:Fraunces,serif;font-weight:600;font-size:15px}
+.cx-card{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:12px 13px;margin-bottom:9px}
+.cx-card.cx-conn{display:flex;align-items:center;gap:11px;cursor:pointer}
+.brow{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.bval{font-size:14px;font-weight:600;color:var(--ink)}
+.bsub{font-size:12.5px;color:var(--mut);margin-top:4px;line-height:1.4}
+.cx-btns{display:flex;gap:8px;margin-top:10px}
+.cx-ok{flex:1;padding:10px;border-radius:10px;border:none;background:linear-gradient(180deg,#2f8a54,#1e5d37);color:#fff;font-weight:600;font-size:13px}
+.cx-no{flex:1;padding:10px;border-radius:10px;border:1px solid #e6c9c4;background:#fff;color:#8a2a20;font-weight:600;font-size:13px}
+.cx-head{display:flex;align-items:center;gap:11px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:11px 12px;margin:8px 0 10px}
+.cx-vb{flex:none;display:flex;align-items:center;gap:5px;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);font-size:12.5px;font-weight:600}
+.bback{display:inline-flex;align-items:center;gap:5px;color:var(--accent);font-weight:600;font-size:13px;background:none;border:none;padding:4px 0;margin-bottom:4px}
+.bthread{display:flex;flex-direction:column;gap:7px;margin-bottom:10px;min-height:120px;max-height:52vh;overflow-y:auto;padding:2px}
+.bbub{max-width:82%;padding:8px 11px;border-radius:13px;font-size:13.5px;line-height:1.35}
+.bbub .bn{display:block;font-size:10.5px;font-weight:700;color:var(--accent);margin-bottom:2px}
+.bbub .bt{display:block;font-size:9.5px;color:var(--mut);text-align:right;margin-top:3px}
+.bbub.them{align-self:flex-start;background:#fff;border:1px solid var(--line)}
+.bbub.me{align-self:flex-end;background:#e7eef7;border:1px solid #cfe0f2}
+.bcompose{display:flex;gap:7px;align-items:flex-end}
+.bcompose textarea{flex:1;resize:none;min-height:42px;max-height:110px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);font-size:14px;font-family:inherit}
+.bsend{flex:none;width:44px;height:44px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center}
+.peerbar{display:flex;align-items:center;gap:8px;justify-content:space-between;background:#eef3fb;border:1px solid #cfe0f2;border-radius:11px;padding:9px 12px;margin-bottom:10px;font-size:13px;color:var(--ink)}
+.peerbar button{flex:none;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:6px 11px;font-size:12px;font-weight:600}
+.badge{position:absolute;top:4px;left:calc(50% + 8px);background:var(--now);color:#fff;border-radius:20px;font-size:9px;padding:1px 5px;min-width:15px;line-height:1.4}
+/* bottom nav */
+nav.botnav{position:fixed;bottom:0;left:0;right:0;max-width:760px;margin-inline:auto;display:flex;z-index:30;
+  background:var(--panel);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav.botnav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;border:none;
+  color:var(--mut);font-size:11px;font-weight:600;padding:9px 4px 8px}
+nav.botnav button i{font-size:22px;line-height:1}
+nav.botnav button.on{color:var(--accent)}
+/* modal sheet */
+.ovl{position:fixed;inset:0;background:rgba(12,16,22,.5);z-index:40;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--panel);width:100%;max-width:760px;border-radius:22px 22px 0 0;padding:18px 18px calc(env(safe-area-inset-bottom,0px) + 20px);max-height:88%;overflow-y:auto;position:relative}
+.sheet h2{font-family:Fraunces,serif;font-size:19px;margin-bottom:4px}
+.sh-sub{color:var(--mut);font-size:13px;margin-bottom:14px}
+.sh-x{position:absolute;top:12px;right:14px;background:none;border:none;font-size:24px;color:var(--mut);line-height:1}
+.am-row{display:flex;gap:10px}.am-fld{flex:1;display:block;font-size:12px;color:var(--mut);font-weight:500;margin-bottom:10px}
+.am-fld input,.am-fld select{width:100%;margin-top:5px;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);font-size:15px;color:var(--ink)}
+.sh-btn{display:block;width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(180deg,#1c242e,#12171e);color:#fff;font-weight:600;font-size:15px;margin-top:6px}
+.am-err{color:var(--now);font-size:13px;min-height:16px;margin:4px 0}
+.sh-btn.ghost2{background:var(--panel2);color:var(--ink);border:1px solid var(--line);margin-top:8px}
+.am-preview{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-top:10px;font-size:13px}
+.pv-row{display:flex;gap:8px;padding:3px 0;align-items:flex-start}
+.pv-k{flex:none;width:96px;color:var(--mut);font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;padding-top:2px}
+.pv-v{flex:1;font-weight:500}
+.pv-miss{color:#8a6410;font-size:12.5px;line-height:1.5}
+.mm-x{display:block;font-size:11px;color:var(--mut);margin-top:1px}
+</style>
+</head>
+<body>
+
+<!-- LOGIN / REGISTER -->
+<div id="login">
+  <div class="card">
+    <div class="seal">CR</div>
+    <h1>CourtReach</h1>
+    <div class="sub" id="lgSub">Track your matters on the live court board</div>
+    <div id="signinForm">
+      <label>Email</label><input id="lgEmail" type="email" autocomplete="username" placeholder="you@example.com">
+      <label>Password</label><input id="lgPass" type="password" autocomplete="current-password" placeholder="••••••••">
+      <button class="btn" id="lgGo">Sign in</button>
+      <button class="btn ghost" id="lgReset">Forgot password</button>
+      <div class="err" id="lgErr"></div>
+      <div class="lg-alt">New to CourtReach? <button type="button" id="lgToReg">Create an account</button></div>
+    </div>
+    <div id="regForm" class="hidden">
+      <label>Full name</label><input id="rgName" autocomplete="name" placeholder="e.g. Rohan Mehta">
+      <label>Mobile number</label><input id="rgPhone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="10-digit mobile">
+      <label>Email</label><input id="rgEmail" type="email" autocomplete="email" placeholder="you@example.com">
+      <label>Designation</label>
+      <select id="rgDesig">
+        <option value="Advocate">Advocate</option>
+        <option value="Advocate-on-Record">Advocate-on-Record</option>
+        <option value="Senior Advocate">Senior Advocate</option>
+        <option value="Law Clerk / Intern">Law Clerk / Intern</option>
+        <option value="Office Staff">Office Staff</option>
+      </select>
+      <label>Password</label><input id="rgPass" type="password" autocomplete="new-password" placeholder="choose a password">
+      <button class="btn" id="rgGo">Create account</button>
+      <button class="btn ghost" id="lgToSignin">Back to sign in</button>
+      <div class="err" id="rgErr"></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+  <header class="top">
+    <span class="seal sm" id="hdrSeal">CR</span>
+    <span class="ttl"><span class="ttl-main" id="hdrName">CourtReach</span><small id="hdrSub">Supreme Court of India</small></span>
+    <span class="spacer"></span>
+    <button class="iconbtn" id="btnRefresh" title="Refresh"><i class="ti ti-refresh"></i></button>
+    <button class="iconbtn" id="btnOut" title="Sign out"><i class="ti ti-logout"></i></button>
+  </header>
+  <div id="paneTop">
+    <div class="statusrow"><span class="freshdot off" id="freshDot"></span><span id="statusTxt">connecting…</span></div>
+  </div>
+  <main id="main"></main>
+  <nav class="botnav">
+    <button data-tab="board" class="on"><i class="ti ti-layout-grid"></i>Board</button>
+    <button data-tab="mine"><i class="ti ti-list-details"></i>My matters</button>
+    <button data-tab="collab"><i class="ti ti-users-group"></i>Collaborate<span class="badge hidden" id="collabBadge">0</span></button>
+  </nav>
+</div>
+<div id="modalRoot"></div>
+
+<script src="board-engine.js"></script>
+<script type="module">
+/* ============================================================
+   CourtReach — standalone individual court-board tracker.
+   Blank slate: NO chamber data. Every user is their own office.
+   Reuses the shared proximity engine (board-engine.js / window.BoardEngine)
+   and the SC board relay. Firebase = its OWN project (config below).
+   ============================================================ */
+const DEMO = false;
+const BOARD_PROXY = "https://sd-board.sdentertainmentservices.workers.dev";   // shared SC-board relay (public data)
+// CourtReach Firebase project (courtreach-ee02b). Web config is public by design; security is in the Firestore rules.
+const firebaseConfig = {
+  apiKey: "AIzaSyBUTfn0j88Nn1xHz32NT4dwHmn8l0Ijcqo",
+  authDomain: "courtreach-ee02b.firebaseapp.com",
+  projectId: "courtreach-ee02b",
+  storageBucket: "courtreach-ee02b.firebasestorage.app",
+  messagingSenderId: "446607628093",
+  appId: "1:446607628093:web:2bd7f4b58f5d386bb91754"
+};
+const DESIGNATIONS = ["Advocate","Advocate-on-Record","Senior Advocate","Law Clerk / Intern","Office Staff"];
+const ENG = window.BoardEngine;                       // classify / seqInfo / orderPos …
+const CAUSELIST_TYPES = ["Miscellaneous","Regular","Chamber","Single Judge","Registrar","Curative & Review"];
+// SC cause-list enrichment. The daily fetcher publishes court-updates.json (per
+// date → list-type → court: coram/judges, items[item] case line, advocates[item]
+// AoR). Read cross-origin from raw.githubusercontent (sends CORS *).
+const COURT_UPDATES_URL = "https://raw.githubusercontent.com/sdentertainmentservices1234/SD-Chamber/main/court-updates.json";
+let courtUpdates=null, courtUpdatesAt=0;
+async function loadCourtUpdates(){
+  if(courtUpdates && Date.now()-courtUpdatesAt < 10*60000) return;
+  try{ const r=await fetch(COURT_UPDATES_URL+"?_="+Date.now(),{cache:"no-store"});
+    if(r.ok){ courtUpdates=await r.json(); courtUpdatesAt=Date.now(); } }catch(e){}
+}
+const _titleCase = s => String(s||"").toLowerCase().replace(/\b([a-z])/g,(_,c)=>c.toUpperCase()).replace(/\bM\/s\b/,"M/s");
+function titleFromCauseLine(line){
+  if(!line) return "";
+  let s=String(line).replace(/\s+/g," ").trim();
+  s=s.replace(/^\s*(?:diary\s*no\.?|[a-z][a-z().\/]*\s*no\.?)?\s*\d{2,6}\s*[-\/]\s*\d{4}\s+/i,"");   // drop "C.A. No. 9667/2013 " or "Diary No. 14857-2026 "
+  const parts=s.split(/\s+VERSUS\s+/i);
+  const clean=x=>String(x||"").replace(/\s*&?\s*(AND\s+)?(ORS?\.?|ANR\.?|OTHERS?)\.?\s*$/i,"").replace(/[,.\s]+$/,"").trim();
+  const pet=clean(parts[0]), resp=clean(parts[1]||"");
+  return resp ? _titleCase(pet)+" vs "+_titleCase(resp) : _titleCase(pet);
+}
+function cleanCoram(coram){
+  if(!coram) return "";
+  return String(coram).split(/HON'BLE/i).map(x=>x.trim()).filter(Boolean).map(p=>{
+    if(/CHIEF\s+JUSTICE/i.test(p)) return "C.J.I.";
+    p=p.replace(/\b(THE|MR|MRS|MS|DR|JUSTICE)\b\.?/gi," ").replace(/^[.\s]+/,"").replace(/\s+/g," ").trim();
+    return p ? _titleCase(p) : "";
+  }).filter(Boolean).join(", ");
+}
+function lookupItem(date,type,court,item){
+  const day=courtUpdates?.by_date?.[date];
+  if(!day) return {found:false, reason:"No cause list fetched for "+date+" yet."};
+  const rec=day.lists?.[type]?.[String(court)];
+  if(!rec) return {found:false, reason:"Court "+court+" isn't in the "+type+" list for "+date+"."};
+  const it=String(item), n=String(Math.floor(parseFloat(item)));
+  const line=(rec.items&&(rec.items[it]||rec.items[n]))||"";
+  const adv=(rec.advocates&&(rec.advocates[it]||rec.advocates[n]))||{};
+  if(!line) return {found:false, reason:"Item "+item+" not in the "+type+" list.", bench:cleanCoram(rec.coram)};
+  return {found:true, title:titleFromCauseLine(line), bench:cleanCoram(rec.coram), aorPet:_titleCase(adv.pet||""), aorResp:_titleCase(adv.resp||"")};
+}
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const todayISO = () => new Date().toLocaleDateString('en-CA');
+const nowMinsIST = () => { try{ const t=new Date().toLocaleTimeString('en-GB',{timeZone:'Asia/Kolkata',hour12:false,hour:'2-digit',minute:'2-digit'}); const [h,m]=t.split(':').map(Number); return h*60+m; }catch(e){ const d=new Date(); return d.getHours()*60+d.getMinutes(); } };
+const initials = s => (s||"?").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
+const tsMs = x => !x ? 0 : (x._t ?? (x.toDate ? x.toDate().getTime() : (x instanceof Date ? x.getTime() : (typeof x==="number"?x:0))));
+const clockIST = ms => { try{ return new Date(ms).toLocaleTimeString('en-GB',{timeZone:'Asia/Kolkata',hour12:false,hour:'2-digit',minute:'2-digit'}); }catch(e){ return ""; } };
+const isCourtroom = n => { const x=parseInt(n,10); return x>=1 && x<=17; };
+
+/* ---- SC board parse (generic; same shape board-engine expects) ---- */
+function parseBoard(html){
+  const strip = s => s.replace(/<[^>]+>/g," ").replace(/&nbsp;/g," ").replace(/&amp;/g,"&")
+    .replace(/&#039;|&apos;/g,"'").replace(/&quot;/g,'"').replace(/&gt;/g,">").replace(/&lt;/g,"<").replace(/\s+/g," ").trim();
+  const rows = html.split(/<tr class="record">/i).slice(1); const courts=[];
+  for(let raw of rows){ raw=raw.split(/<\/tr>/i)[0];
+    let court=""; let m=raw.match(/btn-primary[^>]*>\s*([0-9]+)/i); if(m) court=m[1];
+    if(!court){ const im=raw.match(/id="cl_(\d+)"/i); if(im) court=im[1]; }
+    const cl=raw.match(/id="cl_\d+"[^>]*>(.*?)<\/td>/is); const cltext=cl?strip(cl[1]):"";
+    let item="",status=cltext; const im2=cltext.match(/^(\d+(?:\.\d+)?)\s+(.*)$/); if(im2){ item=im2[1]; status=im2[2].trim(); }
+    if(!court) continue;
+    courts.push({ court, item, status, sequence:"" });
+  }
+  return { courts };
+}
+
+/* ============================================================
+   DATA LAYER — Firebase (prod) / in-memory (demo)
+   ============================================================ */
+let db, auth, pendingReg=null;
+if(DEMO){
+  const now=()=>({_t:Date.now()}); let idc=1; const gid=()=>"g"+(idc++);
+  const store=new Map(); const C=p=>{ if(!store.has(p)) store.set(p,new Map()); return store.get(p); };
+  const subs=[]; const split=p=>{const a=p.split("/");const id=a.pop();return[a.join("/"),id];};
+  const exists=(cp,id)=>C(cp).has(id);
+  const rows=p=>[...C(p).entries()].map(([id,d])=>({id,...d}));
+  const emitC=p=>subs.filter(s=>!s.doc&&s.path===p).forEach(s=>s.cb(s.ff?rows(p).filter(r=>String(r[s.ff.f]??"")===String(s.ff.v)):rows(p)));
+  const emitD=p=>subs.filter(s=>s.doc&&s.path===p).forEach(s=>{const[cp,id]=split(p);s.cb(exists(cp,id)?{id,...C(cp).get(id)}:null);});
+  db={ watchCollection(path,cb){const s={path,cb,doc:false};subs.push(s);cb(rows(path));return()=>subs.splice(subs.indexOf(s),1);},
+    watchQuery(path,field,value,cb){const s={path,cb,doc:false,ff:{f:field,v:value}};subs.push(s);cb(rows(path).filter(r=>String(r[field]??"")===String(value)));return()=>subs.splice(subs.indexOf(s),1);},
+    async getUserBy(field,value){return rows("users").filter(u=>String(u[field]??"")===String(value));},
+    watchDoc(path,cb){const s={path,cb,doc:true};subs.push(s);const[cp,id]=split(path);cb(exists(cp,id)?{id,...C(cp).get(id)}:null);return()=>subs.splice(subs.indexOf(s),1);},
+    async set(path,data,merge){const[cp,id]=split(path);const m=C(cp);m.set(id,merge?{...(m.get(id)||{}),...data}:{...data});emitC(cp);emitD(path);},
+    async add(path,data){const id=gid();C(path).set(id,{...data});emitC(path);return id;},
+    async update(path,data){const[cp,id]=split(path);const m=C(cp);m.set(id,{...(m.get(id)||{}),...data});emitC(cp);emitD(path);},
+    async remove(path){const[cp,id]=split(path);C(cp).delete(id);emitC(cp);}, now };
+  let authCb=null,cur=null;
+  auth={ onChange(cb){authCb=cb;setTimeout(()=>cb(cur),0);},
+    signIn(){ cur={uid:"u_demo"}; setTimeout(()=>authCb&&authCb(cur),0); return Promise.resolve(); },
+    signUp(email,pass,reg){ const uid="u_"+(idc++); db.set("users/"+uid,{name:reg.name,phone:reg.phone||"",email,designation:reg.designation||"",role:"user",office:reg.name,active:true,createdAt:now()}); cur={uid}; setTimeout(()=>authCb&&authCb(cur),0); return Promise.resolve(); },
+    resetPassword(){return Promise.resolve();}, signOut(){cur=null;authCb&&authCb(null);} };
+  window.__demoSetUser=uid=>{ cur={uid}; authCb&&authCb(cur); };
+  seedDemo(db);
+} else {
+  const [{initializeApp},{getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,onAuthStateChanged,signOut,sendPasswordResetEmail},
+    {getFirestore,collection,doc,getDoc,setDoc,addDoc,updateDoc,deleteDoc,onSnapshot,query,where,getDocs}] = await Promise.all([
+      import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
+      import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"),
+      import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js")]);
+  const app=initializeApp(firebaseConfig); const fa=getAuth(app); const fs=getFirestore(app);
+  db={ watchCollection(path,cb){const c=collection(fs,...path.split("/")); return onSnapshot(c,s=>{const r=[];s.forEach(d=>r.push({id:d.id,...d.data()}));cb(r);});},
+    watchQuery(path,field,value,cb){const q=query(collection(fs,...path.split("/")),where(field,"==",value));
+      return onSnapshot(q,s=>{const r=[];s.forEach(d=>r.push({id:d.id,...d.data()}));cb(r);});},
+    async getUserBy(field,value){const q=query(collection(fs,"users"),where(field,"==",value)); const s=await getDocs(q); return s.docs.map(d=>({id:d.id,...d.data()}));},
+    watchDoc(path,cb){return onSnapshot(doc(fs,...path.split("/")),s=>cb(s.exists()?{id:s.id,...s.data()}:null));},
+    async set(path,data,merge){await setDoc(doc(fs,...path.split("/")),data,{merge:!!merge});},
+    async add(path,data){const r=await addDoc(collection(fs,...path.split("/")),data);return r.id;},
+    async update(path,data){await updateDoc(doc(fs,...path.split("/")),data);},
+    async remove(path){await deleteDoc(doc(fs,...path.split("/")));}, now:()=>new Date() };
+  auth={ onChange(cb){ onAuthStateChanged(fa,async user=>{
+      if(user){ try{
+        const uref=doc(fs,"users",user.uid); const snap=await getDoc(uref);
+        if(!snap.exists()){
+          let base = pendingReg
+            ? {name:pendingReg.name,email:user.email,phone:pendingReg.phone||"",designation:pendingReg.designation||"",role:"user",office:pendingReg.name,active:true,createdAt:new Date()}
+            : {name:(user.email||"").split("@")[0],email:user.email,role:"user",active:true,createdAt:new Date()};
+          pendingReg=null;
+          await setDoc(uref,base);
+        }
+      }catch(e){ /* transient: app still boots; boot() watchDoc picks up the profile */ } }
+      cb(user); }); },
+    signIn(email,pass){return signInWithEmailAndPassword(fa,email,pass);},
+    signUp(email,pass,reg){ pendingReg=reg; return createUserWithEmailAndPassword(fa,email,pass); },
+    resetPassword(email){return sendPasswordResetEmail(fa,email);},
+    signOut(){return signOut(fa);} };
+}
+
+/* ============================================================
+   STATE + BOARD FETCH
+   ============================================================ */
+let me=null, myOwn=[], board=[], boardAt=0, boardErr=null, curTab="board";
+let unsub=[], userDocUnsub=null, pollId=null, tickId=null, pollOn=false, booted=false;
+// COLLABORATE state — peer connections (links) + per-link message threads + peer-board view
+let links=[], linksOut=[], linksIn=[], collabOpen=null, threadUnsub=null, linkMsgs=[];
+let peerBoardUid=null, peerBoardName="", peerMatters=[], peerUnsub=null;
+let linkFound=null;   // last user found by phone/email in the Find box
+const linkKey=(a,b)=>a+"_"+b;
+const otherUid = l => (l.fromUid===me?.uid ? l.toUid : l.fromUid);
+const otherName = l => (l.fromUid===me?.uid ? (l.toName||"") : (l.fromName||""));
+
+const boardByCourt = () => { const m={}; board.forEach(c=>{ if(c.court && !m[c.court]) m[c.court]=c; }); return m; };
+const myMatters = () => (myOwn||[]).filter(m=>m.court&&m.item&&isCourtroom(m.court))
+  .map(m=>({courtNo:String(m.court), itemNo:String(m.item), caseTitle:m.title||"", _id:m.id}));
+function classify(e){ const bc=boardByCourt()[String(e.courtNo)];
+  return ENG.classify({courtNo:String(e.courtNo),itemNo:String(e.itemNo),listType:""}, bc, {nowMins:nowMinsIST(), boardByCourt:boardByCourt()}); }
+
+async function fetchBoard(){
+  try{
+    const html = await (await fetch(BOARD_PROXY+"?ctype=c",{cache:"no-store"})).text();
+    const p=parseBoard(html);
+    if(p.courts.length){ board=p.courts; boardAt=Date.now(); boardErr=null; } else boardErr="empty";
+  }catch(e){ boardErr=String(e&&e.message||e); }
+  paintFresh(); if(curTab==="board") renderBoard();
+}
+function startPolling(){ stopPolling(); pollOn=true; tickId=setInterval(paintFresh,1000); (async function loop(){ if(!pollOn) return; await fetchBoard(); if(!pollOn) return; pollId=setTimeout(loop, 12000); })(); }
+function stopPolling(){ pollOn=false; if(pollId)clearTimeout(pollId); if(tickId)clearInterval(tickId); pollId=tickId=null; }
+function paintFresh(){ const dot=$("freshDot"), txt=$("statusTxt"); if(!dot) return;
+  const day=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+  if(boardErr==="empty"||boardErr){ dot.className="freshdot stale"; txt.textContent=day+" · board offline"; return; }
+  if(!boardAt){ dot.className="freshdot off"; txt.textContent=day+" · connecting…"; return; }
+  const age=Math.round((Date.now()-boardAt)/1000);
+  dot.className="freshdot"+(age>45?" stale":""); txt.textContent=day+" · updated "+(age<60?age+"s":Math.round(age/60)+"m")+" ago";
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+const TIER_RANK={now:0,soon:1,later:2,unknown:3,passed:4,idle:5};
+function paintMasthead(){ if(!me) return;
+  $("hdrSeal").textContent=initials(me.name); $("hdrName").textContent=me.name||"My board";
+  $("hdrSub").textContent=(me.designation? me.designation+" · " : "")+"Supreme Court of India"; }
+
+// The tracked set shown on the board: mine, or a connected peer's (when viewing their board).
+const activeMatters = () => {
+  if(peerBoardUid) return (peerMatters||[]).filter(m=>m.court&&m.item&&isCourtroom(m.court))
+    .map(m=>({courtNo:String(m.court), itemNo:String(m.item), caseTitle:m.title||""}));
+  return myMatters();
+};
+function renderBoard(){
+  paintFresh();
+  let h="";
+  if(peerBoardUid) h+=`<div class="peerbar">Viewing <b>${esc(peerBoardName)}</b>'s board <button id="peerBack">Back to my board</button></div>`;
+  if(boardErr) h+=`<div class="notice"><b>Can't reach the court board</b> — retrying.</div>`;
+  if(!board.length){ $("main").innerHTML=h+`<div class="empty">Loading the live court board…</div>`; return; }
+  const set=activeMatters();
+  const ours=new Set(set.map(e=>String(e.courtNo)));
+  const shown=board.filter(c=>isCourtroom(c.court));
+  const byNo=(a,b)=>(parseInt(a.court)||99)-(parseInt(b.court)||99);
+  const full=shown.filter(c=>ours.has(String(c.court))).sort(byNo);
+  const mini=shown.filter(c=>!ours.has(String(c.court))).sort(byNo);
+  if(!set.length) h+= peerBoardUid ? `<div class="notice">${esc(peerBoardName)} isn't tracking any matter right now.</div>`
+    : `<div class="notice">You're not tracking any matter yet. Add one from <b>My matters</b> and it lights up here as it reaches.</div>`;
+  h+=`<div class="grid">`+full.map(c=>boardCell(c,false)).join("")+`</div>`;
+  if(mini.length) h+=`<div class="grid" style="margin-top:7px">`+mini.map(c=>boardCell(c,true)).join("")+`</div>`;
+  $("main").innerHTML=h;
+  const pb=$("peerBack"); if(pb) pb.onclick=exitPeerBoard;
+}
+function boardCell(c, mini){
+  const idle=/not in session/i.test(c.status||"");
+  const ours=activeMatters().filter(e=>String(e.courtNo)===String(c.court));
+  if(!ours.length){ return `<div class="cell${mini?" mini":""}">
+    <div class="cell-ct">Court <span class="ctn">${esc(c.court)}</span></div>
+    <div class="cell-item">${idle?"—":esc(c.item||"·")}</div>
+    <div class="cell-sub">${idle?"not sitting":"hearing"}</div></div>`; }
+  const ks=ours.map(e=>({e,k:classify(e)})).sort((a,b)=>(TIER_RANK[a.k.tier]-TIER_RANK[b.k.tier])||((a.k.gap??999)-(b.k.gap??999)));
+  const tier=ks[0].k.tier;
+  const items=ks.map(x=>esc(x.e.itemNo)).join(" · ");
+  return `<div class="cell ours ${tier} ${idle?"idle":""}">
+    <div class="cell-ct">Court <span class="ctn">${esc(c.court)}</span></div>
+    <div class="cell-item">${idle?"—":esc(c.item||"·")}</div>
+    <div class="cell-sub">${idle?"not sitting":esc(c.status||"hearing")}</div>
+    <div class="cell-ours"><span class="oi">${items}</span><br>${esc(ks[0].k.short||ks[0].k.label)}</div></div>`;
+}
+
+function renderMine(){
+  const list=(myOwn||[]).slice().sort((a,b)=>(parseInt(a.court)||99)-(parseInt(b.court)||99));
+  let h=`<button class="big-btn" id="mmAdd"><i class="ti ti-plus"></i> Track a matter</button>`;
+  h+=`<div class="sec-h">My matters (${list.length})</div>`;
+  if(!list.length) h+=`<div class="empty">No matters yet. Add your court &amp; item number and CourtReach tracks it live on the board.</div>`;
+  else h+=list.map(m=>{
+    const k=classify({courtNo:m.court,itemNo:m.item});
+    const bits=[m.listType, m.appearingFor?("for "+m.appearingFor):"", m.aor?("AoR: "+m.aor):""].filter(Boolean).join(" · ");
+    return `<div class="mm-row"><span class="mm-ci">Ct ${esc(m.court)} · ${esc(m.item)}</span>
+      <span class="mm-meta"><span class="mm-t">${esc(m.title||("Court "+m.court+" item "+m.item))}</span>
+        ${bits?`<span class="mm-x">${esc(bits)}</span>`:""}
+        ${m.bench?`<span class="mm-x">Bench: ${esc(m.bench)}</span>`:""}
+        <span class="mm-s">${esc(k.label||k.short||"—")}</span></span>
+      <button class="mm-del" data-del="${esc(m.id)}">Remove</button></div>`;
+  }).join("");
+  $("main").innerHTML=h;
+  const a=$("mmAdd"); if(a) a.onclick=addMatterForm;
+  $("main").querySelectorAll("[data-del]").forEach(x=>x.onclick=async()=>{
+    const matters=(myOwn||[]).filter(m=>m.id!==x.dataset.del);
+    try{ await db.set("usermatters/"+me.uid,{matters,updatedAt:db.now()},true); }catch(e){}
+  });
+}
+function addMatterForm(){
+  let fetched=null;
+  $("modalRoot").innerHTML=`<div class="ovl" data-close><div class="sheet"><button class="sh-x" data-close>&times;</button>
+    <h2>Track a matter</h2><div class="sh-sub">Pick the list &amp; item — we fetch the cause title, bench and AoR from the SC cause list.</div>
+    <label class="am-fld">Date<input type="date" id="am_date" value="${todayISO()}"></label>
+    <label class="am-fld">Causelist type<select id="am_type">${CAUSELIST_TYPES.map(t=>`<option>${esc(t)}</option>`).join("")}</select></label>
+    <div class="am-row">
+      <label class="am-fld">Court<input id="am_court" inputmode="numeric" placeholder="e.g. 5"></label>
+      <label class="am-fld">Item<input id="am_item" inputmode="numeric" placeholder="e.g. 32"></label>
+    </div>
+    <label class="am-fld">Appearing for<select id="am_party"><option>Petitioner</option><option>Respondent</option></select></label>
+    <button class="sh-btn ghost2" id="am_fetch"><i class="ti ti-search"></i> Fetch details</button>
+    <div id="am_preview" class="am-preview hidden"></div>
+    <div class="am-err" id="am_err"></div>
+    <button class="sh-btn" id="am_save">Add matter</button></div></div>`;
+  const readForm=()=>({court:($("am_court").value||"").trim(), item:($("am_item").value||"").trim(),
+    date:$("am_date").value||todayISO(), type:$("am_type").value, party:$("am_party").value});
+  const valid=f=>{ if(!/^\d{1,2}$/.test(f.court)||+f.court<1||+f.court>17){ $("am_err").textContent="Enter a court number (1–17)."; return false; }
+    if(!f.item){ $("am_err").textContent="Enter your item number."; return false; } $("am_err").textContent=""; return true; };
+  const doFetch=async()=>{
+    const f=readForm(); if(!valid(f)) return;
+    $("am_fetch").innerHTML="Fetching…"; await loadCourtUpdates();
+    const r=lookupItem(f.date,f.type,f.court,f.item);
+    $("am_fetch").innerHTML='<i class="ti ti-search"></i> Fetch again';
+    const pv=$("am_preview"); pv.classList.remove("hidden");
+    if(r.found){
+      fetched={title:r.title, bench:r.bench, aor:(f.party==="Petitioner"?r.aorPet:r.aorResp), aorPet:r.aorPet, aorResp:r.aorResp};
+      pv.innerHTML=`<div class="pv-row"><span class="pv-k">Cause title</span><span class="pv-v">${esc(r.title||"—")}</span></div>
+        <div class="pv-row"><span class="pv-k">Bench</span><span class="pv-v">${esc(r.bench||"—")}</span></div>
+        <div class="pv-row"><span class="pv-k">AoR · ${esc(f.party)}</span><span class="pv-v">${esc((f.party==="Petitioner"?r.aorPet:r.aorResp)||"—")}</span></div>`;
+    } else {
+      fetched=null;
+      pv.innerHTML=`<div class="pv-miss">${esc(r.reason||"Not found.")}${r.bench?`<br><b>Bench:</b> ${esc(r.bench)}`:""}<br><span style="color:var(--mut)">You can still track it — the details fill once the list is published.</span></div>`;
+    }
+  };
+  const save=async()=>{
+    const f=readForm(); if(!valid(f)) return;
+    const rec={ id:"m"+Date.now().toString(36), court:f.court, item:f.item, date:f.date, listType:f.type, appearingFor:f.party,
+      title:(fetched&&fetched.title)||"", bench:(fetched&&fetched.bench)||"", aor:(fetched&&fetched.aor)||"" };
+    const matters=[...(myOwn||[]).filter(m=>!(String(m.court)===f.court&&String(m.item)===f.item)), rec];
+    try{ await db.set("usermatters/"+me.uid,{matters,updatedAt:db.now()},true); closeModal(); curTab="mine"; setTab("mine"); }
+    catch(e){ $("am_err").textContent="Could not save — "+(e.message||e); }
+  };
+  $("am_fetch").onclick=doFetch; $("am_save").onclick=save;
+  $("am_item").onkeydown=e=>{ if(e.key==="Enter") doFetch(); };
+}
+/* ---- COLLABORATE: find by phone/email → request → track their board + message ---- */
+function recomputeLinks(){
+  const map={}; [...linksOut,...linksIn].forEach(l=>{ if(l&&l.id) map[l.id]=l; });
+  links=Object.values(map); updateCollabBadge();
+  if(curTab==="collab") renderCollab();
+}
+function updateCollabBadge(){
+  const b=$("collabBadge"); if(!b) return;
+  const n=links.filter(l=>l.status==="pending" && l.toUid===me?.uid).length;
+  if(n>0 && curTab!=="collab"){ b.textContent=n; b.classList.remove("hidden"); } else b.classList.add("hidden");
+}
+async function findColleague(){
+  const q=($("cf_q").value||"").trim(); $("cf_err").textContent=""; linkFound=null;
+  const res=$("cf_res"); res.classList.add("hidden"); if(!q) return;
+  const isEmail=/@/.test(q); const field=isEmail?"email":"phone"; const val=isEmail?q.toLowerCase():q.replace(/\D/g,"");
+  $("cf_find").innerHTML="Searching…";
+  let users=[]; try{ users=await db.getUserBy(field, val); }catch(e){}
+  $("cf_find").innerHTML='<i class="ti ti-search"></i> Find';
+  const u=(users||[]).find(x=>x.id!==me.uid);
+  res.classList.remove("hidden");
+  if(!u){ res.innerHTML=`<div class="cf-miss">No CourtReach user with that ${isEmail?"email":"number"} — they need an account first.</div>`; return; }
+  linkFound=u;
+  const ex=links.find(l=>otherUid(l)===u.id);
+  const state=ex? (ex.status==="approved"?"Connected":ex.status==="pending"?(ex.fromUid===me.uid?"Request sent":"Awaiting your reply"):null) : null;
+  res.innerHTML=`<div class="cf-hit"><span class="bavatar2">${esc(initials(u.name))}</span>
+    <div style="flex:1;min-width:0"><div class="cf-nm">${esc(u.name)}</div><div class="cf-de">${esc(u.designation||"")}</div></div>
+    ${state? `<span class="cf-state">${esc(state)}</span>` : `<button class="cf-req" id="cf_send">Request</button>`}</div>`;
+  const s=$("cf_send"); if(s) s.onclick=sendRequest;
+}
+async function sendRequest(){
+  if(!linkFound) return; const u=linkFound;
+  try{ await db.set("links/"+linkKey(me.uid,u.id),{fromUid:me.uid, fromName:me.name||"", fromDesig:me.designation||"",
+      toUid:u.id, toName:u.name||"", toDesig:u.designation||"", status:"pending", at:db.now()});
+    $("cf_res").innerHTML=`<div class="cf-ok">Request sent to ${esc(u.name)} — you'll see their board once they accept.</div>`; linkFound=null;
+  }catch(e){ $("cf_err").textContent="Could not send — "+(e.message||e); }
+}
+async function decideLink(id,status){ try{ await db.update("links/"+id,{status,decidedAt:db.now()}); }catch(e){} }
+function openThread(id){ collabOpen=id;
+  if(threadUnsub){threadUnsub();threadUnsub=null;}
+  threadUnsub=db.watchQuery("linkmsgs","linkId",id, rows=>{ linkMsgs=(rows||[]).sort((a,b)=>tsMs(a.at)-tsMs(b.at)); if(curTab==="collab"&&collabOpen===id) renderCollab(); });
+  renderCollab();
+}
+function closeThread(){ collabOpen=null; if(threadUnsub){threadUnsub();threadUnsub=null;} linkMsgs=[]; renderCollab(); }
+async function sendLinkMsg(id){ const ta=$("cl_ta"); const text=(ta?ta.value:"").trim(); if(ta) ta.value=""; if(!text) return;
+  try{ await db.add("linkmsgs",{linkId:id, by:me.uid, name:me.name||"", text, at:db.now()}); }catch(e){} }
+function viewPeerBoard(link){ peerBoardUid=otherUid(link); peerBoardName=otherName(link)||"Colleague"; peerMatters=[];
+  if(peerUnsub){peerUnsub();}
+  peerUnsub=db.watchDoc("usermatters/"+peerBoardUid, d=>{ peerMatters=(d&&d.matters)||[]; if(curTab==="board") renderBoard(); });
+  setTab("board");
+}
+function exitPeerBoard(){ if(peerUnsub){peerUnsub();peerUnsub=null;} peerBoardUid=null; peerBoardName=""; peerMatters=[]; renderBoard(); }
+function renderCollab(){
+  updateCollabBadge();
+  if(collabOpen) return renderThread(collabOpen);
+  let h=`<div class="cwrap"><div class="sec-h">Find a colleague</div>
+    <div class="cf-box"><input id="cf_q" placeholder="their phone or email"><button class="cf-find" id="cf_find"><i class="ti ti-search"></i> Find</button></div>
+    <div class="cf-err" id="cf_err"></div><div id="cf_res" class="hidden"></div>`;
+  const incoming=links.filter(l=>l.status==="pending" && l.toUid===me.uid);
+  if(incoming.length){ h+=`<div class="sec-h" style="margin-top:18px">Requests to you</div>`;
+    h+=incoming.map(l=>`<div class="cx-card"><div class="brow"><span class="bval">${esc(l.fromName)}</span><span class="cf-de2">${esc(l.fromDesig||"")}</span></div>
+      <div class="bsub">wants to track your board and message you.</div>
+      <div class="cx-btns"><button class="cx-ok" data-cdec="${esc(l.id)}|approved">Accept</button><button class="cx-no" data-cdec="${esc(l.id)}|declined">Decline</button></div></div>`).join(""); }
+  const conns=links.filter(l=>l.status==="approved");
+  h+=`<div class="sec-h" style="margin-top:${incoming.length?16:18}px">Connections${conns.length?` · ${conns.length}`:""}</div>`;
+  if(!conns.length) h+=`<div class="cf-miss" style="border:1px dashed var(--line);border-radius:12px;padding:16px;text-align:center">No connections yet — find a colleague by phone or email above.</div>`;
+  else h+=conns.map(l=>{ const nm=otherName(l);
+    return `<div class="cx-card cx-conn" data-open="${esc(l.id)}"><span class="bavatar2">${esc(initials(nm))}</span>
+      <div style="flex:1;min-width:0"><div class="cf-nm">${esc(nm)}</div><div class="cf-de">${esc(l.fromUid===me.uid?(l.toDesig||""):(l.fromDesig||""))}</div></div>
+      <i class="ti ti-chevron-right" style="color:var(--mut)"></i></div>`; }).join("");
+  const outPend=links.filter(l=>l.status==="pending" && l.fromUid===me.uid);
+  if(outPend.length){ h+=`<div class="sec-h" style="margin-top:16px">Requests sent</div>`;
+    h+=outPend.map(l=>`<div class="cx-card"><div class="brow"><span class="bval">${esc(l.toName)}</span><span class="cf-state">Pending</span></div></div>`).join(""); }
+  h+=`</div>`; $("main").innerHTML=h;
+  const fb=$("cf_find"); if(fb) fb.onclick=findColleague;
+  const fq=$("cf_q"); if(fq) fq.onkeydown=e=>{ if(e.key==="Enter") findColleague(); };
+  $("main").querySelectorAll("[data-cdec]").forEach(b=>b.onclick=()=>{ const [id,st]=b.dataset.cdec.split("|"); decideLink(id,st); });
+  $("main").querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>openThread(b.dataset.open));
+}
+function renderThread(id){
+  const l=links.find(x=>x.id===id); if(!l){ collabOpen=null; return renderCollab(); }
+  const nm=otherName(l), desig=l.fromUid===me.uid?(l.toDesig||""):(l.fromDesig||"");
+  $("main").innerHTML=`<div class="cwrap"><button class="bback" id="cl_back"><i class="ti ti-chevron-left"></i> Connections</button>
+    <div class="cx-head"><span class="bavatar2">${esc(initials(nm))}</span><div style="flex:1;min-width:0"><div class="cf-nm">${esc(nm)}</div><div class="cf-de">${esc(desig)}</div></div>
+      <button class="cx-vb" id="cl_board"><i class="ti ti-layout-grid"></i> Their board</button></div>
+    <div class="bthread" id="cl_thread">${linkMsgs.length? linkMsgs.map(m=>{ const mine=m.by===me.uid;
+        return `<div class="bbub ${mine?"me":"them"}">${mine?"":`<span class="bn">${esc(m.name||"")}</span>`}<span>${esc(m.text)}</span><span class="bt">${esc(clockIST(tsMs(m.at)))}</span></div>`; }).join("")
+        : `<div class="bsub" style="text-align:center;padding:16px">No messages yet — say hello.</div>`}</div>
+    <div class="bcompose"><textarea id="cl_ta" rows="1" placeholder="Message ${esc(nm)}…"></textarea><button class="bsend" id="cl_send"><i class="ti ti-send"></i></button></div></div>`;
+  $("cl_back").onclick=closeThread;
+  $("cl_board").onclick=()=>viewPeerBoard(l);
+  $("cl_send").onclick=()=>sendLinkMsg(id);
+  $("cl_ta").onkeydown=e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); sendLinkMsg(id); } };
+  const t=$("cl_thread"); if(t) t.scrollTop=t.scrollHeight;
+}
+function closeModal(){ $("modalRoot").innerHTML=""; }
+$("modalRoot").addEventListener("click",e=>{ if(e.target.classList.contains("ovl")||e.target.closest("button[data-close]")) closeModal(); });
+
+function render(){ if(curTab==="board") renderBoard(); else if(curTab==="mine") renderMine(); else renderCollab(); }
+function setTab(t){ curTab=t; document.querySelectorAll("nav.botnav button").forEach(b=>b.classList.toggle("on",b.dataset.tab===t)); render(); }
+document.querySelectorAll("nav.botnav button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+
+/* ============================================================
+   AUTH / BOOT
+   ============================================================ */
+function boot(user){
+  unsub.forEach(u=>u&&u()); unsub=[]; if(userDocUnsub){userDocUnsub();userDocUnsub=null;}
+  if(threadUnsub){threadUnsub();threadUnsub=null;} if(peerUnsub){peerUnsub();peerUnsub=null;}
+  links=[];linksOut=[];linksIn=[];collabOpen=null;linkMsgs=[];peerBoardUid=null;peerBoardName="";peerMatters=[];linkFound=null;
+  booted=false;
+  if(!user){ me=null; $("app").classList.add("hidden"); $("login").classList.remove("hidden"); stopPolling(); return; }
+  const uid=user.uid;
+  userDocUnsub=db.watchDoc("users/"+uid, u=>{
+    me = u ? {uid,...u} : {uid, name:(user.email||"").split("@")[0], role:"user"};
+    $("login").classList.add("hidden"); $("app").classList.remove("hidden");
+    paintMasthead();
+    if(!booted){ booted=true;
+      unsub.push(db.watchDoc("usermatters/"+uid, d=>{ myOwn=(d&&d.matters)||[]; if(curTab!=="collab"&&!peerBoardUid) render(); }));
+      unsub.push(db.watchQuery("links","fromUid",uid, rows=>{ linksOut=rows||[]; recomputeLinks(); }));
+      unsub.push(db.watchQuery("links","toUid",uid, rows=>{ linksIn=rows||[]; recomputeLinks(); }));
+      loadCourtUpdates();
+      startPolling();
+    }
+    render();
+  });
+}
+auth.onChange(boot);
+
+$("lgGo").onclick=async()=>{ $("lgErr").textContent="";
+  try{ await auth.signIn($("lgEmail").value.trim(), $("lgPass").value); }
+  catch(e){ $("lgErr").textContent=(e.code||"").match(/password|credential/)?"Wrong email or password.":(e.message||"Sign-in failed."); } };
+$("lgPass").addEventListener("keydown",e=>{ if(e.key==="Enter") $("lgGo").click(); });
+$("lgReset").onclick=async()=>{ const em=$("lgEmail").value.trim(); if(!em){ $("lgErr").textContent="Enter your email first."; return; }
+  try{ await auth.resetPassword(em); $("lgErr").textContent="Reset link sent to "+em; }catch(e){ $("lgErr").textContent=e.message||"Could not send."; } };
+$("lgToReg").onclick=()=>{ $("signinForm").classList.add("hidden"); $("regForm").classList.remove("hidden"); $("lgSub").textContent="Create your account"; };
+$("lgToSignin").onclick=()=>{ $("regForm").classList.add("hidden"); $("signinForm").classList.remove("hidden"); $("lgSub").textContent="Track your matters on the live court board"; };
+$("rgGo").onclick=async()=>{ $("rgErr").textContent="";
+  const name=$("rgName").value.trim(), phone=$("rgPhone").value.replace(/\D/g,""), email=$("rgEmail").value.trim(),
+        designation=$("rgDesig").value, pass=$("rgPass").value;
+  if(name.length<2){ $("rgErr").textContent="Enter your full name."; return; }
+  if(phone.length<10){ $("rgErr").textContent="Enter a valid mobile number."; return; }
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ $("rgErr").textContent="Enter a valid email."; return; }
+  if(pass.length<6){ $("rgErr").textContent="Password must be at least 6 characters."; return; }
+  $("rgGo").disabled=true; $("rgErr").textContent="Creating your account…";
+  try{ await auth.signUp(email,pass,{name,phone,designation}); }
+  catch(e){ $("rgGo").disabled=false; $("rgErr").textContent=(e.code||"").includes("email-already-in-use")?"That email already has an account — sign in.":(e.message||"Could not create account."); } };
+$("btnRefresh").onclick=()=>{ if(!DEMO) location.reload(); else fetchBoard(); };
+$("btnOut").onclick=()=>auth.signOut();
+
+/* demo seed (only DEMO) */
+function seedDemo(db){
+  db.set("users/u_demo",{name:"Rohan Mehta",email:"rohan@example.in",phone:"9820011234",designation:"Advocate-on-Record",role:"user",office:"Rohan Mehta",active:true});
+  db.set("usermatters/u_demo",{matters:[{id:"m1",court:"5",item:"7",title:"My SLP v. State of Karnataka"},{id:"m2",court:"6",item:"4",title:"Mehta v. Union of India"}]});
+  // a second CourtReach user to exercise Collaborate (find by phone/email → request → track → message)
+  db.set("users/u_peer",{name:"Meera Krishnan",email:"meera@example.in",phone:"9820055667",designation:"Senior Advocate",role:"user",office:"Meera Krishnan",active:true});
+  db.set("usermatters/u_peer",{matters:[{id:"p1",court:"1",item:"12",title:"Krishnan v. LIC of India"},{id:"p2",court:"3",item:"6",title:"State v. Menon"}]});
+}
+</script>
+</body>
+</html>
