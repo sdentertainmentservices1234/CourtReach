@@ -39,15 +39,17 @@ body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink
 /* ---- app shell ---- */
 #app{display:flex;flex-direction:column;height:100vh;max-width:760px;width:100%;margin-inline:auto;background:var(--bg);overflow:hidden}
 @media(min-width:761px){body{background:#d3d8dd}#app{border-inline:1px solid var(--line)}}
-header.top{display:flex;align-items:center;gap:9px;padding:calc(env(safe-area-inset-top,0px) + 12px) 14px 12px;
+header.top{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:calc(env(safe-area-inset-top,0px) + 11px) 8px 11px;
   background:linear-gradient(180deg,#1a222c,#12171e);color:#fff;flex:none;border-bottom:1px solid rgba(176,148,86,.4)}
-.top .seal.sm{width:34px;height:34px;margin:0;border-width:1.5px;font-size:13px;flex:none}
-.top .ttl{display:flex;flex-direction:column;min-width:0}
-.top .ttl-main{font-family:Fraunces,serif;font-weight:600;font-size:16px;line-height:1.1;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.top .ttl small{font-family:Inter;color:#9fb0c0;font-size:9.5px;font-weight:500;letter-spacing:.4px;text-transform:uppercase;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.top .spacer{flex:1;min-width:4px}
-.iconbtn{background:transparent;border:none;color:#cdd6df;font-size:19px;padding:5px;line-height:1;border-radius:8px}
+.top-actions{display:flex;align-items:center;gap:1px;flex:1 1 0;min-width:0}
+.top-actions.right{justify-content:flex-end}
+.brand{display:flex;align-items:center;gap:8px;flex:none}
+.brand-logo{display:flex;align-items:center;justify-content:center;width:30px;height:30px;flex:none}
+.brand-logo svg{display:block;width:100%;height:100%}
+.brand-name{font-family:Fraunces,serif;font-weight:600;font-size:19px;color:#fff;letter-spacing:.2px;line-height:1;white-space:nowrap}
+.iconbtn{position:relative;background:transparent;border:none;color:#cdd6df;font-size:20px;padding:6px;line-height:1;border-radius:9px}
 .iconbtn:active{background:rgba(255,255,255,.1)}
+.iconbtn.on{color:var(--gold)}
 #paneTop{flex:none;padding:9px 12px 2px}
 .statusrow{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--mut)}
 .freshdot{width:7px;height:7px;border-radius:50%;background:#4bbd6b}
@@ -230,11 +232,23 @@ nav.botnav button.on{color:var(--accent)}
 <!-- APP -->
 <div id="app" class="hidden">
   <header class="top">
-    <span class="seal sm" id="hdrSeal">CR</span>
-    <span class="ttl"><span class="ttl-main" id="hdrName">CourtReach</span><small id="hdrSub">Supreme Court of India</small></span>
-    <span class="spacer"></span>
-    <button class="iconbtn" id="btnRefresh" title="Refresh"><i class="ti ti-refresh"></i></button>
-    <button class="iconbtn" id="btnOut" title="Sign out"><i class="ti ti-logout"></i></button>
+    <div class="top-actions left">
+      <button class="iconbtn" id="btnAdd" title="Track a matter"><i class="ti ti-plus"></i></button>
+      <button class="iconbtn" id="btnNotify" title="Matter-reaching alerts"><i class="ti ti-bell"></i></button>
+    </div>
+    <div class="brand">
+      <span class="brand-logo" id="brandLogo"><!-- LOGO: swap this SVG for the chosen mark -->
+        <svg viewBox="0 0 32 32" fill="none" stroke="#b09456" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M16 5.5V27"/><path d="M8.5 9h15"/><circle cx="16" cy="5.6" r="1.5" fill="#b09456" stroke="none"/>
+          <path d="M8.5 9l-3.2 6.2h6.4z"/><path d="M23.5 9l-3.2 6.2h6.4z"/><path d="M11 27h10"/>
+        </svg>
+      </span>
+      <span class="brand-name">CourtReach</span>
+    </div>
+    <div class="top-actions right">
+      <button class="iconbtn" id="btnRefresh" title="Refresh"><i class="ti ti-refresh"></i></button>
+      <button class="iconbtn" id="btnOut" title="Sign out"><i class="ti ti-logout"></i></button>
+    </div>
   </header>
   <div id="paneTop">
     <div class="statusrow"><span class="freshdot off" id="freshDot"></span><span id="statusTxt">connecting…</span></div>
@@ -443,9 +457,9 @@ function paintFresh(){ const dot=$("freshDot"), txt=$("statusTxt"); if(!dot) ret
    RENDER
    ============================================================ */
 const TIER_RANK={now:0,soon:1,later:2,unknown:3,passed:4,idle:5};
-function paintMasthead(){ if(!me) return;
-  $("hdrSeal").textContent=initials(me.name); $("hdrName").textContent=me.name||"My board";
-  $("hdrSub").textContent=(me.designation? me.designation+" · " : "")+"Supreme Court of India"; }
+// The header now shows the CourtReach brand (centred), not the signed-in user — so
+// this is a no-op kept for its call sites. The user's identity shows on My matters.
+function paintMasthead(){ /* header is brand-only now */ }
 
 // The tracked set shown on the board: mine, or a connected peer's (when viewing their board).
 const activeMatters = () => {
@@ -526,7 +540,7 @@ function runFlash(){
     if(prev===undefined || r.gap<prev) stepped=true;                              // entered range OR got closer
     _flashSt.gaps[key]=r.gap;
   }
-  if(stepped) showFlash(inrange);                                                 // one flash showing every court in range
+  if(stepped){ showFlash(inrange); notifyReaching(inrange); }                     // one flash + (if enabled) a browser alert
 }
 function showFlash(items){
   if(_flashTimer){ clearTimeout(_flashTimer); _flashTimer=null; }
@@ -808,6 +822,35 @@ $("rgGo").onclick=async()=>{ $("rgErr").textContent="";
   catch(e){ $("rgGo").disabled=false; $("rgErr").textContent=(e.code||"").includes("email-already-in-use")?"That email already has an account — sign in.":(e.message||"Could not create account."); } };
 $("btnRefresh").onclick=()=>{ if(!DEMO) location.reload(); else fetchBoard(); };
 $("btnOut").onclick=()=>auth.signOut();
+$("btnAdd").onclick=()=>addMatterForm();
+// Matter-reaching alerts: tap the bell to enable browser notifications for when one of
+// your tracked matters is approaching on the board (fires while the app is open).
+let notifOn=(()=>{ try{ return localStorage.getItem("crNotify")==="1"; }catch(e){ return false; } })();
+let _notified={};
+function paintNotify(){ const b=$("btnNotify"); if(!b) return; const i=b.querySelector("i");
+  if(i) i.className = notifOn ? "ti ti-bell-filled" : "ti ti-bell"; b.classList.toggle("on", notifOn); }
+async function toggleNotify(){
+  if(!notifOn){
+    if(typeof Notification!=="undefined" && Notification.permission!=="granted"){
+      try{ const p=await Notification.requestPermission(); if(p!=="granted") return; }catch(e){ return; }
+    }
+    notifOn=true;
+  } else notifOn=false;
+  try{ localStorage.setItem("crNotify", notifOn?"1":"0"); }catch(e){}
+  paintNotify();
+}
+function notifyReaching(items){
+  if(!notifOn || typeof Notification==="undefined" || Notification.permission!=="granted") return;
+  for(const r of items){ if(r.gap==null||r.gap>4) continue;
+    const key=r.court+"|"+r.item+"|"+(r.gap<=1?"now":"soon"); if(_notified[key]) continue; _notified[key]=1;
+    const body = r.gap<=0 ? `Your item ${r.item} is on now in Court ${r.court}`
+      : r.gap===1 ? `Next in Court ${r.court} — your item ${r.item}`
+      : `Court ${r.court} — your item ${r.item} is ~${r.gap} away`;
+    try{ new Notification("CourtReach", {body, tag:"cr-"+r.court, renotify:true}); }catch(e){}
+  }
+}
+const _btnNotify=$("btnNotify"); if(_btnNotify) _btnNotify.onclick=toggleNotify;
+paintNotify();
 
 /* demo seed (only DEMO) */
 function seedDemo(db){
