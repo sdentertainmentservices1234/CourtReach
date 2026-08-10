@@ -152,8 +152,15 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px calc(66px + env(s
 .bcompose{display:flex;gap:7px;align-items:flex-end}
 .bcompose textarea{flex:1;resize:none;min-height:42px;max-height:110px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);font-size:14px;font-family:inherit}
 .bsend{flex:none;width:44px;height:44px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center}
-.peerbar{display:flex;align-items:center;gap:8px;justify-content:space-between;background:#eef3fb;border:1px solid #cfe0f2;border-radius:11px;padding:9px 12px;margin-bottom:10px;font-size:13px;color:var(--ink)}
+.peerbar{display:flex;align-items:center;gap:8px;justify-content:space-between;background:#eef3fb;border:1px solid #cfe0f2;border-radius:11px;padding:9px 12px;margin-bottom:8px;font-size:13px;color:var(--ink)}
 .peerbar button{flex:none;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:6px 11px;font-size:12px;font-weight:600}
+.mycasebar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:#fbf3df;border:1px solid #e6d29a;border-radius:11px;padding:9px 12px;margin-bottom:10px;font-size:12.5px;color:#7a5a12}
+.mycasebar i{color:var(--gold)}
+.cell.mycase{border-color:var(--gold)!important;box-shadow:0 0 0 2px rgba(194,168,106,.35),0 6px 16px rgba(120,95,20,.14);position:relative;overflow:hidden}
+.mycase-rib{display:flex;align-items:center;justify-content:center;gap:4px;background:linear-gradient(180deg,#c2a86a,#a2853f);color:#fff;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin:-10px -8px 6px;padding:3px 4px}
+.cell.mini .mycase-rib{font-size:8px;margin:-8px -5px 4px}
+.rq-case{display:flex;align-items:center;gap:10px;background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:9px 11px;margin-bottom:8px}
+.rq-rm{flex:none;background:none;border:none;color:var(--now);font-size:12px;font-weight:600}
 .badge{position:absolute;top:4px;left:calc(50% + 8px);background:var(--now);color:#fff;border-radius:20px;font-size:9px;padding:1px 5px;min-width:15px;line-height:1.4}
 /* bottom nav */
 nav.botnav{position:fixed;bottom:0;left:0;right:0;max-width:760px;margin-inline:auto;display:flex;z-index:30;
@@ -393,7 +400,7 @@ let me=null, myOwn=[], board=[], boardAt=0, boardErr=null, curTab="board";
 let unsub=[], userDocUnsub=null, pollId=null, tickId=null, pollOn=false, booted=false;
 // COLLABORATE state — peer connections (links) + per-link message threads + peer-board view
 let links=[], linksOut=[], linksIn=[], collabOpen=null, threadUnsub=null, linkMsgs=[];
-let peerBoardUid=null, peerBoardName="", peerMatters=[], peerUnsub=null;
+let peerBoardUid=null, peerBoardName="", peerMatters=[], peerUnsub=null, peerLinkMatters=[];
 let linkFound=null;   // last user found by phone/email in the Find box
 const linkKey=(a,b)=>a+"_"+b;
 const otherUid = l => (l.fromUid===me?.uid ? l.toUid : l.fromUid);
@@ -441,15 +448,21 @@ const activeMatters = () => {
 function renderBoard(){
   paintFresh();
   let h="";
-  if(peerBoardUid) h+=`<div class="peerbar">Viewing <b>${esc(peerBoardName)}</b>'s board <button id="peerBack">Back to my board</button></div>`;
+  if(peerBoardUid){
+    h+=`<div class="peerbar"><span>Viewing <b>${esc(peerBoardName)}</b>'s board</span><button id="peerBack">Back to my board</button></div>`;
+    if(peerLinkMatters.length) h+=`<div class="mycasebar"><i class="ti ti-star-filled"></i> Your case${peerLinkMatters.length>1?"s":""}: `
+      +peerLinkMatters.map(m=>`<b>Ct ${esc(m.court)} · ${esc(m.item)}</b>`).join(", ")+`</div>`;
+  }
   if(boardErr) h+=`<div class="notice"><b>Can't reach the court board</b> — retrying.</div>`;
   if(!board.length){ $("main").innerHTML=h+`<div class="empty">Loading the live court board…</div>`; return; }
   const set=activeMatters();
   const ours=new Set(set.map(e=>String(e.courtNo)));
   const shown=board.filter(c=>isCourtroom(c.court));
   const byNo=(a,b)=>(parseInt(a.court)||99)-(parseInt(b.court)||99);
-  const full=shown.filter(c=>ours.has(String(c.court))).sort(byNo);
-  const mini=shown.filter(c=>!ours.has(String(c.court))).sort(byNo);
+  // in peer view, float the courts holding MY case to the top so I find them fast
+  const inFull=c=>ours.has(String(c.court))||isMyCaseCourt(c.court);
+  const full=shown.filter(inFull).sort((a,b)=>((isMyCaseCourt(b.court)?1:0)-(isMyCaseCourt(a.court)?1:0))||byNo(a,b));
+  const mini=shown.filter(c=>!inFull(c)).sort(byNo);
   if(!set.length) h+= peerBoardUid ? `<div class="notice">${esc(peerBoardName)} isn't tracking any matter right now.</div>`
     : `<div class="notice">You're not tracking any matter yet. Add one from <b>My matters</b> and it lights up here as it reaches.</div>`;
   h+=`<div class="grid">`+full.map(c=>boardCell(c,false)).join("")+`</div>`;
@@ -460,18 +473,22 @@ function renderBoard(){
 function boardCell(c, mini){
   const idle=/not in session/i.test(c.status||"");
   const ours=activeMatters().filter(e=>String(e.courtNo)===String(c.court));
-  if(!ours.length){ return `<div class="cell${mini?" mini":""}">
+  const mine=isMyCaseCourt(c.court);
+  if(!ours.length && !mine){ return `<div class="cell${mini?" mini":""}">
     <div class="cell-ct">Court <span class="ctn">${esc(c.court)}</span></div>
     <div class="cell-item">${idle?"—":esc(c.item||"·")}</div>
     <div class="cell-sub">${idle?"not sitting":"hearing"}</div></div>`; }
-  const ks=ours.map(e=>({e,k:classify(e)})).sort((a,b)=>(TIER_RANK[a.k.tier]-TIER_RANK[b.k.tier])||((a.k.gap??999)-(b.k.gap??999)));
-  const tier=ks[0].k.tier;
+  // in a "your case" court, track MY item(s); otherwise the peer's / my own tracked matters
+  const src = mine ? myCaseItemsIn(c.court).map(it=>({courtNo:c.court,itemNo:it})) : ours;
+  const ks=src.map(e=>({e,k:classify(e)})).sort((a,b)=>(TIER_RANK[a.k.tier]-TIER_RANK[b.k.tier])||((a.k.gap??999)-(b.k.gap??999)));
+  const tier=ks[0]?.k.tier||"idle";
   const items=ks.map(x=>esc(x.e.itemNo)).join(" · ");
-  return `<div class="cell ours ${tier} ${idle?"idle":""}">
+  return `<div class="cell ours ${tier} ${idle?"idle":""}${mine?" mycase":""}">
+    ${mine?`<div class="mycase-rib"><i class="ti ti-star-filled"></i> Your case</div>`:""}
     <div class="cell-ct">Court <span class="ctn">${esc(c.court)}</span></div>
     <div class="cell-item">${idle?"—":esc(c.item||"·")}</div>
     <div class="cell-sub">${idle?"not sitting":esc(c.status||"hearing")}</div>
-    <div class="cell-ours"><span class="oi">${items}</span><br>${esc(ks[0].k.short||ks[0].k.label)}</div></div>`;
+    <div class="cell-ours"><span class="oi">${items}</span><br>${esc(ks[0]?.k.short||ks[0]?.k.label||"—")}</div></div>`;
 }
 
 /* ===== APPROACH FLASH — full-screen overlay when our matters are reaching (ported from the display board) ===== */
@@ -618,14 +635,55 @@ async function findColleague(){
   res.innerHTML=`<div class="cf-hit"><span class="bavatar2">${esc(initials(u.name))}</span>
     <div style="flex:1;min-width:0"><div class="cf-nm">${esc(u.name)}</div><div class="cf-de">${esc(u.designation||"")}</div></div>
     ${state? `<span class="cf-state">${esc(state)}</span>` : `<button class="cf-req" id="cf_send">Request</button>`}</div>`;
-  const s=$("cf_send"); if(s) s.onclick=sendRequest;
+  const s=$("cf_send"); if(s) s.onclick=()=>requestModal(linkFound);
 }
-async function sendRequest(){
-  if(!linkFound) return; const u=linkFound;
-  try{ await db.set("links/"+linkKey(me.uid,u.id),{fromUid:me.uid, fromName:me.name||"", fromDesig:me.designation||"",
-      toUid:u.id, toName:u.name||"", toDesig:u.designation||"", status:"pending", at:db.now()});
-    $("cf_res").innerHTML=`<div class="cf-ok">Request sent to ${esc(u.name)} — you'll see their board once they accept.</div>`; linkFound=null;
-  }catch(e){ $("cf_err").textContent="Could not send — "+(e.message||e); }
+async function fetchCase(f){
+  await loadCourtUpdates(); const r=lookupItem(f.date,f.type,f.court,f.item);
+  return { court:f.court, item:f.item, date:f.date, listType:f.type, party:f.party,
+    title:r.title||"", bench:r.bench||"", aor: r.found?(f.party==="Petitioner"?r.aorPet:r.aorResp):"", found:!!r.found, reason:r.reason||"" };
+}
+// Request to track someone, attaching the case(s) you're briefing them in (so your
+// cases get flagged on their board). Multiple cases supported; item may be decimal.
+function requestModal(u){
+  if(!u) return; let cases=[];
+  const draw=()=>{
+    $("modalRoot").innerHTML=`<div class="ovl" data-close><div class="sheet"><button class="sh-x" data-close>&times;</button>
+      <h2>Request to track ${esc(u.name)}</h2>
+      <div class="sh-sub">Add the case(s) you're briefing them in — we fetch the details, and your cases are flagged on their board.</div>
+      <label class="am-fld">Date<input type="date" id="rq_date" value="${todayISO()}"></label>
+      <label class="am-fld">Causelist type<select id="rq_type">${CAUSELIST_TYPES.map(t=>`<option>${esc(t)}</option>`).join("")}</select></label>
+      <div class="am-row">
+        <label class="am-fld">Court<input id="rq_court" inputmode="numeric" placeholder="e.g. 4"></label>
+        <label class="am-fld">Item<input id="rq_item" inputmode="decimal" placeholder="e.g. 62.1"></label>
+      </div>
+      <label class="am-fld">Appearing for<select id="rq_party"><option>Petitioner</option><option>Respondent</option></select></label>
+      <button class="sh-btn ghost2" id="rq_add"><i class="ti ti-plus"></i> Fetch &amp; add case</button>
+      <div class="am-err" id="rq_err"></div>
+      ${cases.length?`<div class="sec-h" style="margin-top:12px">Your cases (${cases.length})</div>`+cases.map((c,i)=>`<div class="rq-case">
+        <div style="flex:1;min-width:0"><div class="cf-nm">${esc(c.title||("Ct "+c.court+" · item "+c.item))}</div>
+          <div class="cf-de">Ct ${esc(c.court)} · item ${esc(c.item)} · ${esc(c.listType)} · for ${esc(c.party)}${c.bench?" · "+esc(c.bench):""}</div></div>
+        <button class="rq-rm" data-rm="${i}">Remove</button></div>`).join(""):""}
+      <button class="sh-btn" id="rq_send" style="margin-top:12px">${cases.length?`Send request with ${cases.length} case${cases.length>1?"s":""}`:"Send request"}</button>
+    </div></div>`;
+    $("rq_add").onclick=async()=>{
+      const court=($("rq_court").value||"").trim(), item=($("rq_item").value||"").trim();
+      $("rq_err").textContent="";
+      if(!/^\d{1,2}$/.test(court)||+court<1||+court>17){ $("rq_err").textContent="Enter a court number (1–17)."; return; }
+      if(!/^\d{1,4}(\.\d+)?$/.test(item)){ $("rq_err").textContent="Enter an item number (e.g. 62 or 62.1)."; return; }
+      $("rq_add").innerHTML="Fetching…";
+      const c=await fetchCase({court,item,date:$("rq_date").value||todayISO(),type:$("rq_type").value,party:$("rq_party").value});
+      cases.push(c); draw();
+      if(!c.found) $("rq_err").textContent="Added — but not found in that list yet; details will fill later.";
+    };
+    $("rq_send").onclick=async()=>{
+      try{ await db.set("links/"+linkKey(me.uid,u.id),{fromUid:me.uid, fromName:me.name||"", fromDesig:me.designation||"",
+          toUid:u.id, toName:u.name||"", toDesig:u.designation||"", status:"pending", at:db.now(), matters:cases});
+        closeModal(); linkFound=null; renderCollab();
+      }catch(e){ $("rq_err").textContent="Could not send — "+(e.message||e); }
+    };
+    $("modalRoot").querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{ cases.splice(+b.dataset.rm,1); draw(); });
+  };
+  draw();
 }
 async function decideLink(id,status){ try{ await db.update("links/"+id,{status,decidedAt:db.now()}); }catch(e){} }
 function openThread(id){ collabOpen=id;
@@ -637,11 +695,15 @@ function closeThread(){ collabOpen=null; if(threadUnsub){threadUnsub();threadUns
 async function sendLinkMsg(id){ const ta=$("cl_ta"); const text=(ta?ta.value:"").trim(); if(ta) ta.value=""; if(!text) return;
   try{ await db.add("linkmsgs",{linkId:id, by:me.uid, name:me.name||"", text, at:db.now()}); }catch(e){} }
 function viewPeerBoard(link){ peerBoardUid=otherUid(link); peerBoardName=otherName(link)||"Colleague"; peerMatters=[];
+  // MY case(s) with this person (from the collaboration request) — flagged on their board so I find mine fast
+  peerLinkMatters=(link.matters||[]).filter(m=>m&&m.court&&m.item);
   if(peerUnsub){peerUnsub();}
   peerUnsub=db.watchDoc("usermatters/"+peerBoardUid, d=>{ peerMatters=(d&&d.matters)||[]; if(curTab==="board") renderBoard(); });
   setTab("board");
 }
-function exitPeerBoard(){ if(peerUnsub){peerUnsub();peerUnsub=null;} peerBoardUid=null; peerBoardName=""; peerMatters=[]; renderBoard(); }
+function exitPeerBoard(){ if(peerUnsub){peerUnsub();peerUnsub=null;} peerBoardUid=null; peerBoardName=""; peerMatters=[]; peerLinkMatters=[]; renderBoard(); }
+const isMyCaseCourt = court => peerBoardUid && peerLinkMatters.some(m=>String(m.court)===String(court));
+const myCaseItemsIn = court => peerLinkMatters.filter(m=>String(m.court)===String(court)).map(m=>String(m.item));
 function renderCollab(){
   updateCollabBadge();
   if(collabOpen) return renderThread(collabOpen);
@@ -745,7 +807,13 @@ function seedDemo(db){
   db.set("usermatters/u_demo",{matters:[{id:"m1",court:"5",item:"7",title:"My SLP v. State of Karnataka"},{id:"m2",court:"6",item:"4",title:"Mehta v. Union of India"}]});
   // a second CourtReach user to exercise Collaborate (find by phone/email → request → track → message)
   db.set("users/u_peer",{name:"Meera Krishnan",email:"meera@example.in",phone:"9820055667",designation:"Senior Advocate",role:"user",office:"Meera Krishnan",active:true});
-  db.set("usermatters/u_peer",{matters:[{id:"p1",court:"1",item:"12",title:"Krishnan v. LIC of India"},{id:"p2",court:"3",item:"6",title:"State v. Menon"}]});
+  db.set("usermatters/u_peer",{matters:[{id:"p1",court:"1",item:"12",title:"Krishnan v. LIC of India"},{id:"p2",court:"3",item:"6",title:"State v. Menon"},{id:"p3",court:"6",item:"4",title:"Verma v. State"}]});
+  // a third user with NO link yet — to exercise find → request (multi-case) → send
+  db.set("users/u_peer2",{name:"Arjun Rao",email:"arjun@example.in",phone:"9899001122",designation:"Senior Advocate",role:"user",office:"Arjun Rao",active:true});
+  db.set("usermatters/u_peer2",{matters:[{id:"q1",court:"8",item:"1620",title:"Rao v. Union of India"}]});
+  // an already-approved connection where Rohan is briefing Meera in one case (Ct1/12) — to test the "your case" flag on her board
+  db.set("links/u_demo_u_peer",{fromUid:"u_demo",fromName:"Rohan Mehta",fromDesig:"Advocate-on-Record",toUid:"u_peer",toName:"Meera Krishnan",toDesig:"Senior Advocate",status:"approved",at:db.now(),
+    matters:[{court:"1",item:"12",date:todayISO(),listType:"Miscellaneous",party:"Petitioner",title:"Krishnan v. LIC of India",bench:"",aor:""}]});
 }
 </script>
 </body>
