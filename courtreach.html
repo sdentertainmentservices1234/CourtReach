@@ -39,15 +39,15 @@ body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink
 /* ---- app shell ---- */
 #app{display:flex;flex-direction:column;height:100vh;max-width:760px;width:100%;margin-inline:auto;background:var(--bg);overflow:hidden}
 @media(min-width:761px){body{background:#d3d8dd}#app{border-inline:1px solid var(--line)}}
-header.top{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:calc(env(safe-area-inset-top,0px) + 11px) 8px 11px;
+header.top{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:calc(env(safe-area-inset-top,0px) + 14px) 10px 14px;
   background:linear-gradient(180deg,#1a222c,#12171e);color:#fff;flex:none;border-bottom:1px solid rgba(176,148,86,.4)}
-.top-actions{display:flex;align-items:center;gap:1px;flex:1 1 0;min-width:0}
+.top-actions{display:flex;align-items:center;gap:2px;flex:1 1 0;min-width:0}
 .top-actions.right{justify-content:flex-end}
-.brand{display:flex;align-items:center;gap:8px;flex:none}
-.brand-logo{display:flex;align-items:center;justify-content:center;width:30px;height:30px;flex:none}
+.brand{display:flex;align-items:center;gap:9px;flex:none}
+.brand-logo{display:flex;align-items:center;justify-content:center;width:40px;height:40px;flex:none}
 .brand-logo svg{display:block;width:100%;height:100%}
-.brand-name{font-family:Fraunces,serif;font-weight:600;font-size:19px;color:#fff;letter-spacing:.2px;line-height:1;white-space:nowrap}
-.iconbtn{position:relative;background:transparent;border:none;color:#cdd6df;font-size:20px;padding:6px;line-height:1;border-radius:9px}
+.brand-name{font-family:Fraunces,serif;font-weight:600;font-size:22px;color:#fff;letter-spacing:.2px;line-height:1;white-space:nowrap}
+.iconbtn{position:relative;background:transparent;border:none;color:#cdd6df;font-size:21px;padding:7px;line-height:1;border-radius:9px}
 .iconbtn:active{background:rgba(255,255,255,.1)}
 .iconbtn.on{color:var(--gold)}
 #paneTop{flex:none;padding:9px 12px 2px}
@@ -237,10 +237,13 @@ nav.botnav button.on{color:var(--accent)}
       <button class="iconbtn" id="btnNotify" title="Matter-reaching alerts"><i class="ti ti-bell"></i></button>
     </div>
     <div class="brand">
-      <span class="brand-logo" id="brandLogo"><!-- LOGO: swap this SVG for the chosen mark -->
-        <svg viewBox="0 0 32 32" fill="none" stroke="#b09456" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M16 5.5V27"/><path d="M8.5 9h15"/><circle cx="16" cy="5.6" r="1.5" fill="#b09456" stroke="none"/>
-          <path d="M8.5 9l-3.2 6.2h6.4z"/><path d="M23.5 9l-3.2 6.2h6.4z"/><path d="M11 27h10"/>
+      <span class="brand-logo" id="brandLogo"><!-- Approach chevrons over a plain CR monogram -->
+        <svg viewBox="0 0 44 44" fill="none" aria-hidden="true">
+          <g stroke="#cbb682" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 15l7-6 7 6"/><path d="M13 21l9-7 9 7"/>
+          </g>
+          <circle cx="22" cy="5.6" r="2" fill="#cbb682"/>
+          <text x="22" y="40" font-family="Georgia,'Iowan Old Style',Palatino,serif" font-weight="600" font-size="20.5" fill="#cbb682" text-anchor="middle" letter-spacing="-.5">CR</text>
         </svg>
       </span>
       <span class="brand-name">CourtReach</span>
