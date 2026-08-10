@@ -144,6 +144,14 @@
     }
     return delta;
   }
+  // When passovers are taken at the END of the board (no sequence), ours is recalled
+  // after every other passed-over matter with a lower item number (reached earlier).
+  function passoversBeforeOurs(ctx, court, ours) {
+    const po = passoverItemsFor(ctx, court); const ourN = Math.floor(parseFloat(ours));
+    if (isNaN(ourN)) return 0;
+    let n = 0; for (const k in po) { const kn = parseInt(k, 10); if (!isNaN(kn) && kn < ourN) n++; }
+    return n;
+  }
 
   const doneOf = (ctx, court, item) => (ctx.doneMarks || {})[poKey(court, item)] || null;
   const poFor = (ctx, court, item) => (ctx.poMarks || {})[poKey(court, item)] || null;
@@ -203,19 +211,26 @@
       || (isPassOver(ctx, e.courtNo, ours) ? { mode: "detail" } : null)
       || (boardPOhas(ctx, e.courtNo, ours) ? { mode: "slot" } : null);
     if (mark) {
-      let gap = null;
-      if (mark.mode === "after" && mark.after && seq.length) {
-        const tp = seq.indexOf(parseInt(mark.after, 10));
-        if (tp >= 0 && curPos >= 0) gap = Math.max(0, tp - curPos + 1);
+      let gap = null, tail = "";
+      if (mark.mode === "after" && mark.after) {
+        if (seq.length) { const tp = seq.indexOf(parseInt(mark.after, 10)); if (tp >= 0 && curPos >= 0) gap = Math.max(0, tp - curPos + 1); }
+        else { const cur = parseInt(bc.item, 10), tp = parseInt(mark.after, 10); if (!isNaN(cur) && !isNaN(tp)) gap = Math.max(0, tp - cur + 1); }
+        if (gap != null) tail = " · taken after item " + String(mark.after);
       } else if (seq.length && curPos >= 0) {
         const tp = (passIdx != null && passIdx > curPos) ? passIdx : seq.length - 1;
         gap = Math.max(0, tp - curPos);
       }
-      if (gap == null) return { tier: "later", label: "passed over — awaiting recall", short: "recall", po: true };
-      if (gap <= 0) return { tier: "now", label: "recall — item on now", short: "NOW", gap, po: true };
-      if (gap === 1) return { tier: "now", label: "recall — next", short: "NEXT", gap, po: true };
-      if (gap <= 4) return { tier: "soon", label: "~" + gap + " items away · recall", short: gap + " away", gap, po: true };
-      return { tier: "later", label: gap + " items away · recall", short: gap + " away", gap, po: true };
+      // No sequence, no explicit recall point: assume the court takes passovers at the END
+      // of the board. gap = matters still to be called (total − current) + passovers before ours.
+      if (gap == null) {
+        const total = miscTotalFor(ctx, e.courtNo), cur = parseInt(bc.item, 10);
+        if (total != null && !isNaN(cur)) { gap = Math.max(0, total - cur) + passoversBeforeOurs(ctx, e.courtNo, ours); tail = " · taken at end"; }
+      }
+      if (gap == null) return { tier: "later", label: "passed over — awaiting its turn", short: "passed over", po: true };
+      if (gap <= 0) return { tier: "now", label: "passed over — item on now", short: "NOW", gap, po: true };
+      if (gap === 1) return { tier: "now", label: "passed over — next", short: "NEXT", gap, po: true };
+      if (gap <= 4) return { tier: "soon", label: "~" + gap + " items away · passed over" + tail, short: gap + " away", gap, po: true };
+      return { tier: "later", label: gap + " items away · passed over" + tail, short: gap + " away", gap, po: true };
     }
     if (/^reg/i.test((e.listType || "").trim())) {
       const miscTotal = miscTotalFor(ctx, e.courtNo);

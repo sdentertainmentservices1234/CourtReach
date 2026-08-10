@@ -28,7 +28,8 @@ body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink
 .login-mark{width:62px;height:62px;margin:0 auto 8px;display:flex;align-items:center;justify-content:center}
 .login-mark svg{display:block;width:100%;height:100%}
 .card h1{font-family:Fraunces,serif;font-weight:600;font-size:34px;margin:0 0 3px;text-align:center;color:var(--ink);line-height:1;letter-spacing:.2px}
-.card .sub{color:var(--mut);text-align:center;font-size:13px;margin-bottom:18px}
+.card .sub{font-family:Fraunces,serif;font-style:italic;font-weight:400;color:var(--mut);text-align:center;
+  font-size:15px;line-height:1.42;letter-spacing:.2px;max-width:280px;margin:2px auto 20px}
 .card label{display:block;font-size:12px;color:var(--mut);margin:12px 0 5px;font-weight:500}
 .card input,.card select{width:100%;padding:11px 13px;border-radius:10px;border:1px solid var(--line);
   background:var(--panel2);color:var(--ink);font-size:15px;appearance:none;-webkit-appearance:none}
@@ -210,7 +211,7 @@ nav.botnav button.on{color:var(--accent)}
       </svg>
     </div>
     <h1>CourtReach</h1>
-    <div class="sub" id="lgSub">Track your matters on the live court board</div>
+    <div class="sub" id="lgSub">Track your cases in real time with a customised display board</div>
     <div id="signinForm">
       <label>Email</label><input id="lgEmail" type="email" autocomplete="username" placeholder="you@example.com">
       <label>Password</label><input id="lgPass" type="password" autocomplete="current-password" placeholder="••••••••">
@@ -362,7 +363,13 @@ function parseBoard(html){
     const cl=raw.match(/id="cl_\d+"[^>]*>(.*?)<\/td>/is); const cltext=cl?strip(cl[1]):"";
     let item="",status=cltext; const im2=cltext.match(/^(\d+(?:\.\d+)?)\s+(.*)$/); if(im2){ item=im2[1]; status=im2[2].trim(); }
     if(!court) continue;
-    courts.push({ court, item, status, sequence:"" });
+    // capture the same signals the SD display board uses: the declared SEQUENCE (in the
+    // row's title), the per-court cause-list token (its remark column = OVER/PASS OVER),
+    // and whether the board itself shows this item passed over.
+    const seqm=raw.match(/title="([^"]*(?:SEQUENCE|SEQ|sequence)[^"]*)"/i);
+    const tok=raw.match(/display_court_all_cases\.php\?([A-Za-z0-9.]+)/i);
+    courts.push({ court, item, status, token:tok?tok[1]:"", passover:/pass\s*over/i.test(status),
+      sequence:seqm?strip(seqm[1]):"" });
   }
   return { courts };
 }
@@ -432,6 +439,12 @@ if(DEMO){
    STATE + BOARD FETCH
    ============================================================ */
 let me=null, myOwn=[], board=[], boardAt=0, boardErr=null, curTab="board";
+// Live-board context for the proximity engine — the published sequence marquee, the
+// per-court remark column (authoritative OVER / PASS OVER), passovers observed live on
+// the board, and each court's highest-seen item. Same sources the SD display board uses.
+let seqByCourt={}, seqLineText="", seqLineAt=0, remarksByCourt={}, _remarkAt={},
+    boardPO={date:todayISO(),marks:{}}, itemHi={date:todayISO(),max:{}};
+const REMARK_TTL=40000;
 let unsub=[], userDocUnsub=null, pollId=null, tickId=null, pollOn=false, booted=false;
 // COLLABORATE state — peer connections (links) + per-link message threads + peer-board view
 let links=[], linksOut=[], linksIn=[], collabOpen=null, threadUnsub=null, linkMsgs=[];
@@ -443,16 +456,64 @@ const otherName = l => (l.fromUid===me?.uid ? (l.toName||"") : (l.fromName||""))
 
 const boardByCourt = () => { const m={}; board.forEach(c=>{ if(c.court && !m[c.court]) m[c.court]=c; }); return m; };
 const myMatters = () => (myOwn||[]).filter(m=>m.court&&m.item&&isCourtroom(m.court))
-  .map(m=>({courtNo:String(m.court), itemNo:String(m.item), caseTitle:m.title||"", _id:m.id}));
+  .map(m=>({courtNo:String(m.court), itemNo:String(m.item), caseTitle:m.title||"", listType:m.listType||"", _id:m.id}));
+// Misc totals per court (main + supp) from the fetched cause list — lets the engine
+// place a Regular-list matter behind the whole Misc list, and a passover at board's end.
+function miscTotalByCourt(){
+  const out={}, lists=courtUpdates?.by_date?.[todayISO()]?.lists?.["Miscellaneous"]||{};
+  for(const court in lists){ const rec=lists[court]||{}; let t=parseInt(rec.total,10);
+    if(isNaN(t)||t<=0){ const mm=parseInt(rec.main,10), s=parseInt(rec.supp,10); t=isNaN(mm)?NaN:(mm+(isNaN(s)?0:s)); }
+    if(!isNaN(t)&&t>0) out[String(court)]=t; }
+  return out;
+}
+// Full context for the shared proximity engine: sequence order, passovers (remark
+// column + live-observed), OVER items, Misc totals, item-high — everything the SD
+// display board feeds its own classifier, so distances match.
 function classify(e){ const bc=boardByCourt()[String(e.courtNo)];
-  return ENG.classify({courtNo:String(e.courtNo),itemNo:String(e.itemNo),listType:""}, bc, {nowMins:nowMinsIST(), boardByCourt:boardByCourt()}); }
+  return ENG.classify({courtNo:String(e.courtNo),itemNo:String(e.itemNo),listType:e.listType||""}, bc, {
+    nowMins:nowMinsIST(), boardByCourt:boardByCourt(),
+    seqByCourt, remarksByCourt, boardPO:boardPO.marks, poMarks:{}, doneMarks:{},
+    miscTotalByCourt:miscTotalByCourt(), itemHi:itemHi.max }); }
 
+// Record passovers we see live on the board (accumulated for the day), and each
+// court's highest-seen item (used to detect the Misc→Regular reset).
+function recordBoardPO(){
+  if(boardPO.date!==todayISO()) boardPO={date:todayISO(),marks:{}};
+  for(const c of board){ if(c.passover && c.item) boardPO.marks[String(c.court)+"_"+String(c.item)]=true; }
+}
+function noteItemHi(){
+  if(itemHi.date!==todayISO()) itemHi={date:todayISO(),max:{}};
+  for(const c of board){ const n=parseInt(c.item,10); if(!isNaN(n)) itemHi.max[c.court]=Math.max(itemHi.max[c.court]||0,n); }
+}
+// The published SEQUENCE marquee (relay ?seq) — the court-wise call order. Throttled;
+// it changes far more slowly than the live item.
+async function fetchSeqLine(){
+  if(!BOARD_PROXY || Date.now()-seqLineAt<60000) return; seqLineAt=Date.now();
+  try{ const j=await (await fetch(BOARD_PROXY+"?seq",{cache:"no-store"})).json();
+    const txt=(j&&typeof j.seq==="string")?j.seq:"";
+    if(txt!==seqLineText){ seqLineText=txt; seqByCourt=ENG.parseSequenceLine(txt); } }catch(e){}
+}
+// The per-court remark column (relay ?remarks=token) — authoritative OVER / PASS OVER.
+// Fetched only for the courts we're tracking, on a slow cadence.
+async function fetchRemarksFor(court,token){
+  if(!token || !BOARD_PROXY) return; const now=Date.now();
+  if(_remarkAt[court] && now-_remarkAt[court]<REMARK_TTL) return; _remarkAt[court]=now;
+  try{ const r=await fetch(BOARD_PROXY+"?remarks="+encodeURIComponent(token),{cache:"no-store"});
+    if(!r.ok) return; const j=await r.json(); if(j&&j.items) remarksByCourt[String(court)]={at:now,items:j.items}; }catch(e){}
+}
+function refreshRemarks(){
+  const want=new Set(activeMatters().map(e=>String(e.courtNo)));
+  for(const c of board){ if(want.has(String(c.court)) && c.token) fetchRemarksFor(c.court,c.token); }
+}
 async function fetchBoard(){
   try{
     const html = await (await fetch(BOARD_PROXY+"?ctype=c",{cache:"no-store"})).text();
     const p=parseBoard(html);
-    if(p.courts.length){ board=p.courts; boardAt=Date.now(); boardErr=null; } else boardErr="empty";
+    if(p.courts.length){ board=p.courts; boardAt=Date.now(); boardErr=null; recordBoardPO(); noteItemHi(); } else boardErr="empty";
   }catch(e){ boardErr=String(e&&e.message||e); }
+  loadCourtUpdates();       // Misc totals (throttled) — for Regular + end-of-board passover
+  fetchSeqLine();           // published sequence order (throttled)
+  refreshRemarks();         // OVER / PASS OVER per tracked court (throttled)
   paintFresh(); if(curTab==="board") renderBoard();
   try{ runFlash(); }catch(e){}
 }
@@ -477,7 +538,7 @@ function paintMasthead(){ /* header is brand-only now */ }
 // The tracked set shown on the board: mine, or a connected peer's (when viewing their board).
 const activeMatters = () => {
   if(peerBoardUid) return (peerMatters||[]).filter(m=>m.court&&m.item&&isCourtroom(m.court))
-    .map(m=>({courtNo:String(m.court), itemNo:String(m.item), caseTitle:m.title||""}));
+    .map(m=>({courtNo:String(m.court), itemNo:String(m.item), caseTitle:m.title||"", listType:m.listType||""}));
   return myMatters();
 };
 function renderBoard(){
