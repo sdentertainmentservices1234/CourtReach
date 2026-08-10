@@ -177,6 +177,9 @@ nav.botnav button.on{color:var(--accent)}
 .sh-x{position:absolute;top:12px;right:14px;background:none;border:none;font-size:24px;color:var(--mut);line-height:1}
 .am-row{display:flex;gap:10px}.am-fld{flex:1;display:block;font-size:12px;color:var(--mut);font-weight:500;margin-bottom:10px}
 .am-fld input,.am-fld select{width:100%;margin-top:5px;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);font-size:15px;color:var(--ink)}
+.am-fld select{appearance:none;-webkit-appearance:none;padding-right:34px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7783' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center}
 .sh-btn{display:block;width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(180deg,#1c242e,#12171e);color:#fff;font-weight:600;font-size:15px;margin-top:6px}
 .am-err{color:var(--now);font-size:13px;min-height:16px;margin:4px 0}
 .sh-btn.ghost2{background:var(--panel2);color:var(--ink);border:1px solid var(--line);margin-top:8px}
@@ -281,6 +284,7 @@ const _titleCase = s => String(s||"").toLowerCase().replace(/\b([a-z])/g,(_,c)=>
 function titleFromCauseLine(line){
   if(!line) return "";
   let s=String(line).replace(/\s+/g," ").trim();
+  s=s.replace(/^\s*connected\s*(?:with\s*)?/i,"");   // drop a leading "Connected" (sub-item / connected-matter marker)
   s=s.replace(/^\s*(?:diary\s*no\.?|[a-z][a-z().\/]*\s*no\.?)?\s*\d{2,6}\s*[-\/]\s*\d{4}\s+/i,"");   // drop "C.A. No. 9667/2013 " or "Diary No. 14857-2026 "
   const parts=s.split(/\s+VERSUS\s+/i);
   const clean=x=>String(x||"").replace(/\s*&?\s*(AND\s+)?(ORS?\.?|ANR\.?|OTHERS?)\.?\s*$/i,"").replace(/[,.\s]+$/,"").trim();
@@ -300,9 +304,13 @@ function lookupItem(date,type,court,item){
   if(!day) return {found:false, reason:"No cause list fetched for "+date+" yet."};
   const rec=day.lists?.[type]?.[String(court)];
   if(!rec) return {found:false, reason:"Court "+court+" isn't in the "+type+" list for "+date+"."};
+  // Match the item both ways: exact key, then the parent (62.1 → 62), then — if the
+  // list only carries connected sub-items — the first sub-item under it (62 → 62.1).
   const it=String(item), n=String(Math.floor(parseFloat(item)));
-  const line=(rec.items&&(rec.items[it]||rec.items[n]))||"";
-  const adv=(rec.advocates&&(rec.advocates[it]||rec.advocates[n]))||{};
+  let key = (rec.items&&rec.items[it]!=null) ? it : (rec.items&&rec.items[n]!=null) ? n : null;
+  if(key==null && rec.items){ const subs=Object.keys(rec.items).filter(k=>Math.floor(parseFloat(k))===parseInt(n,10)).sort((a,b)=>parseFloat(a)-parseFloat(b)); key=subs[0]||null; }
+  const line=(key&&rec.items)?rec.items[key]:"";
+  const adv=(key&&rec.advocates&&rec.advocates[key])||{};
   if(!line) return {found:false, reason:"Item "+item+" not in the "+type+" list.", bench:cleanCoram(rec.coram)};
   return {found:true, title:titleFromCauseLine(line), bench:cleanCoram(rec.coram), aorPet:_titleCase(adv.pet||""), aorResp:_titleCase(adv.resp||"")};
 }
