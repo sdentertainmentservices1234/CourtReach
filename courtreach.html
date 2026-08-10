@@ -25,7 +25,9 @@ body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink
 .seal{width:60px;height:60px;border-radius:50%;background:var(--navy);border:2px solid var(--gold);
   display:flex;align-items:center;justify-content:center;margin:0 auto 14px;
   font-family:Fraunces,serif;color:var(--gold);font-weight:600;font-size:22px}
-.card h1{font-family:Fraunces,serif;font-weight:600;font-size:23px;margin:0 0 2px;text-align:center;color:var(--ink)}
+.login-mark{width:62px;height:62px;margin:0 auto 8px;display:flex;align-items:center;justify-content:center}
+.login-mark svg{display:block;width:100%;height:100%}
+.card h1{font-family:Fraunces,serif;font-weight:600;font-size:34px;margin:0 0 3px;text-align:center;color:var(--ink);line-height:1;letter-spacing:.2px}
 .card .sub{color:var(--mut);text-align:center;font-size:13px;margin-bottom:18px}
 .card label{display:block;font-size:12px;color:var(--mut);margin:12px 0 5px;font-weight:500}
 .card input,.card select{width:100%;padding:11px 13px;border-radius:10px;border:1px solid var(--line);
@@ -46,7 +48,7 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:6px
 .brand{display:flex;align-items:center;gap:9px;flex:none}
 .brand-logo{display:flex;align-items:center;justify-content:center;width:40px;height:40px;flex:none}
 .brand-logo svg{display:block;width:100%;height:100%}
-.brand-name{font-family:Fraunces,serif;font-weight:600;font-size:22px;color:#fff;letter-spacing:.2px;line-height:1;white-space:nowrap}
+.brand-name{font-family:Fraunces,serif;font-weight:600;font-size:clamp(24px,6.4vw,31px);color:#fff;letter-spacing:.2px;line-height:1;white-space:nowrap}
 .iconbtn{position:relative;background:transparent;border:none;color:#cdd6df;font-size:21px;padding:7px;line-height:1;border-radius:9px}
 .iconbtn:active{background:rgba(255,255,255,.1)}
 .iconbtn.on{color:var(--gold)}
@@ -198,7 +200,15 @@ nav.botnav button.on{color:var(--accent)}
 <!-- LOGIN / REGISTER -->
 <div id="login">
   <div class="card">
-    <div class="seal">CR</div>
+    <div class="login-mark">
+      <svg viewBox="0 0 44 44" fill="none" aria-hidden="true">
+        <g stroke="#a5843f" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 15l7-6 7 6"/><path d="M13 21l9-7 9 7"/>
+        </g>
+        <circle cx="22" cy="5.6" r="2" fill="#a5843f"/>
+        <text x="22" y="40" font-family="Georgia,'Iowan Old Style',Palatino,serif" font-weight="600" font-size="20.5" fill="#141a22" text-anchor="middle" letter-spacing="-.5">CR</text>
+      </svg>
+    </div>
     <h1>CourtReach</h1>
     <div class="sub" id="lgSub">Track your matters on the live court board</div>
     <div id="signinForm">
