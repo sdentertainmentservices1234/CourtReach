@@ -203,11 +203,16 @@ nav.botnav button.on{color:var(--accent)}
   <div class="card">
     <div class="login-mark">
       <svg viewBox="0 0 44 44" fill="none" aria-hidden="true">
-        <g stroke="#a5843f" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+        <defs>
+          <linearGradient id="crGold" x1="22" y1="3" x2="22" y2="43" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#e6cf82"/><stop offset=".5" stop-color="#c2a24e"/><stop offset="1" stop-color="#9a7628"/>
+          </linearGradient>
+        </defs>
+        <g stroke="url(#crGold)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M15 15l7-6 7 6"/><path d="M13 21l9-7 9 7"/>
         </g>
-        <circle cx="22" cy="5.6" r="2" fill="#a5843f"/>
-        <text x="22" y="40" font-family="Georgia,'Iowan Old Style',Palatino,serif" font-weight="600" font-size="20.5" fill="#141a22" text-anchor="middle" letter-spacing="-.5">CR</text>
+        <circle cx="22" cy="5.5" r="2.1" fill="url(#crGold)"/>
+        <text x="22" y="40" font-family="Georgia,'Iowan Old Style',Palatino,serif" font-weight="700" font-size="21.5" fill="url(#crGold)" text-anchor="middle" letter-spacing="-.5">CR</text>
       </svg>
     </div>
     <h1>CourtReach</h1>
