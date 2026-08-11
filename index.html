@@ -8,9 +8,14 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>CourtReach</title>
 <link rel="manifest" href="manifest.json">
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<!-- -v2 filenames are deliberate: Safari caches apple-touch-icon by URL essentially forever,
+     surviving even a delete-and-reinstall of the Home Screen icon — the only reliable way to
+     force a fetch of new icon bytes is a URL nobody's browser has ever seen before. Bump the
+     suffix again (-v3, -v4, ...) the next time these files change; changing the bytes under
+     the same name won't reach anyone who already has the app installed. -->
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32-v2.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192-v2.png">
+<link rel="apple-touch-icon" href="apple-touch-icon-v2.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.5.0/dist/tabler-icons.min.css">
@@ -334,6 +339,24 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px 12px;-webkit-over
 .case-prox.soon{color:#7a4f0d;background:#f8efd8}
 .case-prox.later{color:#1e6b3a;background:#e3f2e8}
 .case-prox.passed,.case-prox.idle{color:#5a6672;background:var(--panel2)}
+/* Owner-declared case status — a row-header badge in place of the proximity chip once set,
+   and the picker that sets/changes/clears it inside the row body. */
+.case-status-chip{margin-left:auto;flex:none;font-size:10.5px;font-weight:800;letter-spacing:.3px;
+  border-radius:20px;padding:4px 11px;text-transform:uppercase;white-space:nowrap;color:#fff}
+.case-status-chip.over_att{background:#1e6b3a}
+.case-status-chip.over_absent{background:var(--now)}
+.case-status-chip.passover{background:#33507e}
+.case-status-chip.not_taken{background:#6b7787}
+.case-status-picker{margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
+.cr-lab2{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);margin-bottom:7px}
+.status-opts{display:flex;flex-wrap:wrap;gap:6px}
+.status-opt{flex:none;font-size:12px;font-weight:600;padding:7px 12px;border-radius:9px;border:1px solid var(--line);
+  background:var(--panel2);color:var(--ink)}
+.status-opt.on{color:#fff;border-color:transparent}
+.status-opt.on.over_att{background:#1e6b3a}
+.status-opt.on.over_absent{background:var(--now)}
+.status-opt.on.passover{background:#33507e}
+.status-opt.on.not_taken{background:#6b7787}
 .case-title{font-family:Fraunces,serif;font-weight:600;font-size:15.5px;color:var(--ink);margin-top:0;line-height:1.28}
 .case-meta{font-size:12.5px;color:var(--mut);margin-top:4px;line-height:1.35}
 .case-meta .cm-k{font-weight:700;color:var(--ink);opacity:.65;text-transform:uppercase;font-size:9.5px;letter-spacing:.4px;margin-right:6px}
@@ -703,7 +726,7 @@ main#main.chatmode{overflow:hidden;display:flex;flex-direction:column}
           <button type="button" class="acct-opt" data-t="solo">
             <span class="ic"><i class="ti ti-user"></i></span>
             <span class="tx"><span class="t">Individual</span>
-              <span class="s">Track your own matters. You can join an organisation later.</span></span>
+              <span class="s">Track your own cases. You can join an organisation later.</span></span>
             <i class="ti ti-chevron-right go"></i>
           </button>
           <button type="button" class="acct-opt" data-t="create">
@@ -1348,7 +1371,7 @@ const shape = (m, uid) => ({courtNo:String(m.court), itemNo:String(m.item), case
   // chamber owner's own usermatters doc). Only when absent do we fall to the literal "You"
   // for your own matter, else the colleague's real account name.
   byName:m.byLabel || (uid===me?.uid?"You":memberName(uid)),
-  date:matterDate(m), scope:m.scope||"chamber", source:m.source||""});
+  date:matterDate(m), scope:m.scope||"chamber", source:m.source||"", status:m.status||""});
 const usable = m => m && m.court && m.item && isCourtroom(m.court);
 // MY matters for a date. In a chamber, "mine" means the ones I keep OUT of the office.
 const myMatters = (date, personalOnly) => (myOwn||[])
@@ -1373,13 +1396,48 @@ function miscTotalByCourt(){
     if(!isNaN(t)&&t>0) out[String(court)]=t; }
   return out;
 }
+// A case status the OWNER declares by hand, independent of anything the live board itself
+// says (owner: "Allow users to mark status in my cases for individual cases. The status can
+// be case over - attended, case over - not attended, passover, not taken up"). over_att/
+// over_absent and passover feed straight into the shared proximity engine's own doneMarks/
+// poMarks — the exact ctx fields board-engine.js already accepts (see its header comment)
+// but which courtreach.html always passed empty — so a strikethrough, a passover-list entry
+// and a recalculated sequence-aware gap all come from board-engine.js's EXISTING, already-
+// tested logic, not a reimplementation of it. not_taken has no board effect: it isn't a
+// board-relevant outcome (the court never reached it), just the owner's own record.
+const CASE_STATUSES = {
+  over_att:    {label:"Case over — attended",     badge:"Over · attended"},
+  over_absent: {label:"Case over — not attended", badge:"Over · not attended"},
+  passover:    {label:"Passover",                 badge:"Passover"},
+  not_taken:   {label:"Not taken up",              badge:"Not taken up"},
+};
+// Built fresh per classify() call (cheap — same pattern as boardByCourt()/miscTotalByCourt()
+// elsewhere here) from whichever cases are currently in scope: always mine + (in a chamber)
+// the whole office's — same fixed, tab-independent set as flashMatters(), so a status you
+// marked shows on the island no matter which sub-tab happens to be open — PLUS, while
+// actually viewing a collaborating partner's board, theirs too (their own annotations on
+// their own board, not us being alerted about them — see flashMatters()'s comment for why
+// that distinction matters).
+function statusMarks(){
+  const done={}, po={};
+  const add=e=>{ if(!e.status) return;
+    const key=String(e.courtNo)+"_"+String(e.itemNo);
+    if(e.status==="over_att") done[key]={v:"att"};
+    else if(e.status==="over_absent") done[key]={v:"abs"};
+    else if(e.status==="passover") po[key]={mode:"detail"};
+  };
+  flashMatters().forEach(add);
+  if(boardView.startsWith("peer:")) activeMatters().forEach(add);
+  return {done, po};
+}
 // Full context for the shared proximity engine: sequence order, passovers (remark
 // column + live-observed), OVER items, Misc totals, item-high — everything the SD
 // display board feeds its own classifier, so distances match.
 function classify(e){ const bc=boardByCourt()[String(e.courtNo)];
+  const {done,po}=statusMarks();
   return ENG.classify({courtNo:String(e.courtNo),itemNo:String(e.itemNo),listType:e.listType||""}, bc, {
     nowMins:nowMinsIST(), boardByCourt:boardByCourt(),
-    seqByCourt, remarksByCourt, boardPO:boardPO.marks, poMarks:{}, doneMarks:{},
+    seqByCourt, remarksByCourt, boardPO:boardPO.marks, poMarks:po, doneMarks:done,
     miscTotalByCourt:miscTotalByCourt(), itemHi:itemHi.max }); }
 
 // Record passovers we see live on the board (accumulated for the day), and each
@@ -1473,7 +1531,7 @@ function renderRail(){
     .sort((a,b)=>((a.mins==null?9999:a.mins)-(b.mins==null?9999:b.mins)) || ((a.k.gap??999)-(b.k.gap??999)));
   const seen=new Set(), stops=[];
   for(const c of cands){ const key=String(c.court); if(seen.has(key)) continue; seen.add(key); stops.push(c); if(stops.length>=5) break; }
-  if(!stops.length){ rail.innerHTML=`<div class="rail-empty">All quiet — none of your matters are close right now.</div>`; return; }
+  if(!stops.length){ rail.innerHTML=""; return; }        // nothing close — say nothing, rather than announce it
   const band=g=> g==null?"later" : g<=2?"now" : g<=4?"soon" : "later";
   const distLab=k=> k.ment ? "WATCH" : (k.gap===0||k.short==="NOW") ? "NOW" : k.gap===1 ? "NEXT"
                  : (k.gap!=null ? k.gap+" away" : (k.short||"—"));
@@ -1515,7 +1573,7 @@ async function fetchBoard(){
   paintFresh(); if(curTab==="board" && boardDate===todayISO()) renderBoard();
   try{ runFlash(); }catch(e){}
 }
-function startPolling(){ stopPolling(); pollOn=true; tickId=setInterval(paintFresh,1000); (async function loop(){ if(!pollOn) return; await fetchBoard(); if(!pollOn) return; pollId=setTimeout(loop, 12000); })(); }
+function startPolling(){ stopPolling(); pollOn=true; tickId=setInterval(paintFresh,1000); (async function loop(){ if(!pollOn) return; await fetchBoard(); if(!pollOn) return; pollId=setTimeout(loop, 6000); })(); }
 function stopPolling(){ pollOn=false; if(pollId)clearTimeout(pollId); if(tickId)clearInterval(tickId); pollId=tickId=null; }
 function paintFresh(){
   const dot=$("freshDot"), txt=$("freshTxt"); if(!dot||!txt) return;   // only on the live board
@@ -1577,7 +1635,7 @@ const activeMatters = () => {
     const uid=boardView.slice(5);
     return (peerMatters||[]).filter(m=>usable(m)&&onDate(m,boardDate))
       .map(m=>({courtNo:String(m.court), itemNo:String(m.item), caseTitle:m.title||"",
-        listType:m.listType||"", date:matterDate(m), by:uid, byName:peerBoardName}));
+        listType:m.listType||"", date:matterDate(m), by:uid, byName:peerBoardName, status:m.status||""}));
   }
   if(boardView==="chamber" && inOrg()) return chamberMatters();
   return myMatters(boardDate, inOrg());
@@ -1622,8 +1680,8 @@ function renderBoard(){
   const full=shown.filter(inFull).sort((a,b)=>((isMyCaseCourt(b.court)?1:0)-(isMyCaseCourt(a.court)?1:0))||byNo(a,b));
   const mini=shown.filter(c=>!inFull(c)).sort(byNo);
   if(!set.length) h+= peerBoardUid ? `<div class="notice">${esc(peerBoardName)} isn't listed in any court today.</div>`
-    : boardView==="chamber" ? `<div class="notice">No one in ${esc(myOrg?.name||"your organisation")} is listed today. Add a matter from <b>My cases</b> — it shows here for everyone.</div>`
-    : `<div class="notice">You're not tracking any matter for today. Add one from <b>My cases</b> and it lights up here as it reaches.</div>`;
+    : boardView==="chamber" ? `<div class="notice">No one in ${esc(myOrg?.name||"your organisation")} is listed today. Add a case from <b>My cases</b> — it shows here for everyone.</div>`
+    : `<div class="notice">You're not tracking any case for today. Add one from <b>My cases</b> and it lights up here as it reaches.</div>`;
   h+=freshLineHTML();
   h+=`<div class="grid">`+full.map(c=>boardCell(c,false)).join("")+`</div>`;
   if(mini.length) h+=`<div class="grid" style="margin-top:7px">`+mini.map(c=>boardCell(c,true)).join("")+`</div>`;
@@ -1707,6 +1765,9 @@ function courtPassovers(court){
   const po=courtRemarkItems(court,/pass\s*over/i);
   if(boardPO.date===todayISO()) for(const key in boardPO.marks){ const i=key.indexOf("_");
     if(i>0 && key.slice(0,i)===String(court)){ const it=key.slice(i+1); if(!po.includes(it)) po.push(it); } }
+  // a case the OWNER marked passover belongs in this same list, not just in the gap maths
+  // (owner: "it should go in the list of passovers") — same source as statusMarks().
+  flashMatters().forEach(e=>{ if(e.status==="passover" && String(e.courtNo)===String(court) && !po.includes(e.itemNo)) po.push(e.itemNo); });
   return po.sort((a,b)=>parseFloat(a)-parseFloat(b));
 }
 // Compress an expanded sequence into readable ranges: [1..22,52..58,65..67] → "1–22, 52–58, 65–67"
@@ -1752,12 +1813,12 @@ function openCourtModal(court,_refetched){
       const who = inOrg() ? (e.byName||"") : "";   // already resolved by shape() — byLabel first, then account name
       return `<div class="cm-mine"><span class="cm-mine-it">${esc(e.itemNo)}</span><span class="cm-mine-t">${esc(e.caseTitle||("item "+e.itemNo))}${who?` <span style="color:var(--mut)">· ${esc(who)}</span>`:""}</span><span class="cm-mine-s ${proxBandOf(k)}">${esc(k.short||"—")}</span></div>`; }).join("")}`:""}
     <div class="cm-card"><div class="cm-h"><i class="ti ti-list-numbers"></i> Declared sequence</div>${seq.length
-      ?`<div class="cm-body">${esc(seqRanges(seq))}, then the rest of the matters</div>`
+      ?`<div class="cm-body">${esc(seqRanges(seq))}, then the rest of the cases</div>`
       :`<div class="cm-none">Not declared yet.</div>`}</div>
     <div class="cm-card"><div class="cm-h"><i class="ti ti-corner-up-left"></i> Passed over${pass.length?` <span class="cm-count">· ${pass.length}</span>`:""}</div>${pass.length
       ?`<div class="cm-chips">${pass.map(n=>`<span class="cm-po">${esc(n)}</span>`).join("")}</div>`
       :`<div class="cm-none">None yet.</div>`}</div>
-    ${totals.length?`<div class="cm-card"><div class="cm-h"><i class="ti ti-clipboard-list"></i> Matters today</div><div class="cm-body">${totals.map(esc).join(" · ")}</div></div>`:""}
+    ${totals.length?`<div class="cm-card"><div class="cm-h"><i class="ti ti-clipboard-list"></i> Cases today</div><div class="cm-body">${totals.map(esc).join(" · ")}</div></div>`:""}
     ${nothing?`<div class="cm-empty">No sequence, coram or passover published for this court yet — it fills in as the bench updates the list.</div>`:""}
   </div></div>`;
 }
@@ -1807,8 +1868,8 @@ function renderDateBoard(date){
   h+=`<div class="notice">Listed for <b>${esc(fmtDateLong(date))}</b> — no live tracking on a future date.
     <button id="dateBackToday" class="case-del" style="margin-top:6px"><i class="ti ti-arrow-back-up"></i> Back to today's live board</button></div>`;
   if(!courts.length){
-    h+=`<div class="empty">${boardView==="chamber"?"No organisation matter is":"Nothing is"} listed for ${esc(fmtDateLong(date))}.<br>
-      Add a matter with this date from <b>My cases</b> and it appears here.</div>`;
+    h+=`<div class="empty">${boardView==="chamber"?"No organisation case is":"Nothing is"} listed for ${esc(fmtDateLong(date))}.<br>
+      Add a case with this date from <b>My cases</b> and it appears here.</div>`;
     $("main").innerHTML=h; wireDateBack(); wireBoardStrip(); return;
   }
   h+=`<div class="grid">`+courts.map(c=>dateCourtCell(c,byCourt[c])).join("")+`</div>`;
@@ -1842,9 +1903,21 @@ function openDateCourtModal(court,date){
 const flashBand = g => g<=2 ? "red" : g<=4 ? "amber" : "green";   // 0-2 red · 3-4 amber · 5-7 green
 const _distLabel = g => g<=0 ? "ON NOW" : g===1 ? "NEXT" : g+" AWAY";
 let _flashSt={date:"", gaps:{}}, _flashTimer=null;
+// Deliberately NOT activeMatters() — that follows whichever board sub-tab happens to be open,
+// which used to mean flash fired for a COLLABORATING PARTNER's cases the moment you were
+// looking at their board (owner: "if you are collaborating with someone and you are viewing
+// his display board, the flash for his cases should not pop up in your app. Flash should
+// only pop up for individual cases or for chamber cases or office cases where you are part.
+// Not for collaborating partner."). This is fixed and tab-independent: your own cases
+// (personal and chamber-shared) plus, in a chamber, every colleague's chamber-shared cases —
+// a peer's board is never a source, no matter what's currently on screen.
+const flashMatters = () => {
+  if(!inOrg()) return myMatters(boardDate, false);
+  return [...myMatters(boardDate, true), ...chamberMatters(boardDate)];
+};
 function inRangeMatters(){
   const bc=boardByCourt(); const seen={};
-  for(const e of activeMatters()){
+  for(const e of flashMatters()){
     const k=classify(e);
     if(!k||k.ment||k.done||k.over||k.gap==null) continue;
     if(k.preStart) continue;                       // court hasn't started — no live flash yet
@@ -1883,7 +1956,7 @@ function showFlash(items){
   if(items.length===1) host.className="single b-"+flashBand(items[0].gap);
   else host.className="multi n"+items.length;
   host.innerHTML=items.map(cell).join("");
-  _flashTimer=setTimeout(hideFlash, 2800);                                        // momentary
+  _flashTimer=setTimeout(hideFlash, 7000);          // stays up at least 7s, or until tapped (host.onclick)
 }
 function hideFlash(){ if(_flashTimer){clearTimeout(_flashTimer);_flashTimer=null;} const h=$("flashHost"); if(h) h.remove(); }
 
@@ -1927,12 +2000,12 @@ function renderMine(){
   let h=viewStrip(views, mineView, "data-mv");
   // the day this list is for, and a way back to today when it isn't
   h+=`<div class="mine-day"><span class="md-d">${esc(d===t?"Today":fmtDateLong(d))}</span>
-    <span class="md-n">${list.length} matter${list.length===1?"":"s"}</span>
+    <span class="md-n">${list.length} case${list.length===1?"":"s"}</span>
     ${d!==t?`<button id="mineToday">Today</button>`:""}</div>`;
   if(mineView==="mine") h+=`<button class="big-btn" id="mmAdd"><i class="ti ti-plus"></i> Track a case</button>`;
   if(!list.length){
     h+=`<div class="empty">${mineView==="chamber"?"Nothing listed for the organisation on this date."
-      :mineView==="collab"?"No collaborating matters on this date."
+      :mineView==="collab"?"No collaborating cases on this date."
       :"Nothing listed on this date.<br>Add a case, or pick another date from the calendar in the header."}</div>`;
     $("main").innerHTML=h; wireMine(); return;
   }
@@ -1943,13 +2016,16 @@ function renderMine(){
     // byLabel covers a matter mirrored in from outside CourtReach (e.g. a day sheet)
     // and tagged to someone with no CourtReach account of their own to attribute to.
     const who = m._with ? "with "+m._with : (m.byLabel || (m._by&&m._by!==me?.uid ? memberName(m._by) : ""));
+    const st=m.status && CASE_STATUSES[m.status];
+    const editable=!m._readonly && m._by===me?.uid && m.source!=="daysheet";
     return `<div class="case-row">
       <div class="case-row-head" data-toggle="1">
         <span class="cr-sn">${i+1}.</span>
         <span class="cr-cn">C${esc(m.court)}/${esc(m.item)}</span>
         ${who?`<span class="cr-who">${esc(who)}</span>`:""}
         ${m.scope==="personal"?`<span class="cr-tag">Personal</span>`:""}
-        ${k?`<span class="case-prox ${proxBandOf(k)}">${esc(k.short||"—")}</span>`:""}
+        ${st?`<span class="case-status-chip ${m.status}">${esc(st.badge)}</span>`
+          :k?`<span class="case-prox ${proxBandOf(k)}">${esc(k.short||"—")}</span>`:""}
         <i class="ti ti-chevron-down cr-chev"></i>
       </div>
       <div class="case-row-body">
@@ -1957,8 +2033,14 @@ function renderMine(){
         ${bits?`<div class="case-meta">${esc(bits)}</div>`:""}
         ${m.bench?`<div class="case-meta"><span class="cm-k">Bench</span>${esc(m.bench)}</div>`:""}
         ${m.aor?`<div class="case-meta"><span class="cm-k">AoR</span>${esc(m.aor)}</div>`:""}
+        ${editable?`<div class="case-status-picker">
+          <div class="cr-lab2">Status${st?` — tap "${esc(st.label)}" again to clear`:""}</div>
+          <div class="status-opts">${Object.entries(CASE_STATUSES).map(([key,def])=>
+            `<button class="status-opt${m.status===key?" on "+key:""}" data-setstatus="${esc(m.id)}|${key}">${esc(def.label)}</button>`).join("")}
+          </div>
+        </div>`:""}
         ${m.source==="daysheet"?`<div class="case-meta" style="opacity:.7"><i class="ti ti-refresh"></i> Synced from the day sheet — edit it there, not here.</div>`
-          :(!m._readonly && m._by===me?.uid)?`<div class="case-acts">
+          :editable?`<div class="case-acts">
           ${inOrg()?`<button class="case-del" data-scope="${esc(m.id)}"><i class="ti ti-${isChamberMatter(m)?"eye-off":"building-bank"}"></i> ${isChamberMatter(m)?"Make private":"Share with organisation"}</button>`:""}
           <button class="case-del" data-del="${esc(m.id)}"><i class="ti ti-trash"></i> Remove</button></div>`:""}
       </div>
@@ -1977,6 +2059,17 @@ function wireMine(){
     const matters=(myOwn||[]).filter(m=>m.id!==x.dataset.del);
     try{ await db.set("usermatters/"+me.uid,{matters,updatedAt:db.now()},true); }catch(e){}
   });
+  // Mark/change/clear a case's status — tapping the already-active option clears it, so
+  // there's no separate "clear" control to hunt for (owner: "Allow the status marked to be
+  // updated or removed").
+  $("main").querySelectorAll("[data-setstatus]").forEach(x=>x.onclick=async(ev)=>{
+    ev.stopPropagation();
+    const [id,key]=x.dataset.setstatus.split("|");
+    const cur=(myOwn||[]).find(m=>m.id===id);
+    const next=(cur&&cur.status===key)?null:key;
+    const matters=(myOwn||[]).map(m=>m.id!==id?m:({...m, status:next}));
+    try{ await db.set("usermatters/"+me.uid,{matters,updatedAt:db.now()},true); }catch(e){}
+  });
   // flip a matter between the chamber board and your own private one
   $("main").querySelectorAll("[data-scope]").forEach(x=>x.onclick=async(ev)=>{
     ev.stopPropagation();
@@ -1987,7 +2080,7 @@ function wireMine(){
 function addMatterForm(){
   let fetched=null;
   $("modalRoot").innerHTML=`<div class="ovl" data-close><div class="sheet"><button class="sh-x" data-close>&times;</button>
-    <h2>Track a matter</h2><div class="sh-sub">Pick the list &amp; item — we fetch the cause title, bench and AoR from the SC cause list.</div>
+    <h2>Track a case</h2><div class="sh-sub">Pick the list &amp; item — we fetch the cause title, bench and AoR from the SC cause list.</div>
     <label class="am-fld">Date<input type="date" id="am_date" value="${esc(boardDate)}"></label>
     <label class="am-fld">Causelist type<select id="am_type">${CAUSELIST_TYPES.map(t=>`<option>${esc(t)}</option>`).join("")}</select></label>
     <div class="am-row">
@@ -2002,7 +2095,7 @@ function addMatterForm(){
     <button class="sh-btn ghost2" id="am_fetch"><i class="ti ti-search"></i> Fetch details</button>
     <div id="am_preview" class="am-preview hidden"></div>
     <div class="am-err" id="am_err"></div>
-    <button class="sh-btn" id="am_save">Add matter</button></div></div>`;
+    <button class="sh-btn" id="am_save">Add case</button></div></div>`;
   const readForm=()=>({court:($("am_court").value||"").trim(), item:($("am_item").value||"").trim(),
     date:$("am_date").value||todayISO(), type:$("am_type").value, party:$("am_party").value});
   const valid=f=>{ if(!/^\d{1,2}$/.test(f.court)||+f.court<1||+f.court>17){ $("am_err").textContent="Enter a court number (1–17)."; return false; }
@@ -2339,7 +2432,7 @@ async function adminDeleteAccount(uid){
     return;
   }
   const u=(adminUsers||[]).find(x=>x.id===uid);
-  if(!confirm(`Delete ${u?.name||u?.email||uid}'s account? Removes their profile and every matter they've tracked. Their password still works, but the app will show the account as removed if they try to sign back in.`)) return;
+  if(!confirm(`Delete ${u?.name||u?.email||uid}'s account? Removes their profile and every case they've tracked. Their password still works, but the app will show the account as removed if they try to sign back in.`)) return;
   try{
     if(u && u.orgId){
       const org=(adminOrgs||[]).find(o=>o.id===u.orgId);
@@ -2827,13 +2920,13 @@ function renderSettings(){
     </div>`:""}`);
 
   /* ---- Notifications ---- */
-  h+=sec("notif","ti-bell","Notifications", notifOn?"Matter alerts on":"Matter alerts off", `
+  h+=sec("notif","ti-bell","Notifications", notifOn?"Case alerts on":"Case alerts off", `
     <div class="stg-group">
       <div class="stg-gt">Alerts</div>
       <div class="stg-row">
-        <div><div class="stg-label">Matter-reaching alerts</div>
-          <div class="stg-sub">A browser notification when a tracked matter is about to reach, while the app is open.</div></div>
-        <button class="stg-switch" id="st_notifToggle" type="button" aria-label="Toggle matter-reaching alerts"></button>
+        <div><div class="stg-label">Case-reaching alerts</div>
+          <div class="stg-sub">A browser notification when a tracked case is about to reach, while the app is open.</div></div>
+        <button class="stg-switch" id="st_notifToggle" type="button" aria-label="Toggle case-reaching alerts"></button>
       </div>
     </div>`);
 
@@ -2978,7 +3071,7 @@ function deleteMyAccountFlow(){
   }
   $("modalRoot").innerHTML=`<div class="ovl" data-close><div class="sheet"><button class="sh-x" data-close>&times;</button>
     <h2>Delete your account</h2>
-    <div class="sh-sub">This permanently removes your CourtReach profile and every matter you've tracked${inOrg()?", and takes you out of "+esc(myOrg?.name||"your organisation"):""}. It can't be undone.</div>
+    <div class="sh-sub">This permanently removes your CourtReach profile and every case you've tracked${inOrg()?", and takes you out of "+esc(myOrg?.name||"your organisation"):""}. It can't be undone.</div>
     <label class="am-fld">Confirm your password<input id="da_pass" type="password" autocomplete="current-password"></label>
     <div class="am-err" id="da_err"></div>
     <button class="big-btn danger" id="da_go" style="margin-top:10px"><i class="ti ti-trash"></i> Permanently delete my account</button>
@@ -3578,7 +3671,7 @@ function seedDemo(db){
   db.set("orgmsgs/seedmsg1",{orgId:"o_chamber",channel:"team",by:"u_ch_jr",byName:"Nikhil Rao",text:"Court 5 is running fast today — item 28 already.",at:{_t:Date.now()-3600000}});
   db.set("orgmsgs/seedmsg2",{orgId:"o_chamber",channel:"team",by:"u_ch_clerk",byName:"Vikas Sharma",text:"Noted. I'll keep the papers ready for 32.",at:{_t:Date.now()-3400000}});
   db.set("orgmsgs/seedmsg3",{orgId:"o_chamber",channel:"all",by:"u_ch_owner",byName:"Sameer Deshmukh",text:"Conference at 4pm today for tomorrow's Regular board.",at:{_t:Date.now()-1800000}});
-  db.set("orgmsgs/seedmsg4",{orgId:"o_chamber",channel:"dm:u_ch_clerk_u_ch_jr",members:["u_ch_clerk","u_ch_jr"],by:"u_ch_clerk",byName:"Vikas Sharma",text:"Sir, the AoR signature is pending on the Kapoor matter.",at:{_t:Date.now()-900000}});
+  db.set("orgmsgs/seedmsg4",{orgId:"o_chamber",channel:"dm:u_ch_clerk_u_ch_jr",members:["u_ch_clerk","u_ch_jr"],by:"u_ch_clerk",byName:"Vikas Sharma",text:"Sir, the AoR signature is pending on the Kapoor case.",at:{_t:Date.now()-900000}});
 }
 </script>
 </body>
