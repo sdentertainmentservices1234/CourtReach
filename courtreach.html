@@ -22,10 +22,7 @@
 <style>
 :root{--bg:#eef1f4;--panel:#fff;--panel2:#f4f6f8;--ink:#161b22;--mut:#6b7787;--line:#dfe4ea;
   --navy:#141a22;--gold:#c2a86a;--accent:#33507e;--now:#c1362b;--soon:#c68a24;--later:#3a7d50;
-  --now-bg:#fbeeec;--soon-bg:#f8efd8;--later-bg:#eef5f0;--passed:#8a94a0;--mono:'IBM Plex Mono',monospace;
-  /* readable back out via getComputedStyle in the Settings > Diagnostics panel — env() isn't
-     otherwise queryable from JS directly */
-  --sab-probe:env(safe-area-inset-bottom,0px)}
+  --now-bg:#fbeeec;--soon-bg:#f8efd8;--later-bg:#eef5f0;--passed:#8a94a0;--mono:'IBM Plex Mono',monospace}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 /* The app is a fixed shell — #app is pinned to the viewport and ONLY main#main scrolls
    inside it. html/body carry no explicit height at all, on purpose: a percentage height
@@ -55,7 +52,7 @@ body.signed-out{background:#0f141b}
 .seal{width:60px;height:60px;border-radius:50%;background:var(--navy);border:2px solid var(--gold);
   display:flex;align-items:center;justify-content:center;margin:0 auto 14px;
   font-family:Fraunces,serif;color:var(--gold);font-weight:600;font-size:22px}
-.login-mark{width:62px;height:62px;margin:0 auto 8px;display:flex;align-items:center;justify-content:center}
+.login-mark{width:84px;height:84px;margin:0 auto 8px;display:flex;align-items:center;justify-content:center}
 .login-mark svg{display:block;width:100%;height:100%}
 .card h1{font-family:Fraunces,serif;font-weight:600;font-size:34px;margin:0 0 3px;text-align:center;color:var(--ink);line-height:1;letter-spacing:.2px}
 .card .sub{font-family:Fraunces,serif;font-style:italic;font-weight:400;color:var(--mut);text-align:center;
@@ -111,7 +108,7 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:6px
    layout (owner: "revert the header to our original design of the name and logo and
    monogram being side by side" — the stacked, own-row brand tried above didn't land). */
 .brand{display:flex;align-items:center;gap:9px;flex:none}
-.brand-logo{display:flex;align-items:center;justify-content:center;width:40px;height:40px;flex:none}
+.brand-logo{display:flex;align-items:center;justify-content:center;width:50px;height:50px;flex:none}
 .brand-logo svg{display:block;width:100%;height:100%}
 .brand-name{font-family:Fraunces,serif;font-weight:600;font-size:clamp(24px,6.4vw,31px);color:#fff;letter-spacing:.2px;line-height:1;white-space:nowrap}
 .iconbtn.danger{color:#e8a49c}
@@ -145,7 +142,7 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:6px
   .cal-field i{font-size:17px}
   .cal-field span{font-size:13px}
   .brand-name{font-size:21px}
-  .brand-logo{width:34px;height:34px}
+  .brand-logo{width:42px;height:42px}
   .brand{gap:6px}
 }
 .cal-native-overlay{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:none;
@@ -182,14 +179,6 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:6px
 .rail-empty{font-size:12px;color:var(--mut);padding:7px 1px 2px}
 .trial-banner{margin-top:8px;background:var(--soon-bg);color:#7a4f0d;font-size:12px;font-weight:600;
   padding:7px 11px;border-radius:10px;text-align:center}
-/* individuals only: the one prompt that tells someone already on a personal trial that a
-   code from their office will fold them into its subscription. Dismissible, once. */
-.join-banner{display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px 10px;border-radius:10px;
-  background:#e7ecf5;color:#2b3f66;font-size:12px;font-weight:600;line-height:1.35}
-.join-banner>span{flex:1;min-width:0}
-.join-banner i{font-size:15px;flex:none}
-.join-banner button{flex:none;background:none;border:none;color:var(--accent);font-weight:700;font-size:12px;padding:3px 4px}
-.join-banner button#joinBannerX{color:#7e8ba3;font-size:14px}
 main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px 12px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 /* board grid */
 .grid{display:flex;flex-wrap:wrap;gap:8px}
@@ -685,17 +674,26 @@ main#main.chatmode{overflow:hidden;display:flex;flex-direction:column}
 <div id="login">
   <div class="card">
     <div class="login-mark">
-      <svg viewBox="0 0 44 44" fill="none" aria-hidden="true">
+      <!-- the app icon's own mark (see icon-source.svg), cropped tight to its content and
+           reused as the wordmark logo everywhere (owner: "use that as our app logo
+           everywhere... I want that dim to bright flow visible"). No background square here
+           — it sits on this screen's own dark gradient, same as the old monogram did. -->
+      <svg viewBox="93 94 326 326" fill="none" aria-hidden="true">
         <defs>
-          <linearGradient id="crGold" x1="22" y1="3" x2="22" y2="43" gradientUnits="userSpaceOnUse">
-            <stop offset="0" stop-color="#e6cf82"/><stop offset=".5" stop-color="#c2a24e"/><stop offset="1" stop-color="#9a7628"/>
+          <linearGradient id="crGold" x1="256" y1="120" x2="256" y2="400" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#f5e3ab"/><stop offset=".45" stop-color="#dcb968"/><stop offset="1" stop-color="#a97f34"/>
           </linearGradient>
+          <radialGradient id="crDot" cx="256" cy="158" r="26" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#fff6dd"/><stop offset="1" stop-color="#e2bd6f"/>
+          </radialGradient>
         </defs>
-        <g stroke="url(#crGold)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M15 15l7-6 7 6"/><path d="M13 21l9-7 9 7"/>
+        <circle cx="256" cy="158" r="40" fill="none" stroke="#e8cd82" stroke-opacity=".35" stroke-width="3"/>
+        <g fill="none" stroke="url(#crGold)" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M126 384 L256 284 L386 384" stroke-opacity=".55"/>
+          <path d="M140 314 L256 224 L372 314" stroke-opacity=".8"/>
+          <path d="M154 244 L256 164 L358 244"/>
         </g>
-        <circle cx="22" cy="5.5" r="2.1" fill="url(#crGold)"/>
-        <text x="22" y="40" font-family="Georgia,'Iowan Old Style',Palatino,serif" font-weight="700" font-size="21.5" fill="url(#crGold)" text-anchor="middle" letter-spacing="-.5">CR</text>
+        <circle cx="256" cy="158" r="17" fill="url(#crDot)"/>
       </svg>
     </div>
     <h1>CourtReach</h1>
@@ -830,17 +828,22 @@ main#main.chatmode{overflow:hidden;display:flex;flex-direction:column}
 <div id="paywall" class="hidden">
   <div class="card">
     <div class="login-mark">
-      <svg viewBox="0 0 44 44" fill="none" aria-hidden="true">
+      <svg viewBox="93 94 326 326" fill="none" aria-hidden="true">
         <defs>
-          <linearGradient id="crGold2" x1="22" y1="3" x2="22" y2="43" gradientUnits="userSpaceOnUse">
-            <stop offset="0" stop-color="#e6cf82"/><stop offset=".5" stop-color="#c2a24e"/><stop offset="1" stop-color="#9a7628"/>
+          <linearGradient id="crGold2" x1="256" y1="120" x2="256" y2="400" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#f5e3ab"/><stop offset=".45" stop-color="#dcb968"/><stop offset="1" stop-color="#a97f34"/>
           </linearGradient>
+          <radialGradient id="crDot2" cx="256" cy="158" r="26" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#fff6dd"/><stop offset="1" stop-color="#e2bd6f"/>
+          </radialGradient>
         </defs>
-        <g stroke="url(#crGold2)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M15 15l7-6 7 6"/><path d="M13 21l9-7 9 7"/>
+        <circle cx="256" cy="158" r="40" fill="none" stroke="#e8cd82" stroke-opacity=".35" stroke-width="3"/>
+        <g fill="none" stroke="url(#crGold2)" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M126 384 L256 284 L386 384" stroke-opacity=".55"/>
+          <path d="M140 314 L256 224 L372 314" stroke-opacity=".8"/>
+          <path d="M154 244 L256 164 L358 244"/>
         </g>
-        <circle cx="22" cy="5.5" r="2.1" fill="url(#crGold2)"/>
-        <text x="22" y="40" font-family="Georgia,'Iowan Old Style',Palatino,serif" font-weight="700" font-size="21.5" fill="url(#crGold2)" text-anchor="middle" letter-spacing="-.5">CR</text>
+        <circle cx="256" cy="158" r="17" fill="url(#crDot2)"/>
       </svg>
     </div>
     <h1 id="pwTitle">Trial ended</h1>
@@ -866,13 +869,23 @@ main#main.chatmode{overflow:hidden;display:flex;flex-direction:column}
       </div>
     </div>
     <div class="brand">
-      <span class="brand-logo" id="brandLogo"><!-- Approach chevrons over a plain CR monogram -->
-        <svg viewBox="0 0 44 44" fill="none" aria-hidden="true">
-          <g stroke="#cbb682" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M15 15l7-6 7 6"/><path d="M13 21l9-7 9 7"/>
+      <span class="brand-logo" id="brandLogo"><!-- the app icon's own mark — see the comment on the login screen's copy of this SVG -->
+        <svg viewBox="93 94 326 326" fill="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="crGold3" x1="256" y1="120" x2="256" y2="400" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="#f5e3ab"/><stop offset=".45" stop-color="#dcb968"/><stop offset="1" stop-color="#a97f34"/>
+            </linearGradient>
+            <radialGradient id="crDot3" cx="256" cy="158" r="26" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="#fff6dd"/><stop offset="1" stop-color="#e2bd6f"/>
+            </radialGradient>
+          </defs>
+          <circle cx="256" cy="158" r="40" fill="none" stroke="#e8cd82" stroke-opacity=".35" stroke-width="3"/>
+          <g fill="none" stroke="url(#crGold3)" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M126 384 L256 284 L386 384" stroke-opacity=".55"/>
+            <path d="M140 314 L256 224 L372 314" stroke-opacity=".8"/>
+            <path d="M154 244 L256 164 L358 244"/>
           </g>
-          <circle cx="22" cy="5.6" r="2" fill="#cbb682"/>
-          <text x="22" y="40" font-family="Georgia,'Iowan Old Style',Palatino,serif" font-weight="600" font-size="20.5" fill="#cbb682" text-anchor="middle" letter-spacing="-.5">CR</text>
+          <circle cx="256" cy="158" r="17" fill="url(#crDot3)"/>
         </svg>
       </span>
       <span class="brand-name">CourtReach</span>
@@ -888,12 +901,6 @@ main#main.chatmode{overflow:hidden;display:flex;flex-direction:column}
   </header>
   <div id="paneTop">
     <div class="trial-banner hidden" id="trialBanner"></div>
-    <div class="join-banner hidden" id="joinBanner">
-      <i class="ti ti-ticket"></i>
-      <span>Been given an invite code by your chambers, firm or office?</span>
-      <button type="button" id="joinBannerGo">Join</button>
-      <button type="button" id="joinBannerX" aria-label="Dismiss"><i class="ti ti-x"></i></button>
-    </div>
     <div class="route-rail" id="routeRail"></div>
   </div>
   <main id="main"></main>
@@ -1588,7 +1595,15 @@ const freshLineHTML = () => `<div class="fresh-line"><span class="freshdot off" 
 /* ============================================================
    RENDER
    ============================================================ */
-const TIER_RANK={now:0,soon:1,later:2,unknown:3,passed:4,idle:5};
+// "passed" ranks LAST — worse than even "idle"/"unknown" — so a court island with several
+// tracked cases never keeps showing "over" once one of them is marked done while another is
+// still live; the still-relevant case's own status always wins the island's single label,
+// and "over" only surfaces when it's genuinely the only tracked case left in that court
+// (owner: "where there are multiple cases in one court and where we mark one case as over,
+// the court island... should not keep on showing over and should show instead how far the
+// next case is"). Previously passed(4) < idle(5) meant a done case could outrank a
+// still-pending one the moment its own court wasn't yet sitting.
+const TIER_RANK={now:0,soon:1,later:2,unknown:3,idle:4,passed:5};
 // Manual strike-through override: a case marked truly "over" (tier passed, not merely
 // passed-over/deferred) auto-strikes on the board; tapping the item number toggles a
 // per-day override to undo an incorrect strike. Scoped by today's date so it clears
@@ -2955,19 +2970,6 @@ function renderSettings(){
       <div class="am-err" id="st_resetMsg"></div>
     </div>`);
 
-  /* ---- Diagnostics ----
-     Temporary: measures the exact numbers behind the iOS Home Screen footer-gap bug on the
-     device that's actually seeing it, since two guesses from theory alone (Safari's dynamic
-     toolbar) both missed — the report turned out to come from standalone/Home Screen mode,
-     which has no toolbar at all, so that whole theory didn't even apply. Screenshot this
-     section and send it rather than describing the gap in words. Safe to remove once the
-     real fix is confirmed. */
-  h+=sec("diag","ti-bug","Diagnostics","For the footer-gap report", `
-    <div class="stg-group"><div class="stg-gt">Screenshot this and send it</div>
-      <pre id="st_diag" style="white-space:pre-wrap;font-family:var(--mono);font-size:11.5px;
-        color:var(--mut);background:var(--panel2);border-radius:10px;padding:10px;line-height:1.6"></pre>
-    </div>`);
-
   // With a PIN set, "Lock" is the everyday action — it's what offers PIN login back on
   // the next open, on demand, rather than leaving that to chance (owner: "it doesn't show
   // option to login by pin once you have registered the pin — it should offer that").
@@ -2984,28 +2986,6 @@ function renderSettings(){
   // one section open at a time
   $("main").querySelectorAll("[data-sec]").forEach(b=>b.onclick=()=>{
     stgOpen = stgOpen===b.dataset.sec ? "" : b.dataset.sec; renderSettings(); });
-  // See the Diagnostics comment above sec("diag",...) for why this exists.
-  if($("st_diag")){
-    const appEl=$("app"), navEl=document.querySelector("nav.botnav");
-    const appRect=appEl?appEl.getBoundingClientRect():null;
-    $("st_diag").textContent=[
-      "standalone: "+(window.navigator.standalone===true||matchMedia("(display-mode: standalone)").matches),
-      "innerWidth x innerHeight: "+window.innerWidth+" x "+window.innerHeight,
-      // the ground truth the earlier round of diagnostics was missing — the true physical
-      // screen, in points, independent of anything the page itself measures or sets
-      "screen.width x screen.height: "+screen.width+" x "+screen.height,
-      "screen.availHeight: "+screen.availHeight,
-      "devicePixelRatio: "+window.devicePixelRatio,
-      "visualViewport height: "+(window.visualViewport?Math.round(window.visualViewport.height):"n/a"),
-      "documentElement.clientHeight: "+document.documentElement.clientHeight,
-      "#app height (computed): "+(appRect?Math.round(appRect.height):"n/a"),
-      "#app inline style height (fitAppHeight): "+(appEl?appEl.style.height||"(unset)":"n/a"),
-      "#app bottom edge: "+(appRect?Math.round(appRect.bottom):"n/a"),
-      "body.scrollHeight: "+document.body.scrollHeight,
-      "nav padding-bottom: "+(navEl?getComputedStyle(navEl).paddingBottom:"n/a"),
-      "safe-area-inset-bottom: "+getComputedStyle(document.documentElement).getPropertyValue("--sab-probe").trim()
-    ].join("\n");
-  }
   // hold the join message across the burst of re-renders joining triggers (user doc, then
   // org doc, then members), then retire it — clearing it on first paint made it invisible.
   if(joinNotice && !_joinNoticeTimer) _joinNoticeTimer=setTimeout(()=>{ joinNotice=""; _joinNoticeTimer=null;
@@ -3292,7 +3272,6 @@ function applyGate(){
   fitAppHeight();                              // the viewport may have settled to its real size by now
   paintMasthead();
   paintTrialBanner(ent);
-  paintJoinBanner();
   if(!booted){ booted=true;
     const uid=me.uid;
     unsub.push(db.watchDoc("usermatters/"+uid, d=>{ myOwn=(d&&d.matters)||[]; if(curTab!=="collab"&&!peerBoardUid) render(); }));
@@ -3345,9 +3324,6 @@ function boot(user){
   });
 }
 auth.onChange(boot);
-$("joinBannerX").onclick=()=>{ try{ localStorage.setItem("crJoinDismiss","1"); }catch(e){} paintJoinBanner(); };
-$("joinBannerGo").onclick=()=>{ stgOpen="org"; setTab("settings");
-  const i=$("st_joinInput"); if(i){ i.focus(); i.scrollIntoView({block:"center"}); } };
 $("pwSignOut").onclick=()=>auth.signOut();
 $("pwGo").onclick=async()=>{
   $("pwErr").textContent="";
@@ -3366,11 +3342,6 @@ $("pwGo").onclick=async()=>{
   $("pwGo").disabled=false;
 };
 $("pwCode").addEventListener("keydown",e=>{ if(e.key==="Enter") $("pwGo").click(); });
-function paintJoinBanner(){
-  const el=$("joinBanner"); if(!el) return;
-  let hidden=false; try{ hidden=localStorage.getItem("crJoinDismiss")==="1"; }catch(e){}
-  el.classList.toggle("hidden", inOrg() || hidden);
-}
 function paintTrialBanner(ent){
   const el=$("trialBanner"); if(!el) return;
   if(ent.reason==="trial" && ent.until){         // no `until` at all means unlimited — nothing to warn about
