@@ -262,6 +262,11 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px calc(66px + env(s
 .admin-actions button{flex:none;font-size:12px;font-weight:600;padding:6px 10px;border-radius:8px;border:1px solid var(--line);
   background:var(--panel2);color:var(--ink)}
 .admin-actions button.danger{color:var(--now);border-color:#f2c9c4}
+.ex-presets{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px}
+.ex-preset{flex:none;font-size:13px;font-weight:600;padding:8px 13px;border-radius:9px;border:1px solid var(--line);
+  background:var(--panel2);color:var(--ink)}
+.ex-preset.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.ex-newdate{font-size:13px;font-weight:600;color:var(--later);min-height:18px;margin-top:6px}
 /* collaborate */
 .cwrap{padding:2px 2px 20px}
 .cf-box{display:flex;gap:8px}
@@ -549,7 +554,10 @@ const isCourtroom = n => { const x=parseInt(n,10); return x>=1 && x<=17; };
    redemption is verified server-side too (firestore.rules checks the submitted
    code against config/accessCode), not just trusted client-side. */
 const TRIAL_DAYS = 30;
-const ADMIN_EMAILS = ["sdentertainmentservices@gmail.com"];   // CourtReach admin — confirm/edit
+// UI-only: decides whether the Admin TAB is shown. The REAL enforcement is the
+// identical isAdmin() list in firestore.rules — editing this list in a browser
+// reveals the tab but every admin write is still rejected server-side.
+const ADMIN_EMAILS = ["sdentertainmentservices@gmail.com", "adithdeshmukh@gmail.com"];
 const isAdminUser = () => !!(me && me.email && ADMIN_EMAILS.includes(String(me.email).toLowerCase()));
 const msToDay = ms => { try{ return new Date(ms).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }catch(e){ return ""; } };
 const daysLeft = untilMs => Math.max(0, Math.ceil((untilMs - Date.now()) / 86400000));
@@ -1285,7 +1293,7 @@ function renderAdmin(){
       <div class="case-meta">${tsMs(u.createdAt)?"Joined "+msToDay(tsMs(u.createdAt)):"Join date unknown (legacy account)"}</div>
       <div class="admin-actions">
         <button data-act="comp" data-uid="${esc(u.id)}">Grant comp</button>
-        <button data-act="extend" data-uid="${esc(u.id)}">Extend 30d</button>
+        <button data-act="extend" data-uid="${esc(u.id)}">Extend…</button>
         ${hasOv?`<button class="danger" data-act="revoke" data-uid="${esc(u.id)}">Revoke override</button>`:""}
       </div>
     </div>`;
@@ -1303,9 +1311,51 @@ function renderAdmin(){
   $("main").querySelectorAll("[data-act]").forEach(b=>b.onclick=async()=>{
     const uid=b.dataset.uid, act=b.dataset.act;
     if(act==="comp") await db.update("users/"+uid, {entitlementOverride:{type:"comp", grantedAt:db.now(), grantedBy:me.email||me.uid}});
-    else if(act==="extend") await db.update("users/"+uid, {entitlementOverride:{type:"extend", until:new Date(Date.now()+30*86400000), grantedAt:db.now(), grantedBy:me.email||me.uid}});
+    else if(act==="extend") extendForm(uid);
     else if(act==="revoke") await db.update("users/"+uid, {entitlementOverride:null});
   });
+}
+// Extend a user's access by a chosen number of days (admin picks the number —
+// presets or free entry). Extends from whichever is LATER: today, or the access
+// they already have — so extending someone mid-trial adds to it rather than
+// silently shortening it.
+function extendForm(uid){
+  const u=(adminUsers||[]).find(x=>x.id===uid); if(!u) return;
+  const ent=entitlementOf(u);
+  const baseMs=Math.max(Date.now(), (ent.ok && ent.until) ? ent.until : 0);
+  const baseNote = ent.reason==="comp"
+      ? "This user currently has indefinite comp access — extending replaces it with a fixed end date."
+      : (baseMs>Date.now()
+          ? `Their access currently runs to <b>${esc(msToDay(baseMs))}</b> — the extension is added on top of that.`
+          : `Their access has already lapsed — the extension runs from today.`);
+  $("modalRoot").innerHTML=`<div class="ovl" data-close><div class="sheet"><button class="sh-x" data-close>&times;</button>
+    <h2>Extend access</h2>
+    <div class="sh-sub">${esc(u.name||u.email||uid)} · ${esc(u.email||"")}</div>
+    <div class="case-meta" style="margin-bottom:12px">${baseNote}</div>
+    <div class="ex-presets">
+      ${[7,15,30,60,90].map(d=>`<button class="ex-preset" data-days="${d}">${d} days</button>`).join("")}
+    </div>
+    <label class="am-fld">Or enter days<input id="ex_days" inputmode="numeric" placeholder="e.g. 45"></label>
+    <div class="am-err" id="ex_err"></div>
+    <div class="ex-newdate" id="ex_newdate"></div>
+    <button class="sh-btn" id="ex_save">Extend</button></div></div>`;
+  const preview=()=>{
+    const n=parseInt(($("ex_days").value||"").trim(),10);
+    $("ex_newdate").textContent = (n>0) ? "New end date: "+msToDay(baseMs + n*86400000) : "";
+  };
+  $("modalRoot").querySelectorAll(".ex-preset").forEach(p=>p.onclick=()=>{
+    $("ex_days").value=p.dataset.days;
+    $("modalRoot").querySelectorAll(".ex-preset").forEach(x=>x.classList.toggle("on",x===p));
+    preview();
+  });
+  $("ex_days").oninput=()=>{ $("modalRoot").querySelectorAll(".ex-preset").forEach(x=>x.classList.remove("on")); preview(); };
+  $("ex_save").onclick=async()=>{
+    const n=parseInt(($("ex_days").value||"").trim(),10);
+    if(!(n>0)){ $("ex_err").textContent="Enter how many days to extend by."; return; }
+    await db.update("users/"+uid, {entitlementOverride:{type:"extend", until:new Date(baseMs + n*86400000),
+      days:n, grantedAt:db.now(), grantedBy:me.email||me.uid}});
+    closeModal();
+  };
 }
 function renderCollab(){
   updateCollabBadge();
