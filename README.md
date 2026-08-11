@@ -14,10 +14,22 @@ matters by court + item, and CourtReach tells you the moment each one is reachin
   **one board** (every member's matters pooled and attributed), the chamber's
   entitlement, and in-app **chat**.
 
-Chat has three thread kinds: **Team** (colleagues + staff — the default landing
-thread), **Everyone** (whole chamber, for announcements), and **direct messages**.
-The owner/senior lands on Everyone and is never badged for Team, so reaching them
-is a deliberate act rather than a side effect of office chatter.
+Chat thread kinds: **Team** (colleagues + staff — the default landing thread),
+**Everyone** (whole chamber, for announcements), **direct messages**, and one
+thread per **outside collaborator** who has addressed the office. The owner/senior
+lands on Everyone and is never badged for Team, so reaching them is a deliberate
+act rather than a side effect of office chatter.
+
+## Boards
+The board home is a set of tabs, built from the boards a person actually holds:
+their chamber's, their own (only if they keep matters outside the chamber), and
+one per collaborating senior. **My cases** mirrors this with My / Chamber /
+Collaborating lists, grouped by date and colour-coded per court.
+
+Every matter carries the **date** it's listed for, and every board filters on it —
+matters entered for a future hearing stay off today's board. Picking a date from
+the calendar shows the courts you're listed in that day. Matters saved before
+dates were enforced have none and are grandfathered onto today.
 
 ## Data model
 | Path | What it holds |
@@ -28,6 +40,8 @@ is a deliberate act rather than a side effect of office chatter.
 | `orgcodes/{CODE}` | invite-code → orgId. **get-only**, never listable |
 | `orginvites/{email}` | pre-approved email → orgId. Readable only by that email's owner |
 | `orgmsgs/{id}` | chat, keyed by `orgId` + `channel` (`team` / `all` / `dm:a_b`) |
+| `chatreads/{uid}` | per-channel "read up to" marker — drives unread counts and seen ticks |
+| `linkmsgs/{id}` | collaboration chat; `scope:'peer'` (1:1) or `'chamber'` (addressed to a whole office) |
 
 Joining a chamber hands over someone else's subscription, so it is verified
 server-side: the write must carry `joinedVia:<CODE>` matching a live `orgcodes`

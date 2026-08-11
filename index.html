@@ -245,6 +245,16 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px calc(66px + env(s
 .cr-grp{display:flex;align-items:baseline;gap:4px;flex:none}
 .cr-lab{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--mut)}
 .cr-num{font-family:var(--mono);font-size:16px;font-weight:800;color:var(--ink)}
+/* court chip in the SAME C1/C2 language as the board, tinted per court so matters sharing
+   a courtroom read as a set (--ch/--chbg/--chbd are set per row from courtStyle()) */
+.cr-court{flex:none;font-family:var(--mono);font-size:15px;font-weight:800;color:var(--ch,var(--navy));
+  background:var(--chbg,var(--panel2));border:1px solid var(--chbd,var(--line));border-radius:8px;padding:3px 9px;line-height:1.15}
+.case-row{border-left:3px solid var(--ch,var(--line))}
+.cr-who{flex:1;min-width:0;font-size:11.5px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cr-tag{flex:none;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;
+  color:var(--mut);background:var(--panel2);border-radius:20px;padding:3px 8px}
+.case-acts{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.viewstrip{padding-top:0}
 .cr-chev{flex:none;font-size:15px;color:var(--mut);transition:transform .15s}
 .case-row.open .cr-chev{transform:rotate(180deg)}
 .case-row-body{display:none;padding:0 13px 13px;border-top:1px solid var(--line)}
@@ -299,6 +309,19 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px calc(66px + env(s
 /* Settings — profile / subscription / notifications, reusing the admin-card/am-fld/
    sh-btn language above. .stg-switch is a small iOS-style toggle for the notification
    permission (owner: "settings button... notification permissions and any other matter"). */
+/* Settings as an accordion: a list of sections, one open at a time */
+.stg-sec{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-bottom:9px;overflow:hidden}
+.stg-head{display:flex;align-items:center;gap:12px;width:100%;background:transparent;border:none;
+  padding:14px 15px;text-align:left}
+.stg-head:active{background:var(--panel2)}
+.stg-ic{font-size:19px;color:var(--gold);flex:none;width:22px;text-align:center}
+.stg-ht{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.stg-hl{font-size:14.5px;font-weight:600;color:var(--ink)}
+.stg-hs{font-size:12px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stg-chev{font-size:16px;color:var(--mut);flex:none;transition:transform .18s}
+.stg-sec.open .stg-chev{transform:rotate(180deg)}
+.stg-body{display:none;padding:2px 15px 15px;border-top:1px solid var(--line)}
+.stg-sec.open .stg-body{display:block;padding-top:13px}
 .stg-row{display:flex;align-items:center;justify-content:space-between;gap:14px}
 .stg-label{font-size:14px;font-weight:600;color:var(--ink)}
 .stg-sub{font-size:12px;color:var(--mut);margin-top:2px;line-height:1.4}
@@ -437,24 +460,57 @@ nav.botnav button.on{color:var(--accent)}
    The chat pane owns the viewport instead of growing it: <main> stops scrolling and the
    message log scrolls inside, so the composer stays pinned above the nav. */
 main#main.chatmode{overflow:hidden;display:flex;flex-direction:column}
-.chat-wrap{display:flex;flex-direction:column;flex:1;min-height:0}
+.chat-wrap{display:flex;flex-direction:column;flex:1;min-height:0;position:relative}
 .chat-threads{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;flex:none;-webkit-overflow-scrolling:touch}
 .thr{flex:none;display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);
   border-radius:20px;padding:7px 13px;font-size:12.5px;font-weight:600;color:var(--mut);white-space:nowrap}
 .thr.on{background:var(--navy);border-color:var(--navy);color:#fff}
 .thr .dot{width:7px;height:7px;border-radius:50%;background:var(--now);flex:none}
-.chat-log{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:4px 0 10px}
-.msg{max-width:78%;border-radius:14px;padding:8px 12px;font-size:14px;line-height:1.4;word-wrap:break-word}
-.msg.them{align-self:flex-start;background:var(--panel);border:1px solid var(--line);border-bottom-left-radius:5px}
-.msg.me{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:5px}
-.msg-who{font-size:10.5px;font-weight:800;color:var(--gold);margin-bottom:2px;letter-spacing:.2px}
-.msg.them .msg-who{color:var(--accent)}
-.msg-at{font-size:9.5px;opacity:.6;margin-top:3px;text-align:right}
+.chat-log{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:2px;padding:4px 2px 10px;-webkit-overflow-scrolling:touch}
+/* day separator, the way every messaging app marks a new date */
+.chat-day{align-self:center;margin:12px 0 8px}
+.chat-day span{font-size:11px;font-weight:700;color:var(--mut);background:var(--panel2);
+  border:1px solid var(--line);border-radius:20px;padding:4px 12px}
+/* where you left off */
+.chat-newline{display:flex;align-items:center;gap:10px;margin:12px 2px 6px;color:var(--now)}
+.chat-newline::before,.chat-newline::after{content:"";flex:1;height:1px;background:currentColor;opacity:.35}
+.chat-newline span{font-size:10.5px;font-weight:800;letter-spacing:.5px;text-transform:uppercase}
+.msg{max-width:80%;border-radius:16px;padding:7px 11px 5px;font-size:14.5px;line-height:1.4;
+  word-wrap:break-word;overflow-wrap:anywhere;position:relative}
+.msg.them{align-self:flex-start;background:var(--panel);border:1px solid var(--line)}
+.msg.me{align-self:flex-end;background:var(--accent);color:#fff}
+/* a run of messages from one person reads as one block: tight gaps, square inner corners,
+   and only the last bubble gets the tail */
+.msg.them.run{border-top-left-radius:7px}
+.msg.me.run{border-top-right-radius:7px}
+.msg.them:not(.tail){border-bottom-left-radius:7px}
+.msg.me:not(.tail){border-bottom-right-radius:7px}
+.msg.them.tail{border-bottom-left-radius:5px}
+.msg.me.tail{border-bottom-right-radius:5px}
+.msg+.msg{margin-top:1px}
+.msg.tail{margin-bottom:7px}
+.msg-who{font-size:11px;font-weight:800;color:var(--accent);margin-bottom:2px;letter-spacing:.2px}
+.msg-tx a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+.msg-at{font-size:10px;opacity:.62;margin-top:2px;text-align:right;display:flex;align-items:center;
+  justify-content:flex-end;gap:3px;line-height:1}
+.msg .tick i{font-size:12px;line-height:1}
+.msg .tick.all{color:#8ed0ff}
+.msg.me .msg-at{color:rgba(255,255,255,.85)}
+.chat-empty{margin:auto;text-align:center;color:var(--mut);font-size:13.5px;line-height:1.6}
+.chat-empty i{font-size:30px;opacity:.4;display:block;margin-bottom:6px}
+/* unread pip on a thread chip */
+.thr-n{background:var(--now);color:#fff;font-size:10px;font-weight:800;border-radius:20px;
+  min-width:17px;height:17px;display:inline-flex;align-items:center;justify-content:center;padding:0 4px}
+.thr.on .thr-n{background:#fff;color:var(--navy)}
+/* jump-to-latest, shown only when you've scrolled up */
+.chat-jump{position:absolute;right:14px;bottom:74px;width:38px;height:38px;border-radius:50%;
+  border:1px solid var(--line);background:var(--panel);color:var(--ink);font-size:17px;
+  box-shadow:0 3px 10px rgba(20,26,34,.18);z-index:5}
 .chat-send{display:flex;gap:8px;align-items:flex-end;flex:none;padding:8px 0 2px;border-top:1px solid var(--line)}
-.chat-send textarea{flex:1;resize:none;min-height:42px;max-height:110px;padding:11px 13px;border-radius:12px;
-  border:1px solid var(--line);background:var(--panel);font-family:inherit;font-size:14.5px;color:var(--ink)}
+.chat-send textarea{flex:1;resize:none;min-height:42px;max-height:110px;padding:11px 13px;border-radius:20px;
+  border:1px solid var(--line);background:var(--panel);font-family:inherit;font-size:14.5px;color:var(--ink);line-height:1.35}
+.chat-send textarea:focus{outline:none;border-color:var(--accent)}
 .chat-send button{flex:none;width:42px;height:42px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:17px}
-.chat-empty{text-align:center;color:var(--mut);font-size:13px;padding:26px 16px;line-height:1.5}
 /* ===== PIN LOCK ===== */
 #pinlock{position:fixed;inset:0;z-index:120;display:flex;align-items:center;justify-content:center;padding:22px;
   background:radial-gradient(120% 90% at 50% 0,#1b2430,#0f141b)}
@@ -931,7 +987,7 @@ let adminUsers=[], adminAccessCode=null, adminUsersUnsub=null, adminCodeUnsub=nu
 // Transient Settings feedback ("Saved.") — saving writes users/{uid}, whose watchDoc fires
 // render() and rebuilds the whole Settings pane, so a message written straight into the DOM
 // would vanish instantly. Parking it here lets the re-render paint it back.
-let stgMsg="";
+let stgMsg="", stgOpen="";   // which Settings section is expanded (one at a time)
 // Live-board context for the proximity engine — the published sequence marquee, the
 // per-court remark column (authoritative OVER / PASS OVER), passovers observed live on
 // the board, and each court's highest-seen item. Same sources the SD display board uses.
@@ -941,8 +997,16 @@ const REMARK_TTL=40000;
 let unsub=[], userDocUnsub=null, pollId=null, tickId=null, pollOn=false, booted=false;
 // COLLABORATE state — peer connections (links) + per-link message threads + peer-board view
 let links=[], linksOut=[], linksIn=[], collabOpen=null, threadUnsub=null, linkMsgs=[];
+// A collaboration thread can be addressed to the person you're briefing, or to their whole
+// chamber — "as the case may be". peerOrgs caches {uid -> {orgId, name}} for the seniors
+// you're connected to, so we know whether the chamber option even exists.
+let linkScope="peer", peerOrgs={};
 let peerBoardUid=null, peerBoardName="", peerMatters=[], peerUnsub=null, peerLinkMatters=[];
 let linkFound=null;   // last user found by phone/email in the Find box
+// Which board is on screen. A briefing lawyer may hold several at once — their own, their
+// chamber's, and one per senior they're collaborating with — so the board is a set of
+// views, not a single list. "mine" | "chamber" | "peer:<uid>"
+let boardView="mine", mineView="mine";
 /* ===== CHAMBER / OFFICE state =====
    A chamber is one subscription covering everyone in it. orgs/{orgId} holds the chamber
    (orgId IS the owner's uid — unique for free, and it makes "who owns this" unambiguous).
@@ -957,7 +1021,14 @@ const orgOwnerUid = () => myOrg ? (myOrg.ownerUid||myOrg.id) : null;
 const memberName = uid => (orgMembers.find(m=>m.id===uid)||{}).name || (uid===me?.uid ? (me.name||"You") : "Colleague");
 // CHAT state — "team" (colleagues + staff, the default), "all" (whole chamber incl. the
 // senior — deliberately chosen, so the owner isn't dragged into every thread), or a DM.
-let chatChannel="team", chatMsgs=[], chatUnsub=null, chatReadAt={}, chatChannelPicked=false;
+let chatChannel="team", chatMsgs=[], chatUnsub=null, chatChannelPicked=false;
+// chatreads/{uid} — everyone's per-channel "read up to" marker. Mine drives my unread
+// counts; everyone else's turns my sent ticks into seen ticks.
+let chatReads={}, chatReadUnsub=null, _chatStick=true;
+// Messages an OUTSIDE collaborator addressed to this whole chamber (linkmsgs with
+// scope:'chamber'). The senior holds the link; their clerks and juniors don't — so the
+// office sees and answers these here rather than in Collaborate.
+let extMsgs=[], extUnsub=null;
 const dmChannel = (a,b) => "dm:"+[a,b].sort().join("_");
 const linkKey=(a,b)=>a+"_"+b;
 const otherUid = l => (l.fromUid===me?.uid ? l.toUid : l.fromUid);
@@ -977,18 +1048,34 @@ function linkWindow(dates){ const ds=[...new Set((dates||[]).filter(Boolean))].s
   return { startsAt:new Date(ds[0]+"T00:00:00+05:30").getTime(), expiresAt:new Date(ds[ds.length-1]+"T00:00:00+05:30").getTime()+864e5 }; }
 
 const boardByCourt = () => { const m={}; board.forEach(c=>{ if(c.court && !m[c.court]) m[c.court]=c; }); return m; };
-const myMatters = () => (myOwn||[]).filter(m=>m.court&&m.item&&isCourtroom(m.court))
-  .map(m=>({courtNo:String(m.court), itemNo:String(m.item), caseTitle:m.title||"", listType:m.listType||"", _id:m.id, by:me?.uid, byName:me?.name||""}));
-// Everything the chamber is doing today, pooled from every member's own list and tagged
-// with who's appearing — one board for the whole office.
-const chamberMatters = () => {
-  const out=[], take=(arr,uid)=>(arr||[]).forEach(m=>{ if(m.court&&m.item&&isCourtroom(m.court))
-    out.push({courtNo:String(m.court), itemNo:String(m.item), caseTitle:m.title||"",
-      listType:m.listType||"", _id:m.id, by:uid, byName:memberName(uid)}); });
+/* ===== MATTER SCOPING — by DATE, and (in a chamber) by whose board it belongs on =====
+   A matter carries the date it's listed for. Matters entered for a future hearing must not
+   clutter today's board, and picking a date must show that day's matters — so every board
+   filters on date. Matters saved before dates were enforced have none; those are
+   grandfathered onto today rather than silently disappearing.
+   scope: a chamber member's matter is a CHAMBER matter by default (that's why they're in a
+   chamber), but they may also keep personal matters that the office never sees. */
+const matterDate = m => (m && m.date) ? m.date : todayISO();
+const onDate = (m, date) => matterDate(m) === date;
+const isChamberMatter = m => (m?.scope||"chamber")==="chamber";     // legacy/unset = chamber
+const shape = (m, uid) => ({courtNo:String(m.court), itemNo:String(m.item), caseTitle:m.title||"",
+  listType:m.listType||"", _id:m.id, by:uid, byName:uid===me?.uid?(me?.name||"You"):memberName(uid),
+  date:matterDate(m), scope:m.scope||"chamber"});
+const usable = m => m && m.court && m.item && isCourtroom(m.court);
+// MY matters for a date. In a chamber, "mine" means the ones I keep OUT of the office.
+const myMatters = (date, personalOnly) => (myOwn||[])
+  .filter(m=>usable(m) && onDate(m,date||boardDate) && (!personalOnly || !isChamberMatter(m)))
+  .map(m=>shape(m, me?.uid));
+// Everything the chamber is doing on a date, pooled from every member and attributed.
+const chamberMatters = (date) => {
+  const d=date||boardDate, out=[];
+  const take=(arr,uid)=>(arr||[]).forEach(m=>{ if(usable(m)&&onDate(m,d)&&isChamberMatter(m)) out.push(shape(m,uid)); });
   take(myOwn, me?.uid);
   for(const uid in orgMatters) if(uid!==me?.uid) take(orgMatters[uid], uid);
   return out;
 };
+// Do I keep any matters outside the chamber? (decides whether the board even needs tabs)
+const hasPersonalMatters = () => (myOwn||[]).some(m=>usable(m) && !isChamberMatter(m));
 // Misc totals per court (main + supp) from the fetched cause list — lets the engine
 // place a Regular-list matter behind the whole Misc list, and a passover at board's end.
 function miscTotalByCourt(){
@@ -1170,22 +1257,71 @@ function toggleStrikeOverride(court,item){
 // this is a no-op kept for its call sites. The user's identity shows on My matters.
 function paintMasthead(){ /* header is brand-only now */ }
 
-// The tracked set shown on the board: mine, or a connected peer's (when viewing their board).
+/* ===== BOARD VIEWS — one tab per board this person holds =====
+   An individual has one. A chamber member has the chamber's, plus their own if they keep
+   matters outside it. Someone briefing two seniors has both of those boards as well — so
+   the strip is built from what actually exists rather than being fixed. */
+function boardViews(){
+  const views=[];
+  if(inOrg()) views.push({id:"chamber", label:myOrg?.name||"Chamber", icon:"ti-building-bank"});
+  if(!inOrg() || hasPersonalMatters()) views.push({id:"mine", label:inOrg()?"My own":"My board", icon:"ti-user"});
+  activeLinks().forEach(l=>{
+    const uid=otherUid(l), nm=otherName(l)||"Colleague";
+    views.push({id:"peer:"+uid, label:nm.split(" ")[0], icon:"ti-users", peer:uid, full:nm});
+  });
+  return views;
+}
+// Collaborations currently inside their approved day-window, in either direction.
+const activeLinks = () => (links||[]).filter(l=>linkActive(l));
+function viewStrip(views, current, attr){
+  if(views.length<2) return "";
+  return `<div class="chat-threads viewstrip">`+views.map(v=>
+    `<button class="thr${v.id===current?" on":""}" ${attr}="${esc(v.id)}"><i class="ti ${esc(v.icon)}"></i>${esc(v.label)}</button>`).join("")+`</div>`;
+}
+// What the board is currently showing, decided by the board sub-tab (boardView):
+//   "chamber"    the whole office's matters for the day
+//   "mine"       my own — in a chamber, only the ones I keep out of the office
+//   "peer:<uid>" a collaborating senior's board
 const activeMatters = () => {
-  if(peerBoardUid) return (peerMatters||[]).filter(m=>m.court&&m.item&&isCourtroom(m.court))
-    .map(m=>({courtNo:String(m.court), itemNo:String(m.item), caseTitle:m.title||"", listType:m.listType||""}));
-  return inOrg() ? chamberMatters() : myMatters();
+  if(boardView.startsWith("peer:")){
+    const uid=boardView.slice(5);
+    return (peerMatters||[]).filter(m=>usable(m)&&onDate(m,boardDate))
+      .map(m=>({courtNo:String(m.court), itemNo:String(m.item), caseTitle:m.title||"",
+        listType:m.listType||"", date:matterDate(m), by:uid, byName:peerBoardName}));
+  }
+  if(boardView==="chamber" && inOrg()) return chamberMatters();
+  return myMatters(boardDate, inOrg());
 };
+// Keep boardView pointing at something that still exists, and make sure a peer view is
+// actually subscribed to that colleague's matters.
+function syncBoardView(){
+  const views=boardViews();
+  if(!views.some(v=>v.id===boardView)) boardView=views[0]?.id||"mine";
+  const wantPeer = boardView.startsWith("peer:") ? boardView.slice(5) : null;
+  if(wantPeer!==peerBoardUid){
+    if(peerUnsub){peerUnsub();peerUnsub=null;}
+    peerBoardUid=wantPeer; peerMatters=[]; peerLinkMatters=[]; peerBoardName="";
+    if(wantPeer){
+      const l=activeLinks().find(x=>otherUid(x)===wantPeer);
+      peerBoardName=(l&&otherName(l))||"Colleague";
+      peerLinkMatters=((l&&l.matters)||[]).filter(m=>m&&m.court&&m.item&&(!m.date||m.date===boardDate));
+      peerUnsub=db.watchDoc("usermatters/"+wantPeer, d=>{ peerMatters=(d&&d.matters)||[];
+        if(curTab==="board") renderBoard(); });
+    }
+  }
+  return views;
+}
 function renderBoard(){
   paintFresh(); renderRail();
-  let h="";
+  const views=syncBoardView();
+  let h=viewStrip(views, boardView, "data-bv");
   if(peerBoardUid){
-    h+=`<div class="peerbar"><span>Viewing <b>${esc(peerBoardName)}</b>'s board</span><button id="peerBack">Back to my board</button></div>`;
-    if(peerLinkMatters.length) h+=`<div class="mycasebar"><i class="ti ti-star-filled"></i> Your case${peerLinkMatters.length>1?"s":""}: `
-      +peerLinkMatters.map(m=>`<b>Ct ${esc(m.court)} · ${esc(m.item)}</b>`).join(", ")+`</div>`;
+    h+=`<div class="reg-hint" style="margin:0 0 8px">Viewing <b>${esc(peerBoardName)}</b>'s board — read-only.</div>`;
+    if(peerLinkMatters.length) h+=`<div class="mycasebar"><i class="ti ti-star-filled"></i> Your case${peerLinkMatters.length>1?"s":""} with them: `
+      +peerLinkMatters.map(m=>`<b>C${esc(m.court)} · ${esc(m.item)}</b>`).join(", ")+`</div>`;
   }
   if(boardErr) h+=`<div class="notice"><b>Can't reach the court board</b> — retrying.</div>`;
-  if(!board.length){ $("main").innerHTML=h+`<div class="empty">Loading the live court board…</div>`; return; }
+  if(!board.length){ $("main").innerHTML=h+`<div class="empty">Loading the live court board…</div>`; wireBoardStrip(); return; }
   const set=activeMatters();
   const ours=new Set(set.map(e=>String(e.courtNo)));
   const shown=board.filter(c=>isCourtroom(c.court));
@@ -1195,13 +1331,13 @@ function renderBoard(){
   const inFull=c=>ours.has(String(c.court))||isMyCaseCourt(c.court);
   const full=shown.filter(inFull).sort((a,b)=>((isMyCaseCourt(b.court)?1:0)-(isMyCaseCourt(a.court)?1:0))||byNo(a,b));
   const mini=shown.filter(c=>!inFull(c)).sort(byNo);
-  if(!set.length) h+= peerBoardUid ? `<div class="notice">${esc(peerBoardName)} isn't tracking any matter right now.</div>`
-    : inOrg() ? `<div class="notice">No one in ${esc(myOrg?.name||"the chamber")} is tracking a matter yet. Add one from <b>My cases</b> — it shows here for the whole chamber.</div>`
-    : `<div class="notice">You're not tracking any matter yet. Add one from <b>My cases</b> and it lights up here as it reaches.</div>`;
+  if(!set.length) h+= peerBoardUid ? `<div class="notice">${esc(peerBoardName)} isn't listed in any court today.</div>`
+    : boardView==="chamber" ? `<div class="notice">No one in ${esc(myOrg?.name||"the chamber")} is listed today. Add a matter from <b>My cases</b> — it shows here for the whole chamber.</div>`
+    : `<div class="notice">You're not tracking any matter for today. Add one from <b>My cases</b> and it lights up here as it reaches.</div>`;
   h+=`<div class="grid">`+full.map(c=>boardCell(c,false)).join("")+`</div>`;
   if(mini.length) h+=`<div class="grid" style="margin-top:7px">`+mini.map(c=>boardCell(c,true)).join("")+`</div>`;
   $("main").innerHTML=h;
-  const pb=$("peerBack"); if(pb) pb.onclick=exitPeerBoard;
+  wireBoardStrip();
   $("main").querySelectorAll(".cell[data-court]").forEach(el=>el.onclick=()=>openCourtModal(el.dataset.court));
   // tap an item number to undo/redo its auto strike-through (a wrong "over" call) —
   // stopPropagation so it doesn't also open the court modal underneath
@@ -1210,6 +1346,9 @@ function renderBoard(){
     toggleStrikeOverride(el.dataset.strikeCourt, el.dataset.strikeItem);
     renderBoard();
   });
+}
+function wireBoardStrip(){
+  $("main").querySelectorAll("[data-bv]").forEach(b=>b.onclick=()=>{ boardView=b.dataset.bv; render(); });
 }
 // Court-island layout. ISLAND_STACKED=true → court number as a big full-width header on
 // top, ongoing item below (then our item + how-many-away for our courts). Set it false to
@@ -1331,12 +1470,13 @@ function openCourtModal(court,_refetched){
   </div></div>`;
 }
 
-/* ===== DATE BOARD — the calendar button's picked-date view. There is no live "on now"
-   status for any day but today (that only exists on the SC's real-time board relay), so
-   this reuses the SAME island-tile grid language but as a read-only preview built purely
-   from court-updates.json's per-date cause list: tile = court + how many items are listed;
-   tap it for the full item-by-item detail (cause title, coram — pulled via lookupItem-style
-   fields already parsed into courtUpdates). ===== */
+/* ===== DATE BOARD — the calendar button's picked-date view.
+   This is YOUR (or the chamber's / a senior's) listing for that day, not the SC-wide cause
+   list: the courts you'll actually be in, with your item numbers and who's appearing. There
+   is no live "on now" status for any day but today — that only exists on the SC's real-time
+   relay — so the islands carry the date's listing instead of a proximity colour, and only
+   courts where there IS a matter appear. Coram and the day's total come from the fetched
+   cause list when we have it, in the court sheet. ===== */
 function dateCourtsFor(date){
   const day=courtUpdates?.by_date?.[date]; const byCourt={};
   if(!day) return byCourt;
@@ -1344,42 +1484,66 @@ function dateCourtsFor(date){
     for(const c in list){ if(!isCourtroom(c)) continue; (byCourt[c]=byCourt[c]||[]).push({type:t,rec:list[c]}); } }
   return byCourt;
 }
-function dateCourtCell(court,entries){
-  const total=entries.reduce((s,e)=>s+Object.keys(e.rec.items||{}).length,0);
-  return `<div class="cell stk datecell" data-datecourt="${esc(court)}">
-    <div class="cell-topbar">C<span class="cd">${esc(court)}</span></div>
-    <div class="cell-on"><span class="cell-on-lab" style="display:inline">listed</span><span class="cell-on-num">${total}</span></div>
-  </div>`;
-}
 function wireDateBack(){ const b=$("dateBackToday"); if(b) b.onclick=()=>{ boardDate=todayISO(); paintCalBtn(); render(); }; }
 function fmtDateLong(date){ try{ return new Date(date+"T00:00:00").toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}); }catch(e){ return date; } }
+// One island per court we're listed in that day: court number, our item(s), whose they are.
+function dateCourtCell(court, entries){
+  const ordered=entries.slice().sort((a,b)=>(parseFloat(a.itemNo)||0)-(parseFloat(b.itemNo)||0));
+  const names=[...new Set(ordered.map(e=>e.by===me?.uid?"You":(e.byName||"")).filter(Boolean))];
+  const cnt = ordered.length>=4?" cnt4p":ordered.length===3?" cnt3":"";
+  const totals=courtTotalsFor(court, boardDate);
+  return `<div class="cell stk ours later datecell" data-datecourt="${esc(court)}">
+    <div class="cell-topbar">C<span class="cd">${esc(court)}</span></div>
+    <div class="cell-on"><span class="cell-on-lab" style="display:inline">${totals?"of":"items"}</span><span class="cell-on-num">${totals?esc(totals):ordered.length}</span></div>
+    ${names.length?`<div class="whose">${esc(names.length>2?names.slice(0,2).join(", ")+" +"+(names.length-2):names.join(", "))}</div>`:""}
+    <div class="cell-ours${cnt}"><span class="oi">${ordered.map(e=>`<span class="oi-it">${esc(e.itemNo)}</span>`).join(`<span class="oi-sep">·</span>`)}</span>
+      <span class="ourlab">listed</span></div></div>`;
+}
+// That court's total listed items for the date, from the fetched cause list (may be absent).
+function courtTotalsFor(court, date){
+  const lists=courtUpdates?.by_date?.[date]?.lists||{};
+  for(const t of CAUSELIST_TYPES){ const rec=lists[t]?.[String(court)]; if(rec&&rec.total) return String(rec.total); }
+  return "";
+}
 function renderDateBoard(date){
   const r=$("routeRail"); if(r) r.innerHTML="";              // "which court to walk next" is a live-board concept only
-  const byCourt=dateCourtsFor(date);
+  const views=syncBoardView();
+  const set=activeMatters();                                 // already filtered to boardDate
+  const byCourt={};
+  set.forEach(e=>{ (byCourt[e.courtNo]=byCourt[e.courtNo]||[]).push(e); });
   const courts=Object.keys(byCourt).sort((a,b)=>parseInt(a)-parseInt(b));
-  let h=`<div class="notice">Read-only cause list for <b>${esc(fmtDateLong(date))}</b> — not live tracking.<br>
+  let h=viewStrip(views, boardView, "data-bv");
+  h+=`<div class="notice">Listed for <b>${esc(fmtDateLong(date))}</b> — no live tracking on a future date.
     <button id="dateBackToday" class="case-del" style="margin-top:6px"><i class="ti ti-arrow-back-up"></i> Back to today's live board</button></div>`;
-  if(!courts.length){ h+=`<div class="empty">No cause list published for this date yet.</div>`; $("main").innerHTML=h; wireDateBack(); return; }
+  if(!courts.length){
+    h+=`<div class="empty">${boardView==="chamber"?"No chamber matter is":"Nothing is"} listed for ${esc(fmtDateLong(date))}.<br>
+      Add a matter with this date from <b>My cases</b> and it appears here.</div>`;
+    $("main").innerHTML=h; wireDateBack(); wireBoardStrip(); return;
+  }
   h+=`<div class="grid">`+courts.map(c=>dateCourtCell(c,byCourt[c])).join("")+`</div>`;
   $("main").innerHTML=h;
-  wireDateBack();
+  wireDateBack(); wireBoardStrip();
   $("main").querySelectorAll("[data-datecourt]").forEach(el=>el.onclick=()=>openDateCourtModal(el.dataset.datecourt,date));
 }
+// Court sheet for a picked date: our matters there, plus coram/total from the cause list.
 function openDateCourtModal(court,date){
   court=String(court);
+  const mine=activeMatters().filter(e=>String(e.courtNo)===court)
+    .sort((a,b)=>(parseFloat(a.itemNo)||0)-(parseFloat(b.itemNo)||0));
   const entries=dateCourtsFor(date)[court]||[];
+  const coram=entries.map(e=>cleanCoram(e.rec.coram)).find(Boolean)||"";
+  const totals=entries.filter(e=>e.rec.total).map(e=>e.type+": "+e.rec.total);
   $("modalRoot").innerHTML=`<div class="ovl" data-close><div class="sheet"><button class="sh-x" data-close>&times;</button>
     <div class="cm-top"><div class="cm-court">Court <b>${esc(court)}</b></div>
       <span class="cm-status idle">${esc(fmtDateLong(date))}</span></div>
-    ${entries.map(({type,rec})=>{
-      const coram=cleanCoram(rec.coram);
-      const items=Object.keys(rec.items||{}).sort((a,b)=>parseFloat(a)-parseFloat(b));
-      return `<div class="cm-card">
-        <div class="cm-h"><i class="ti ti-list-numbers"></i> ${esc(type)}${items.length?` <span class="cm-count">· ${items.length}</span>`:""}</div>
-        ${coram?`<div class="cm-body" style="margin-bottom:8px">${esc(coramJJ(coram))}</div>`:""}
-        ${items.length?items.map(n=>`<div class="cm-mine"><span class="cm-mine-it">${esc(n)}</span><span class="cm-mine-t">${esc(titleFromCauseLine(rec.items[n])||rec.items[n]||"—")}</span></div>`).join(""):`<div class="cm-none">No items.</div>`}
-      </div>`;
-    }).join("") || `<div class="cm-empty">No cause list published for Court ${esc(court)} on ${esc(fmtDateLong(date))} yet.</div>`}
+    ${mine.length?`<div class="cm-h"><i class="ti ti-star-filled"></i> Listed here</div>${mine.map(e=>{
+      const who = e.by===me?.uid ? "You" : (e.byName||"");
+      return `<div class="cm-mine"><span class="cm-mine-it">${esc(e.itemNo)}</span>
+        <span class="cm-mine-t">${esc(e.caseTitle||("item "+e.itemNo))}${who?` <span style="color:var(--mut)">· ${esc(who)}</span>`:""}</span></div>`;
+    }).join("")}`:""}
+    ${coram?`<div class="cm-card"><div class="cm-h"><i class="ti ti-gavel"></i> Coram</div><div class="cm-body">${esc(coramJJ(coram))}</div></div>`:""}
+    ${totals.length?`<div class="cm-card"><div class="cm-h"><i class="ti ti-clipboard-list"></i> Board that day</div><div class="cm-body">${totals.map(esc).join(" · ")}</div></div>`:""}
+    ${!coram&&!totals.length?`<div class="cm-empty">The cause list for ${esc(fmtDateLong(date))} hasn't been published yet — coram and the day's board size fill in once it is.</div>`:""}
   </div></div>`;
 }
 
@@ -1433,33 +1597,91 @@ function showFlash(items){
 function hideFlash(){ if(_flashTimer){clearTimeout(_flashTimer);_flashTimer=null;} const h=$("flashHost"); if(h) h.remove(); }
 
 const proxBandOf = k => k.tier==="now"?"now":k.tier==="soon"?"soon":k.tier==="later"?"later":k.tier==="passed"?"passed":"idle";
+// Same court = same colour. Eight hues, picked by court number, so a glance down the list
+// groups everything you'll be doing in one room (owner: "it helps knowing cases which are
+// in the same court").
+const COURT_HUES=[210,150,32,280,0,190,95,330];
+const courtHue = c => COURT_HUES[(parseInt(c,10)||0) % COURT_HUES.length];
+const courtStyle = c => { const h=courtHue(c);
+  return `--ch:hsl(${h} 58% 42%);--chbg:hsl(${h} 60% 96%);--chbd:hsl(${h} 45% 82%)`; };
+/* My cases — three lists behind one tab (owner: "for your own cases, for chamber cases,
+   for collaborating cases"). "Mine" is everything I entered (the only ones I can edit);
+   "Chamber" is the whole office's; "Collaborating" is what I've shared with, or been
+   shared by, a senior. Each list is grouped by DATE so a day's board reads as a unit. */
+function mineViews(){
+  const v=[{id:"mine", label:"My cases", icon:"ti-gavel"}];
+  if(inOrg()) v.push({id:"chamber", label:myOrg?.name||"Chamber", icon:"ti-building-bank"});
+  if(activeLinks().length) v.push({id:"collab", label:"Collaborating", icon:"ti-users"});
+  return v;
+}
+// The rows for the current My-cases sub-tab, newest date first.
+function mineRows(){
+  if(mineView==="chamber" && inOrg()){
+    const out=[];
+    const take=(arr,uid)=>(arr||[]).forEach(m=>{ if(usable(m)&&isChamberMatter(m)) out.push({...m, _by:uid}); });
+    take(myOwn, me?.uid);
+    for(const uid in orgMatters) if(uid!==me?.uid) take(orgMatters[uid], uid);
+    return out;
+  }
+  if(mineView==="collab"){
+    const out=[];
+    activeLinks().forEach(l=>{ const nm=otherName(l)||"Colleague";
+      (l.matters||[]).forEach(m=>{ if(m&&m.court&&m.item) out.push({...m, id:m.id||("l"+l.id+m.court+m.item), _by:otherUid(l), _with:nm, _readonly:true}); }); });
+    return out;
+  }
+  return (myOwn||[]).filter(usable).map(m=>({...m, _by:me?.uid}));
+}
 function renderMine(){
-  const list=(myOwn||[]).slice().sort((a,b)=>(parseInt(a.court)||99)-(parseInt(b.court)||99)||(parseFloat(a.item)||0)-(parseFloat(b.item)||0));
-  let h=`<button class="big-btn" id="mmAdd"><i class="ti ti-plus"></i> Track a case</button>`;
-  h+=`<div class="sec-h">My cases${list.length?` · ${list.length}`:""}</div>`;
-  if(!list.length) h+=`<div class="empty">No cases yet. Add your court &amp; item number and CourtReach tracks it live on the board.</div>`;
-  else h+=list.map((m,i)=>{
-    const k=classify({courtNo:m.court,itemNo:m.item,listType:m.listType||""});
-    const band=proxBandOf(k);
-    const bits=[m.listType, m.appearingFor?("for "+m.appearingFor):""].filter(Boolean).join(" · ");
-    return `<div class="case-row">
-      <div class="case-row-head" data-toggle="1">
-        <span class="cr-sn">${i+1}</span>
-        <span class="cr-grp"><span class="cr-lab">Ct</span><span class="cr-num">${esc(m.court)}</span></span>
-        <span class="cr-grp"><span class="cr-lab">Item</span><span class="cr-num">${esc(m.item)}</span></span>
-        <span class="case-prox ${band}">${esc(k.short||"—")}</span>
-        <i class="ti ti-chevron-down cr-chev"></i>
-      </div>
-      <div class="case-row-body">
-        <div class="case-title">${esc(m.title||("Court "+m.court+" · item "+m.item))}</div>
-        ${bits?`<div class="case-meta">${esc(bits)}</div>`:""}
-        ${m.bench?`<div class="case-meta"><span class="cm-k">Bench</span>${esc(m.bench)}</div>`:""}
-        ${m.aor?`<div class="case-meta"><span class="cm-k">AoR</span>${esc(m.aor)}</div>`:""}
-        <button class="case-del" data-del="${esc(m.id)}"><i class="ti ti-trash"></i> Remove</button>
-      </div>
-    </div>`;
-  }).join("");
+  const views=mineViews();
+  if(!views.some(v=>v.id===mineView)) mineView="mine";
+  const rows=mineRows();
+  // group by date, soonest first, with today up top
+  const byDate={}; rows.forEach(m=>{ (byDate[matterDate(m)]=byDate[matterDate(m)]||[]).push(m); });
+  const t=todayISO();
+  const dates=Object.keys(byDate).sort((a,b)=>(a<t)-(b<t) || a.localeCompare(b));
+  let h=viewStrip(views, mineView, "data-mv");
+  if(mineView==="mine") h+=`<button class="big-btn" id="mmAdd"><i class="ti ti-plus"></i> Track a case</button>`;
+  if(!rows.length){
+    h+=`<div class="empty">${mineView==="chamber"?"No chamber matters yet."
+      :mineView==="collab"?"No matters shared with a collaborating colleague yet."
+      :"No cases yet. Add your court &amp; item number and CourtReach tracks it live on the board."}</div>`;
+    $("main").innerHTML=h; wireMine(); return;
+  }
+  for(const d of dates){
+    const list=byDate[d].slice().sort((a,b)=>(parseInt(a.court)||99)-(parseInt(b.court)||99)||(parseFloat(a.item)||0)-(parseFloat(b.item)||0));
+    h+=`<div class="sec-h">${esc(d===t?"Today":fmtDateLong(d))} · ${list.length}</div>`;
+    h+=list.map((m,i)=>{
+      // proximity is only meaningful for today's board
+      const k = d===t ? classify({courtNo:m.court,itemNo:m.item,listType:m.listType||""}) : null;
+      const bits=[m.listType, m.appearingFor?("for "+m.appearingFor):""].filter(Boolean).join(" · ");
+      const who = m._with ? "with "+m._with : (m._by&&m._by!==me?.uid ? memberName(m._by) : "");
+      return `<div class="case-row" style="${courtStyle(m.court)}">
+        <div class="case-row-head" data-toggle="1">
+          <span class="cr-sn">${i+1}</span>
+          <span class="cr-court">C${esc(m.court)}</span>
+          <span class="cr-grp"><span class="cr-lab">Item</span><span class="cr-num">${esc(m.item)}</span></span>
+          ${who?`<span class="cr-who">${esc(who)}</span>`:""}
+          ${m.scope==="personal"?`<span class="cr-tag">Personal</span>`:""}
+          ${k?`<span class="case-prox ${proxBandOf(k)}">${esc(k.short||"—")}</span>`:""}
+          <i class="ti ti-chevron-down cr-chev"></i>
+        </div>
+        <div class="case-row-body">
+          <div class="case-title">${esc(m.title||("Court "+m.court+" · item "+m.item))}</div>
+          ${bits?`<div class="case-meta">${esc(bits)}</div>`:""}
+          ${m.bench?`<div class="case-meta"><span class="cm-k">Bench</span>${esc(m.bench)}</div>`:""}
+          ${m.aor?`<div class="case-meta"><span class="cm-k">AoR</span>${esc(m.aor)}</div>`:""}
+          ${(!m._readonly && m._by===me?.uid)?`<div class="case-acts">
+            ${inOrg()?`<button class="case-del" data-scope="${esc(m.id)}"><i class="ti ti-${isChamberMatter(m)?"eye-off":"building-bank"}"></i> ${isChamberMatter(m)?"Make personal":"Share with chamber"}</button>`:""}
+            <button class="case-del" data-del="${esc(m.id)}"><i class="ti ti-trash"></i> Remove</button></div>`:""}
+        </div>
+      </div>`;
+    }).join("");
+  }
   $("main").innerHTML=h;
+  wireMine();
+}
+function wireMine(){
+  $("main").querySelectorAll("[data-mv]").forEach(b=>b.onclick=()=>{ mineView=b.dataset.mv; render(); });
   const a=$("mmAdd"); if(a) a.onclick=addMatterForm;
   $("main").querySelectorAll("[data-toggle]").forEach(x=>x.onclick=()=>x.closest(".case-row").classList.toggle("open"));
   $("main").querySelectorAll("[data-del]").forEach(x=>x.onclick=async(ev)=>{
@@ -1467,18 +1689,28 @@ function renderMine(){
     const matters=(myOwn||[]).filter(m=>m.id!==x.dataset.del);
     try{ await db.set("usermatters/"+me.uid,{matters,updatedAt:db.now()},true); }catch(e){}
   });
+  // flip a matter between the chamber board and your own private one
+  $("main").querySelectorAll("[data-scope]").forEach(x=>x.onclick=async(ev)=>{
+    ev.stopPropagation();
+    const matters=(myOwn||[]).map(m=>m.id!==x.dataset.scope?m:({...m, scope:isChamberMatter(m)?"personal":"chamber"}));
+    try{ await db.set("usermatters/"+me.uid,{matters,updatedAt:db.now()},true); }catch(e){}
+  });
 }
 function addMatterForm(){
   let fetched=null;
   $("modalRoot").innerHTML=`<div class="ovl" data-close><div class="sheet"><button class="sh-x" data-close>&times;</button>
     <h2>Track a matter</h2><div class="sh-sub">Pick the list &amp; item — we fetch the cause title, bench and AoR from the SC cause list.</div>
-    <label class="am-fld">Date<input type="date" id="am_date" value="${todayISO()}"></label>
+    <label class="am-fld">Date<input type="date" id="am_date" value="${esc(boardDate)}"></label>
     <label class="am-fld">Causelist type<select id="am_type">${CAUSELIST_TYPES.map(t=>`<option>${esc(t)}</option>`).join("")}</select></label>
     <div class="am-row">
       <label class="am-fld">Court<input id="am_court" inputmode="numeric" placeholder="e.g. 5"></label>
       <label class="am-fld">Item<input id="am_item" inputmode="decimal" placeholder="e.g. 32 or 40.1"></label>
     </div>
     <label class="am-fld">Appearing for<select id="am_party"><option>Petitioner</option><option>Respondent</option></select></label>
+    ${inOrg()?`<label class="am-fld">Show on<select id="am_scope">
+      <option value="chamber">${esc(myOrg?.name||"Chamber")} board — the whole office sees it</option>
+      <option value="personal">My board only — private to me</option>
+    </select></label>`:""}
     <button class="sh-btn ghost2" id="am_fetch"><i class="ti ti-search"></i> Fetch details</button>
     <div id="am_preview" class="am-preview hidden"></div>
     <div class="am-err" id="am_err"></div>
@@ -1505,10 +1737,14 @@ function addMatterForm(){
   };
   const save=async()=>{
     const f=readForm(); if(!valid(f)) return;
+    const sc=$("am_scope");
     const rec={ id:"m"+Date.now().toString(36), court:f.court, item:f.item, date:f.date, listType:f.type, appearingFor:f.party,
+      scope: sc ? sc.value : "chamber",
       title:(fetched&&fetched.title)||"", bench:(fetched&&fetched.bench)||"", aor:(fetched&&fetched.aor)||"" };
-    const matters=[...(myOwn||[]).filter(m=>!(String(m.court)===f.court&&String(m.item)===f.item)), rec];
-    try{ await db.set("usermatters/"+me.uid,{matters,updatedAt:db.now()},true); closeModal(); curTab="mine"; setTab("mine"); }
+    // de-dupe on court+item+DATE — the same item number in the same court on a different
+    // day is a different listing, and must not overwrite the other one.
+    const matters=[...(myOwn||[]).filter(m=>!(String(m.court)===f.court&&String(m.item)===f.item&&matterDate(m)===f.date)), rec];
+    try{ await db.set("usermatters/"+me.uid,{matters,updatedAt:db.now()},true); closeModal(); mineView="mine"; setTab("mine"); }
     catch(e){ $("am_err").textContent="Could not save — "+(e.message||e); }
   };
   $("am_fetch").onclick=doFetch; $("am_save").onclick=save;
@@ -1592,24 +1828,33 @@ function requestModal(u){
   draw();
 }
 async function decideLink(id,status){ try{ await db.update("links/"+id,{status,decidedAt:db.now()}); }catch(e){} }
-function openThread(id){ collabOpen=id;
+function openThread(id){ collabOpen=id; linkScope="peer";
   if(threadUnsub){threadUnsub();threadUnsub=null;}
   threadUnsub=db.watchQuery("linkmsgs","linkId",id, rows=>{ linkMsgs=(rows||[]).sort((a,b)=>tsMs(a.at)-tsMs(b.at)); if(curTab==="collab"&&collabOpen===id) renderCollab(); });
+  // does the person I'm briefing run/belong to a chamber? if so I can address the office
+  const l=(links||[]).find(x=>x.id===id), uid=l&&otherUid(l);
+  if(uid && !peerOrgs[uid]) db.get("users/"+uid).then(async u=>{
+    if(!u||!u.orgId){ peerOrgs[uid]={orgId:null}; return; }
+    const o=await db.get("orgs/"+u.orgId).catch(()=>null);
+    peerOrgs[uid]={orgId:u.orgId, name:(o&&o.name)||"their chamber"};
+    if(curTab==="collab"&&collabOpen===id) renderCollab();
+  }).catch(()=>{});
   renderCollab();
 }
 function closeThread(){ collabOpen=null; if(threadUnsub){threadUnsub();threadUnsub=null;} linkMsgs=[]; renderCollab(); }
 async function sendLinkMsg(id){ const ta=$("cl_ta"); const text=(ta?ta.value:"").trim(); if(ta) ta.value=""; if(!text) return;
-  try{ await db.add("linkmsgs",{linkId:id, by:me.uid, name:me.name||"", text, at:db.now()}); }catch(e){} }
+  const l=(links||[]).find(x=>x.id===id), uid=l&&otherUid(l);
+  const rec={linkId:id, by:me.uid, name:me.name||"", text, at:db.now(), scope:linkScope};
+  // addressed to the office: stamp the chamber so its members (not just the two of us) can read it
+  if(linkScope==="chamber" && peerOrgs[uid]?.orgId){ rec.orgId=peerOrgs[uid].orgId; rec.extName=me.name||""; }
+  try{ await db.add("linkmsgs", rec); }catch(e){} }
+// A colleague's board is now just another tab on the board home — selecting it here simply
+// switches the view; syncBoardView() does the subscribing.
 function viewPeerBoard(link){ if(!linkActive(link)) return;   // permission is scoped to the day it was sought for
-  peerBoardUid=otherUid(link); peerBoardName=otherName(link)||"Colleague"; peerMatters=[];
-  // MY case(s) with this person for TODAY — flagged on their board so I find mine fast
-  peerLinkMatters=(link.matters||[]).filter(m=>m&&m.court&&m.item&&(!m.date||m.date===todayISO()));
-  if(peerUnsub){peerUnsub();}
-  peerUnsub=db.watchDoc("usermatters/"+peerBoardUid, d=>{ peerMatters=(d&&d.matters)||[]; if(curTab==="board"&&boardDate===todayISO()) renderBoard(); });
-  boardDate=todayISO(); paintCalBtn();   // a colleague's board is a LIVE-only view — drop any picked date
+  boardView="peer:"+otherUid(link);
   setTab("board");
 }
-function exitPeerBoard(){ if(peerUnsub){peerUnsub();peerUnsub=null;} peerBoardUid=null; peerBoardName=""; peerMatters=[]; peerLinkMatters=[]; render(); }
+function exitPeerBoard(){ boardView=inOrg()?"chamber":"mine"; render(); }
 const isMyCaseCourt = court => peerBoardUid && peerLinkMatters.some(m=>String(m.court)===String(court));
 const myCaseItemsIn = court => peerLinkMatters.filter(m=>String(m.court)===String(court)).map(m=>String(m.item));
 
@@ -1759,14 +2004,24 @@ function renderThread(id){
         ? `This permission was for <b>${esc(fmtDay(d))}</b> — tracking is one day only.`
         : `Approved for <b>${esc(fmtDay(d))}</b>; tracking opens that day.`}
         <button class="sh-btn ghost2" id="cl_rereq" style="margin-top:8px"><i class="ti ti-plus"></i> Request again for another date</button></div>` : "";
+  // the peer's chamber, if they have one — and only the messages for the chosen audience
+  const chamberOpt = peerOrgs[otherUid(l)]?.orgId ? (peerOrgs[otherUid(l)].name||"Their chamber") : "";
+  const shown = linkMsgs.filter(m=>(m.scope||"peer")===linkScope);
   $("main").innerHTML=`<div class="cwrap"><button class="bback" id="cl_back"><i class="ti ti-chevron-left"></i> Connections</button>
     <div class="cx-head"><span class="bavatar2">${esc(initials(nm))}</span><div style="flex:1;min-width:0"><div class="cf-nm">${esc(nm)}</div><div class="cf-de">${esc(desig)}</div></div>
       ${boardCtl}</div>
     ${lapsed}
-    <div class="bthread" id="cl_thread">${linkMsgs.length? linkMsgs.map(m=>{ const mine=m.by===me.uid;
+    ${chamberOpt?`<div class="chat-threads" style="padding:6px 0 4px">
+      <button class="thr${linkScope==="peer"?" on":""}" data-ls="peer"><i class="ti ti-user"></i>${esc(nm.split(" ")[0])}</button>
+      <button class="thr${linkScope==="chamber"?" on":""}" data-ls="chamber"><i class="ti ti-building-bank"></i>${esc(chamberOpt)}</button>
+    </div><div class="reg-hint" style="margin:0 0 6px">${linkScope==="chamber"
+      ? `Everyone at ${esc(chamberOpt)} sees this — use it for clerks and juniors as well.`
+      : `Only ${esc(nm)} sees this.`}</div>`:""}
+    <div class="bthread" id="cl_thread">${shown.length? shown.map(m=>{ const mine=m.by===me.uid;
         return `<div class="bbub ${mine?"me":"them"}">${mine?"":`<span class="bn">${esc(m.name||"")}</span>`}<span>${esc(m.text)}</span><span class="bt">${esc(clockIST(tsMs(m.at)))}</span></div>`; }).join("")
         : `<div class="bsub" style="text-align:center;padding:16px">No messages yet — say hello.</div>`}</div>
-    <div class="bcompose"><textarea id="cl_ta" rows="1" placeholder="Message ${esc(nm)}…"></textarea><button class="bsend" id="cl_send"><i class="ti ti-send"></i></button></div></div>`;
+    <div class="bcompose"><textarea id="cl_ta" rows="1" placeholder="Message ${esc(linkScope==="chamber"?chamberOpt:nm)}…"></textarea><button class="bsend" id="cl_send"><i class="ti ti-send"></i></button></div></div>`;
+  $("main").querySelectorAll("[data-ls]").forEach(b=>b.onclick=()=>{ linkScope=b.dataset.ls; renderCollab(); });
   $("cl_back").onclick=closeThread;
   const cb=$("cl_board"); if(cb) cb.onclick=()=>viewPeerBoard(l);
   const rr=$("cl_rereq"); if(rr) rr.onclick=()=>requestModal({id:otherUid(l), name:nm, designation:(iAmReq?(l.toDesig||""):(l.fromDesig||""))});
@@ -1785,19 +2040,47 @@ function renderThread(id){
    to the org (and, for a DM, to its two participants). */
 function watchChat(){
   if(chatUnsub){chatUnsub();chatUnsub=null;}
+  if(chatReadUnsub){chatReadUnsub();chatReadUnsub=null;}
   if(!inOrg()) return;
   chatUnsub=db.watchQuery("orgmsgs","orgId",me.orgId, rows=>{
     chatMsgs=(rows||[]).slice().sort((a,b)=>tsMs(a.at)-tsMs(b.at));
     if(curTab==="chat") renderChat(); else paintChatBadge();
   });
+  if(extUnsub){extUnsub();extUnsub=null;}
+  extUnsub=db.watchQuery("linkmsgs","orgId",me.orgId, rows=>{
+    extMsgs=(rows||[]).filter(m=>(m.scope||"")==="chamber").sort((a,b)=>tsMs(a.at)-tsMs(b.at));
+    if(curTab==="chat") renderChat(); else paintChatBadge();
+  });
+  // everyone's read markers — this is what turns a tick into a double tick
+  chatReadUnsub=db.watchQuery("chatreads","orgId",me.orgId, rows=>{
+    chatReads={}; (rows||[]).forEach(r=>chatReads[r.id]=r);
+    if(curTab==="chat") renderChat(); else paintChatBadge();
+  });
 }
-const chatIn = ch => chatMsgs.filter(m=>m.channel===ch);
-function loadChatRead(){ try{ chatReadAt=JSON.parse(localStorage.getItem("crChatRead")||"{}"); }catch(e){ chatReadAt={}; } }
-function markChatRead(ch){ const last=chatIn(ch).slice(-1)[0]; if(!last) return;
-  chatReadAt[ch]=tsMs(last.at); try{ localStorage.setItem("crChatRead",JSON.stringify(chatReadAt)); }catch(e){} }
+const chatIn = ch => ch.startsWith("ext:")
+  ? extMsgs.filter(m=>m.linkId===ch.slice(4))
+  : chatMsgs.filter(m=>m.channel===ch);
+const myReadAt = ch => (chatReads[me?.uid]||{})[ch] || 0;
 function chatUnread(ch){
   const last=chatIn(ch).filter(m=>m.by!==me?.uid).slice(-1)[0];
-  return !!last && tsMs(last.at) > (chatReadAt[ch]||0);
+  return !!last && tsMs(last.at) > myReadAt(ch);
+}
+function unreadCount(ch){
+  const since=myReadAt(ch);
+  return chatIn(ch).filter(m=>m.by!==me?.uid && tsMs(m.at)>since).length;
+}
+// Who, other than me, is expected to see this channel — the denominator for read receipts.
+function channelAudience(ch){
+  if(ch.startsWith("dm:")) return ch.slice(3).split("_").filter(u=>u!==me?.uid);
+  return orgMembers.map(m=>m.id).filter(u=>u!==me?.uid);   // ext threads: the office side
+}
+let _readWriteAt=0;
+async function markChatRead(ch){
+  const last=chatIn(ch).slice(-1)[0]; if(!last || !inOrg()) return;
+  const ts=tsMs(last.at); if(ts<=myReadAt(ch)) return;
+  if(Date.now()-_readWriteAt < 800) return; _readWriteAt=Date.now();
+  chatReads[me.uid]={...(chatReads[me.uid]||{}), [ch]:ts};      // optimistic, so ticks don't lag
+  try{ await db.set("chatreads/"+me.uid,{orgId:me.orgId, [ch]:ts},true); }catch(e){}
 }
 // Threads, in the order this particular person should see them.
 function chatThreads(){
@@ -1809,14 +2092,45 @@ function chatThreads(){
   orgMembers.filter(m=>m.id!==me?.uid).sort((a,b)=>String(a.name||"").localeCompare(String(b.name||"")))
     .forEach(m=>list.push({id:dmChannel(me.uid,m.id), label:(m.name||"Colleague").split(" ")[0],
       sub:m.designation||"", dm:true, uid:m.id, full:m.name||"Colleague"}));
+  // briefing lawyers / AoRs who addressed the office as a whole
+  const seen={};
+  extMsgs.forEach(m=>{ if(!seen[m.linkId]) seen[m.linkId]={linkId:m.linkId, name:m.extName||m.name||"Collaborator"}; });
+  Object.values(seen).forEach(x=>list.push({id:"ext:"+x.linkId, label:(x.name||"").split(" ")[0],
+    sub:"Outside the chamber", ext:true, linkId:x.linkId, full:x.name}));
   return list;
 }
 function paintChatBadge(){
   const b=$("chatBadge"); if(!b) return;
   if(!inOrg()){ b.classList.add("hidden"); return; }
   // the owner/senior is never badged for the team thread — that's the whole point of it
-  const n=chatThreads().filter(t=>!(isOrgOwner()&&t.id==="team") && chatUnread(t.id)).length;
-  b.textContent=n; b.classList.toggle("hidden", n===0);
+  const n=chatThreads().filter(t=>!(isOrgOwner()&&t.id==="team")).reduce((s,t)=>s+unreadCount(t.id),0);
+  b.textContent=n>99?"99+":n; b.classList.toggle("hidden", n===0);
+}
+
+/* ---- message rendering, following the conventions people already know from WhatsApp /
+   iMessage: a day separator, consecutive messages from one person collapsed into a run
+   (name once, tail on the last bubble only), a divider where you stopped reading, and
+   sent/seen ticks on your own messages. ---- */
+const DAY_MS=864e5;
+function dayLabel(ms){
+  const d=new Date(ms), t=new Date();
+  const key=x=>x.toLocaleDateString('en-CA');
+  if(key(d)===key(t)) return "Today";
+  if(key(d)===key(new Date(t.getTime()-DAY_MS))) return "Yesterday";
+  const sameYear=d.getFullYear()===t.getFullYear();
+  return d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',...(sameYear?{}:{year:'numeric'})});
+}
+// Escape first, then turn bare URLs into links — never the other way round.
+function linkify(text){
+  return esc(text).replace(/\b(https?:\/\/[^\s<]+)/g, u=>`<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`);
+}
+// ✓ sent · ✓✓ seen by someone · ✓✓ (accent) seen by everyone who can see the thread
+function receipt(msg, ch){
+  const aud=channelAudience(ch); if(!aud.length) return "";
+  const ts=tsMs(msg.at);
+  const seen=aud.filter(u=>((chatReads[u]||{})[ch]||0) >= ts).length;
+  if(!seen) return `<span class="tick"><i class="ti ti-check"></i></span>`;
+  return `<span class="tick${seen>=aud.length?" all":""}"><i class="ti ti-checks"></i></span>`;
 }
 function renderChat(){
   if(!inOrg()){ $("main").innerHTML=`<div class="empty">Chat is for chamber and office accounts. Create or join a chamber from <b>Settings</b>.</div>`; return; }
@@ -1827,34 +2141,71 @@ function renderChat(){
   if(!threads.some(t=>t.id===chatChannel)) chatChannel=threads[0].id;
   const cur=threads.find(t=>t.id===chatChannel)||threads[0];
   const msgs=chatIn(chatChannel);
-  const rows=msgs.map(m=>{
-    const mine=m.by===me.uid;
-    return `<div class="msg ${mine?"me":"them"}">${mine?"":`<div class="msg-who">${esc(m.byName||"Colleague")}</div>`}
-      <div>${esc(m.text||"")}</div><div class="msg-at">${esc(clockIST(tsMs(m.at)))}</div></div>`;
-  }).join("");
-  const blurb = cur.dm ? `Private message to ${esc(cur.full)}`
+  const firstUnread=msgs.find(m=>m.by!==me.uid && tsMs(m.at)>myReadAt(chatChannel));
+
+  let body="", lastDay="", prevBy="", prevAt=0;
+  msgs.forEach((m,i)=>{
+    const ts=tsMs(m.at), mine=m.by===me.uid;
+    const day=dayLabel(ts);
+    if(day!==lastDay){ body+=`<div class="chat-day"><span>${esc(day)}</span></div>`; lastDay=day; prevBy=""; }
+    if(firstUnread && m===firstUnread) { body+=`<div class="chat-newline"><span>Unread messages</span></div>`; prevBy=""; }
+    // same sender, within 5 minutes → same run
+    const run = m.by===prevBy && (ts-prevAt) < 5*60000;
+    const next=msgs[i+1];
+    const runEnds = !next || next.by!==m.by || (tsMs(next.at)-ts)>=5*60000 || dayLabel(tsMs(next.at))!==day;
+    body+=`<div class="msg ${mine?"me":"them"}${run?" run":""}${runEnds?" tail":""}">
+      ${(!mine&&!run)?`<div class="msg-who">${esc(m.byName||m.name||"Colleague")}</div>`:""}
+      <div class="msg-tx">${linkify(m.text||"")}</div>
+      <div class="msg-at">${esc(clockIST(ts))}${mine?receipt(m,chatChannel):""}</div>
+    </div>`;
+    prevBy=m.by; prevAt=ts;
+  });
+
+  const blurb = cur.ext ? `${esc(cur.full)} is briefing this chamber from outside — everyone here can read and reply.`
+    : cur.dm ? `Private message to ${esc(cur.full)}`
     : chatChannel==="all" ? (isOrgOwner() ? `Everyone in ${esc(myOrg?.name||"the chamber")} — use this to announce.`
         : `Everyone in ${esc(myOrg?.name||"the chamber")}, including ${esc(myOrg?.ownerName||"the senior")}`)
     : (isOrgOwner() ? `Your colleagues' and staff's thread — you can read and post, but you're not notified here.`
         : `Colleagues and staff — ${esc(myOrg?.ownerName||"the senior")} isn't notified here. Message them directly to reach them.`);
   $("main").innerHTML=`<div class="chat-wrap">
-    <div class="chat-threads">${threads.map(t=>`<button class="thr${t.id===chatChannel?" on":""}" data-ch="${esc(t.id)}">${esc(t.label)}${chatUnread(t.id)&&t.id!==chatChannel?`<span class="dot"></span>`:""}</button>`).join("")}</div>
-    <div class="reg-hint" style="margin:0 0 8px">${blurb}</div>
-    <div class="chat-log" id="chatLog">${rows||`<div class="chat-empty">No messages yet.<br>Say something to get the thread started.</div>`}</div>
+    <div class="chat-threads">${threads.map(t=>{ const n=unreadCount(t.id);
+      const mute=isOrgOwner()&&t.id==="team";
+      return `<button class="thr${t.id===chatChannel?" on":""}" data-ch="${esc(t.id)}">${esc(t.label)}${(n&&!mute&&t.id!==chatChannel)?`<span class="thr-n">${n>9?"9+":n}</span>`:""}</button>`;}).join("")}</div>
+    <div class="reg-hint" style="margin:0 0 6px">${blurb}</div>
+    <div class="chat-log" id="chatLog">${body||`<div class="chat-empty"><i class="ti ti-message-2"></i><div>No messages yet.</div><div style="opacity:.7">Say something to get the thread started.</div></div>`}</div>
+    <button class="chat-jump hidden" id="chatJump" aria-label="Jump to latest"><i class="ti ti-arrow-down"></i></button>
     <div class="chat-send">
       <textarea id="chatText" rows="1" placeholder="Message${cur.dm?" "+esc(cur.full):""}…"></textarea>
       <button id="chatSend" aria-label="Send"><i class="ti ti-send"></i></button>
     </div></div>`;
   $("main").querySelectorAll("[data-ch]").forEach(b=>b.onclick=()=>{ chatChannel=b.dataset.ch; chatChannelPicked=true; markChatRead(chatChannel); renderChat(); });
-  const log=$("chatLog"); if(log) log.scrollTop=log.scrollHeight;
+
+  const log=$("chatLog"), jump=$("chatJump");
+  // keep the newest message in view unless the reader has scrolled up to read history
+  const atBottom=()=>log.scrollHeight-log.scrollTop-log.clientHeight < 60;
+  if(_chatStick) log.scrollTop=log.scrollHeight;
+  log.onscroll=()=>{ _chatStick=atBottom(); jump.classList.toggle("hidden", _chatStick); if(_chatStick) markChatRead(chatChannel); };
+  jump.onclick=()=>{ log.scrollTop=log.scrollHeight; _chatStick=true; jump.classList.add("hidden"); markChatRead(chatChannel); };
+
+  const ta=$("chatText");
+  const grow=()=>{ ta.style.height="auto"; ta.style.height=Math.min(ta.scrollHeight,110)+"px"; };
+  ta.oninput=grow; grow();
   $("chatSend").onclick=sendChat;
-  $("chatText").onkeydown=e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); sendChat(); } };
+  ta.onkeydown=e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); sendChat(); } };
   markChatRead(chatChannel); paintChatBadge();
 }
 async function sendChat(){
   const ta=$("chatText"); if(!ta) return;
   const text=(ta.value||"").trim(); if(!text || !inOrg()) return;
-  ta.value="";
+  ta.value=""; ta.style.height="auto"; _chatStick=true;
+  if(chatChannel.startsWith("ext:")){                      // reply to an outside collaborator
+    const linkId=chatChannel.slice(4);
+    const prev=extMsgs.find(m=>m.linkId===linkId)||{};
+    try{ await db.add("linkmsgs",{ linkId, orgId:me.orgId, scope:"chamber",
+      extName:prev.extName||prev.name||"", by:me.uid, name:me.name||"", byName:me.name||"", text, at:db.now() }); }
+    catch(e){ ta.value=text; }
+    return;
+  }
   const msg={ orgId:me.orgId, channel:chatChannel, by:me.uid, byName:me.name||"", text, at:db.now() };
   if(chatChannel.startsWith("dm:")) msg.members=chatChannel.slice(3).split("_");   // rules read this
   try{ await db.add("orgmsgs", msg); }catch(e){ ta.value=text; }
@@ -1871,22 +2222,30 @@ function renderSettings(){
   const el=admin?{text:"Admin — unrestricted access",cls:"comp"}:entLabel(inOrg()&&myOrg?myOrg:me);
   const showRedeem=!admin && ent.reason!=="comp" && (!inOrg() || isOrgOwner());
   const owner=isOrgOwner(), pinOn=hasPinFor(me.uid);
+  // Settings is a LIST of sections; tapping one drops it open (owner: "should open a list
+  // of options... then it should expand or dropdown to show all the options listed under").
+  const sec=(id,icon,title,sub,inner)=>`<div class="stg-sec${stgOpen===id?" open":""}">
+      <button class="stg-head" data-sec="${id}"><i class="ti ${icon} stg-ic"></i>
+        <span class="stg-ht"><span class="stg-hl">${title}</span><span class="stg-hs">${sub}</span></span>
+        <i class="ti ti-chevron-down stg-chev"></i></button>
+      <div class="stg-body">${inner}</div></div>`;
   let h="";
   if(joinNotice){ h+=`<div class="notice">${esc(joinNotice)}</div>`; }
-  h+=`<div class="sec-h">Profile</div>
-    <div class="admin-card">
+  h+=sec("profile","ti-user","Profile","Name, phone, designation",`
+    <div>
       <label class="am-fld">Name<input id="st_name" value="${esc(me.name||"")}"></label>
       <label class="am-fld">Phone<input id="st_phone" value="${esc(me.phone||"")}" inputmode="tel"></label>
       <label class="am-fld">Designation<select id="st_desig">${DESIGNATIONS.map(d=>`<option${d===me.designation?" selected":""}>${esc(d)}</option>`).join("")}</select></label>
       <div class="case-meta" style="margin:2px 0 10px">Signed in as <b>${esc(me.email||"")}</b> — this is your sign-in ID and can't be changed here.</div>
       <button class="sh-btn" id="st_saveProfile">Save profile</button>
       <div class="am-err" id="st_profMsg" style="${/^(Saved|PIN|Password)/.test(stgMsg)?"color:var(--later)":""}">${esc(stgMsg)}</div>
-    </div>`;
+    </div>`);
 
   /* ---- Chamber / office ---- */
-  h+=`<div class="sec-h">Chamber / office</div>`;
+  {
+  let inner="";
   if(inOrg()){
-    h+=`<div class="admin-card">
+    inner+=`<div>
       <div class="admin-user-top">
         <span class="admin-user-name">${esc(myOrg?.name||"Your chamber")}</span>
         <span class="mem-tag ${owner?"owner":""}">${owner?"Owner":"Member"}</span>
@@ -1911,34 +2270,37 @@ function renderSettings(){
       ${!owner?`<button class="case-del" id="st_leaveOrg" style="margin-top:12px"><i class="ti ti-logout"></i> Leave this chamber</button>`:""}
     </div>`;
   } else {
-    h+=`<div class="admin-card">
+    inner+=`<div>
       <div class="stg-sub">Working with colleagues or staff? Join your chamber with its invite code and you'll share one subscription, one board and in-app chat.</div>
       <div class="admin-code-row"><input id="st_joinInput" placeholder="Invite code" autocapitalize="characters" maxlength="8"><button id="st_joinGo">Join</button></div>
       <div class="am-err" id="st_joinMsg"></div>
     </div>`;
   }
+  h+=sec("org","ti-building-bank","Chamber / office",
+    inOrg()?esc(myOrg?.name||"Your chamber")+" · "+orgMembers.length+" member"+(orgMembers.length===1?"":"s"):"Not in a chamber", inner);
+  }
 
-  h+=`<div class="sec-h">Subscription</div>
-    <div class="admin-card">
+  h+=sec("sub","ti-receipt","Subscription", esc(el.text), `
+    <div>
       <div class="admin-user-top"><span class="admin-user-name">${esc(el.text)}</span><span class="admin-ent ${el.cls}">${esc(ent.reason)}</span></div>
       ${inOrg()?`<div class="case-meta" style="margin-top:3px">${owner?"Covers everyone in your chamber.":"Covered by "+esc(myOrg?.name||"your chamber")+" — the owner manages this."}</div>`:""}
       ${showRedeem?`<div class="admin-code-row" style="margin-top:10px">
         <input id="st_code" placeholder="Have an access code?" autocapitalize="characters">
         <button id="st_redeem">Redeem</button>
       </div><div class="am-err" id="st_codeMsg"></div>`:""}
-    </div>
+    </div>`);
 
-    <div class="sec-h">Notifications</div>
-    <div class="admin-card">
+  h+=sec("notif","ti-bell","Notifications", notifOn?"Matter alerts on":"Matter alerts off", `
+    <div>
       <div class="stg-row">
         <div><div class="stg-label">Matter-reaching alerts</div>
           <div class="stg-sub">Browser notification when a tracked matter is about to reach, while the app is open</div></div>
         <button class="stg-switch" id="st_notifToggle" type="button" aria-label="Toggle matter-reaching alerts"></button>
       </div>
-    </div>
+    </div>`);
 
-    <div class="sec-h">Security</div>
-    <div class="admin-card">
+  h+=sec("sec","ti-lock","Security", pinOn?"PIN on · password":"Password", `
+    <div>
       <div class="stg-row" style="margin-bottom:${pinOn?"12px":"0"}">
         <div><div class="stg-label">Unlock with a PIN</div>
           <div class="stg-sub">${pinOn?"On for this device — 4 digits instead of your password.":"Skip typing your password on this device. Your password is still needed on a new one."}</div></div>
@@ -1950,11 +2312,17 @@ function renderSettings(){
       <label class="am-fld">New password<input id="st_newPass" type="password" autocomplete="new-password" placeholder="at least 6 characters"></label>
       <button class="sh-btn" id="st_savePass">Update password</button>
       <div class="am-err" id="st_passMsg"></div>
-    </div>
+      <div class="stg-sub" style="margin-top:12px">Don't remember your current password? We'll email you a reset link instead.</div>
+      <button class="sh-btn ghost2" id="st_resetMail"><i class="ti ti-mail"></i> Email me a reset link</button>
+      <div class="am-err" id="st_resetMsg"></div>
+    </div>`);
 
-    <div class="sec-h">Account</div>
+  h+=`<div class="sec-h">Account</div>
     <button class="big-btn" id="st_signout"><i class="ti ti-logout"></i> Sign out</button>`;
   $("main").innerHTML=h;
+  // one section open at a time
+  $("main").querySelectorAll("[data-sec]").forEach(b=>b.onclick=()=>{
+    stgOpen = stgOpen===b.dataset.sec ? "" : b.dataset.sec; renderSettings(); });
   joinNotice="";
   wireOrgSettings();
   wireSecuritySettings();
@@ -2059,6 +2427,15 @@ function wireSecuritySettings(){
     else startPinSetup();
   };
   const cpn=$("st_changePin"); if(cpn) cpn.onclick=startPinSetup;
+  // the way out when you simply don't remember the current password
+  const rm=$("st_resetMail");
+  if(rm) rm.onclick=async()=>{
+    const m=$("st_resetMsg"); m.style.color=""; m.textContent="Sending…"; rm.disabled=true;
+    try{ await auth.resetPassword(me.email);
+      m.style.color="var(--later)"; m.textContent="Reset link sent to "+me.email+". Open it on this device to set a new password."; }
+    catch(e){ m.textContent=e.message||"Couldn't send the reset email."; }
+    rm.disabled=false;
+  };
   const sp=$("st_savePass");
   if(sp) sp.onclick=async()=>{
     const cur=$("st_curPass").value, next=$("st_newPass").value, m=$("st_passMsg");
@@ -2161,9 +2538,10 @@ function boot(user){
   unsub.forEach(u=>u&&u()); unsub=[]; if(userDocUnsub){userDocUnsub();userDocUnsub=null;}
   if(threadUnsub){threadUnsub();threadUnsub=null;} if(peerUnsub){peerUnsub();peerUnsub=null;}
   if(adminUsersUnsub){adminUsersUnsub();adminUsersUnsub=null;} if(adminCodeUnsub){adminCodeUnsub();adminCodeUnsub=null;}
-  if(chatUnsub){chatUnsub();chatUnsub=null;}
+  if(chatUnsub){chatUnsub();chatUnsub=null;} if(chatReadUnsub){chatReadUnsub();chatReadUnsub=null;} if(extUnsub){extUnsub();extUnsub=null;}
   links=[];linksOut=[];linksIn=[];collabOpen=null;linkMsgs=[];peerBoardUid=null;peerBoardName="";peerMatters=[];linkFound=null;
-  chatMsgs=[]; chatChannel="team"; chatChannelPicked=false;
+  chatMsgs=[]; extMsgs=[]; chatChannel="team"; chatChannelPicked=false; chatReads={}; _chatStick=true;
+  boardView="mine"; mineView="mine";
   booted=false;
   if(!user){
     me=null; watchOrg(null); _watchedOrgId=undefined;
@@ -2182,7 +2560,6 @@ function boot(user){
     applyGate();
   });
 }
-loadChatRead();
 auth.onChange(boot);
 $("pwSignOut").onclick=()=>auth.signOut();
 $("pwGo").onclick=async()=>{
@@ -2439,13 +2816,18 @@ function seedDemo(db){
   db.set("usermatters/u_ch_jr",{matters:[{id:"c2",court:"5",item:"32",title:"Rao v. State of Maharashtra",listType:"Miscellaneous"},
     {id:"c3",court:"1",item:"41",title:"Kapoor v. SEBI",listType:"Miscellaneous"}]});
   db.set("usermatters/u_ch_clerk",{matters:[{id:"c4",court:"9",item:"3",title:"Filing — Sharma v. MCD",listType:"Miscellaneous"}]});
+  // Rohan (an individual briefing lawyer) is collaborating with Sameer, who runs a chamber —
+  // this is the case that exercises "message the senior, or message his whole office".
+  db.set("links/u_demo_u_ch_owner",{fromUid:"u_demo",fromName:"Rohan Mehta",fromDesig:"Advocate-on-Record",
+    toUid:"u_ch_owner",toName:"Sameer Deshmukh",toDesig:"Senior Advocate",status:"approved",at:db.now(),
+    matters:[{court:"1",item:"14",date:todayISO(),listType:"Miscellaneous",party:"Petitioner",title:"Deshmukh v. Union of India",bench:"",aor:""}]});
   // a pre-approved colleague who hasn't registered yet (email allow-list path)
   db.set("orginvites/anita@chambers.in",{orgId:"o_chamber",orgName:"Chambers of S. Deshmukh",addedBy:"u_ch_owner",at:db.now()});
   // some chat history across all three thread kinds
-  db.set("orgmsgs/g1",{orgId:"o_chamber",channel:"team",by:"u_ch_jr",byName:"Nikhil Rao",text:"Court 5 is running fast today — item 28 already.",at:{_t:Date.now()-3600000}});
-  db.set("orgmsgs/g2",{orgId:"o_chamber",channel:"team",by:"u_ch_clerk",byName:"Vikas Sharma",text:"Noted. I'll keep the papers ready for 32.",at:{_t:Date.now()-3400000}});
-  db.set("orgmsgs/g3",{orgId:"o_chamber",channel:"all",by:"u_ch_owner",byName:"Sameer Deshmukh",text:"Conference at 4pm today for tomorrow's Regular board.",at:{_t:Date.now()-1800000}});
-  db.set("orgmsgs/g4",{orgId:"o_chamber",channel:"dm:u_ch_clerk_u_ch_jr",members:["u_ch_clerk","u_ch_jr"],by:"u_ch_clerk",byName:"Vikas Sharma",text:"Sir, the AoR signature is pending on the Kapoor matter.",at:{_t:Date.now()-900000}});
+  db.set("orgmsgs/seedmsg1",{orgId:"o_chamber",channel:"team",by:"u_ch_jr",byName:"Nikhil Rao",text:"Court 5 is running fast today — item 28 already.",at:{_t:Date.now()-3600000}});
+  db.set("orgmsgs/seedmsg2",{orgId:"o_chamber",channel:"team",by:"u_ch_clerk",byName:"Vikas Sharma",text:"Noted. I'll keep the papers ready for 32.",at:{_t:Date.now()-3400000}});
+  db.set("orgmsgs/seedmsg3",{orgId:"o_chamber",channel:"all",by:"u_ch_owner",byName:"Sameer Deshmukh",text:"Conference at 4pm today for tomorrow's Regular board.",at:{_t:Date.now()-1800000}});
+  db.set("orgmsgs/seedmsg4",{orgId:"o_chamber",channel:"dm:u_ch_clerk_u_ch_jr",members:["u_ch_clerk","u_ch_jr"],by:"u_ch_clerk",byName:"Vikas Sharma",text:"Sir, the AoR signature is pending on the Kapoor matter.",at:{_t:Date.now()-900000}});
 }
 </script>
 </body>
