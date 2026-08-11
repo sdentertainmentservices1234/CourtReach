@@ -8,11 +8,20 @@ matters by court + item, and CourtReach tells you the moment each one is reachin
 - **`board-engine.js`** — the shared, chamber-agnostic proximity engine (how "N away" is computed).
 
 ## Account types
+Signup is two steps: pick a type, then fill only that type's fields.
 - **Individual** — your own board, your own 30-day trial.
-- **Chamber / office** — one subscription covering everyone. The owner gets an
-  invite code (rotatable) and can pre-approve colleagues by email. Members share
-  **one board** (every member's matters pooled and attributed), the chamber's
-  entitlement, and in-app **chat**.
+- **Organisation** — chambers, law firm, law office or in-house team (the kind is
+  a field, `orgType`; they all want the same thing so they share one door). One
+  subscription covers everyone. The owner gets a rotatable invite code and can
+  pre-approve colleagues by email. Members share **one board** (every member's
+  matters pooled and attributed), the organisation's entitlement, and **chat**.
+- **Join an organisation** — with an invite code, at signup or later.
+
+An individual can join an organisation at any time from Settings (a dismissible
+prompt points there). Two guarantees on that path: they keep whichever
+entitlement is **better**, their own or the organisation's, so joining never
+shortens access; and their pre-existing matters are stamped `personal` first, so
+nothing they entered as an individual is retroactively published to the office.
 
 Chat thread kinds: **Team** (colleagues + staff — the default landing thread),
 **Everyone** (whole chamber, for announcements), **direct messages**, and one
