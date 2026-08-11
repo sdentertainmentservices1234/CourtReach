@@ -134,6 +134,11 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px calc(66px + env(s
 .cf-de2{margin-left:6px}
 .cf-req{flex:none;padding:8px 14px;border-radius:9px;border:none;background:linear-gradient(180deg,#2f8a54,#1e5d37);color:#fff;font-weight:600;font-size:12.5px}
 .cf-state{flex:none;font-size:11px;font-weight:700;color:var(--mut);background:var(--panel2);border-radius:20px;padding:4px 10px}
+.cf-state.ok{color:#1e6b3a;background:#e3f2e8}
+.cf-state.exp{color:#8a5a20;background:#f7ead2}
+.cx-note{flex:none;font-size:12px;font-weight:600;color:var(--mut)}
+.cx-note.exp{color:#a06a1a}
+.cx-lapse{background:#f7ead2;border:1px solid #e6cf9c;color:#6b4e18;border-radius:12px;padding:11px 13px;margin-bottom:10px;font-size:13px;line-height:1.45}
 .cf-miss{color:var(--mut);font-size:13px}
 .cf-ok{color:#1e5d37;background:#dceee2;border-radius:11px;padding:11px 12px;font-size:13px}
 .bavatar2{flex:none;width:40px;height:40px;border-radius:50%;background:var(--navy);color:var(--gold);display:flex;align-items:center;justify-content:center;font-family:Fraunces,serif;font-weight:600;font-size:15px}
@@ -458,6 +463,15 @@ let linkFound=null;   // last user found by phone/email in the Find box
 const linkKey=(a,b)=>a+"_"+b;
 const otherUid = l => (l.fromUid===me?.uid ? l.toUid : l.fromUid);
 const otherName = l => (l.fromUid===me?.uid ? (l.toName||"") : (l.fromName||""));
+// A collaboration approval is good ONLY for the date(s) the request was made for. After
+// that day the connection lapses — to track again you re-request for the new date.
+function linkDates(l){ const ds=[...new Set((((l&&l.matters)||[]).map(m=>m&&m.date).filter(Boolean)))]; return ds.length?ds:(l&&l.date?[l.date]:[]); }
+function linkState(l){ if(!l||l.status!=="approved") return (l&&l.status)||"none";
+  const ds=linkDates(l); if(!ds.length) return "active";                 // legacy link, no dates → stays active
+  const t=todayISO(); if(ds.includes(t)) return "active"; if(ds.some(d=>d>t)) return "scheduled"; return "expired"; }
+const linkActive = l => linkState(l)==="active";
+const linkSoonDate = l => { const t=todayISO(), ds=linkDates(l); return ds.filter(d=>d>=t).sort()[0] || ds.sort().slice(-1)[0] || null; };
+const fmtDay = d => { try{ return new Date(d+"T00:00:00").toLocaleDateString('en-GB',{day:'numeric',month:'short'}); }catch(e){ return d; } };
 
 const boardByCourt = () => { const m={}; board.forEach(c=>{ if(c.court && !m[c.court]) m[c.court]=c; }); return m; };
 const myMatters = () => (myOwn||[]).filter(m=>m.court&&m.item&&isCourtroom(m.court))
@@ -795,9 +809,10 @@ function openThread(id){ collabOpen=id;
 function closeThread(){ collabOpen=null; if(threadUnsub){threadUnsub();threadUnsub=null;} linkMsgs=[]; renderCollab(); }
 async function sendLinkMsg(id){ const ta=$("cl_ta"); const text=(ta?ta.value:"").trim(); if(ta) ta.value=""; if(!text) return;
   try{ await db.add("linkmsgs",{linkId:id, by:me.uid, name:me.name||"", text, at:db.now()}); }catch(e){} }
-function viewPeerBoard(link){ peerBoardUid=otherUid(link); peerBoardName=otherName(link)||"Colleague"; peerMatters=[];
-  // MY case(s) with this person (from the collaboration request) — flagged on their board so I find mine fast
-  peerLinkMatters=(link.matters||[]).filter(m=>m&&m.court&&m.item);
+function viewPeerBoard(link){ if(!linkActive(link)) return;   // permission is scoped to the day it was sought for
+  peerBoardUid=otherUid(link); peerBoardName=otherName(link)||"Colleague"; peerMatters=[];
+  // MY case(s) with this person for TODAY — flagged on their board so I find mine fast
+  peerLinkMatters=(link.matters||[]).filter(m=>m&&m.court&&m.item&&(!m.date||m.date===todayISO()));
   if(peerUnsub){peerUnsub();}
   peerUnsub=db.watchDoc("usermatters/"+peerBoardUid, d=>{ peerMatters=(d&&d.matters)||[]; if(curTab==="board") renderBoard(); });
   setTab("board");
@@ -819,10 +834,13 @@ function renderCollab(){
   const conns=links.filter(l=>l.status==="approved");
   h+=`<div class="sec-h" style="margin-top:${incoming.length?16:18}px">Connections${conns.length?` · ${conns.length}`:""}</div>`;
   if(!conns.length) h+=`<div class="cf-miss" style="border:1px dashed var(--line);border-radius:12px;padding:16px;text-align:center">No connections yet — find a colleague by phone or email above.</div>`;
-  else h+=conns.map(l=>{ const nm=otherName(l);
+  else h+=conns.map(l=>{ const nm=otherName(l); const st=linkState(l), d=linkSoonDate(l);
+    const badge = st==="active" ? `<span class="cf-state ok">Today</span>`
+      : st==="scheduled" ? `<span class="cf-state">${esc(fmtDay(d))}</span>`
+      : `<span class="cf-state exp">Expired</span>`;
     return `<div class="cx-card cx-conn" data-open="${esc(l.id)}"><span class="bavatar2">${esc(initials(nm))}</span>
       <div style="flex:1;min-width:0"><div class="cf-nm">${esc(nm)}</div><div class="cf-de">${esc(l.fromUid===me.uid?(l.toDesig||""):(l.fromDesig||""))}</div></div>
-      <i class="ti ti-chevron-right" style="color:var(--mut)"></i></div>`; }).join("");
+      ${badge}<i class="ti ti-chevron-right" style="color:var(--mut)"></i></div>`; }).join("");
   const outPend=links.filter(l=>l.status==="pending" && l.fromUid===me.uid);
   if(outPend.length){ h+=`<div class="sec-h" style="margin-top:16px">Requests sent</div>`;
     h+=outPend.map(l=>`<div class="cx-card"><div class="brow"><span class="bval">${esc(l.toName)}</span><span class="cf-state">Pending</span></div></div>`).join(""); }
@@ -835,15 +853,27 @@ function renderCollab(){
 function renderThread(id){
   const l=links.find(x=>x.id===id); if(!l){ collabOpen=null; return renderCollab(); }
   const nm=otherName(l), desig=l.fromUid===me.uid?(l.toDesig||""):(l.fromDesig||"");
+  const st=linkState(l), iAmReq=l.fromUid===me.uid, d=linkSoonDate(l);
+  // The "track their board" control is day-scoped: only live on the permitted date.
+  const boardCtl = st==="active" ? `<button class="cx-vb" id="cl_board"><i class="ti ti-layout-grid"></i> Their board</button>`
+    : st==="scheduled" ? `<span class="cx-note">Tracking opens ${esc(fmtDay(d))}</span>`
+    : `<span class="cx-note exp">Tracking expired</span>`;
+  const lapsed = (st==="expired"||st==="scheduled") && iAmReq
+    ? `<div class="cx-lapse">${st==="expired"
+        ? `This permission was for <b>${esc(fmtDay(d))}</b> — tracking is one day only.`
+        : `Approved for <b>${esc(fmtDay(d))}</b>; tracking opens that day.`}
+        <button class="sh-btn ghost2" id="cl_rereq" style="margin-top:8px"><i class="ti ti-plus"></i> Request again for another date</button></div>` : "";
   $("main").innerHTML=`<div class="cwrap"><button class="bback" id="cl_back"><i class="ti ti-chevron-left"></i> Connections</button>
     <div class="cx-head"><span class="bavatar2">${esc(initials(nm))}</span><div style="flex:1;min-width:0"><div class="cf-nm">${esc(nm)}</div><div class="cf-de">${esc(desig)}</div></div>
-      <button class="cx-vb" id="cl_board"><i class="ti ti-layout-grid"></i> Their board</button></div>
+      ${boardCtl}</div>
+    ${lapsed}
     <div class="bthread" id="cl_thread">${linkMsgs.length? linkMsgs.map(m=>{ const mine=m.by===me.uid;
         return `<div class="bbub ${mine?"me":"them"}">${mine?"":`<span class="bn">${esc(m.name||"")}</span>`}<span>${esc(m.text)}</span><span class="bt">${esc(clockIST(tsMs(m.at)))}</span></div>`; }).join("")
         : `<div class="bsub" style="text-align:center;padding:16px">No messages yet — say hello.</div>`}</div>
     <div class="bcompose"><textarea id="cl_ta" rows="1" placeholder="Message ${esc(nm)}…"></textarea><button class="bsend" id="cl_send"><i class="ti ti-send"></i></button></div></div>`;
   $("cl_back").onclick=closeThread;
-  $("cl_board").onclick=()=>viewPeerBoard(l);
+  const cb=$("cl_board"); if(cb) cb.onclick=()=>viewPeerBoard(l);
+  const rr=$("cl_rereq"); if(rr) rr.onclick=()=>requestModal({id:otherUid(l), name:nm, designation:(iAmReq?(l.toDesig||""):(l.fromDesig||""))});
   $("cl_send").onclick=()=>sendLinkMsg(id);
   $("cl_ta").onkeydown=e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); sendLinkMsg(id); } };
   const t=$("cl_thread"); if(t) t.scrollTop=t.scrollHeight;
@@ -888,7 +918,7 @@ $("lgPass").addEventListener("keydown",e=>{ if(e.key==="Enter") $("lgGo").click(
 $("lgReset").onclick=async()=>{ const em=$("lgEmail").value.trim(); if(!em){ $("lgErr").textContent="Enter your email first."; return; }
   try{ await auth.resetPassword(em); $("lgErr").textContent="Reset link sent to "+em; }catch(e){ $("lgErr").textContent=e.message||"Could not send."; } };
 $("lgToReg").onclick=()=>{ $("signinForm").classList.add("hidden"); $("regForm").classList.remove("hidden"); $("lgSub").textContent="Create your account"; };
-$("lgToSignin").onclick=()=>{ $("regForm").classList.add("hidden"); $("signinForm").classList.remove("hidden"); $("lgSub").textContent="Track your matters on the live court board"; };
+$("lgToSignin").onclick=()=>{ $("regForm").classList.add("hidden"); $("signinForm").classList.remove("hidden"); $("lgSub").textContent="Track your cases in real time with a customised display board"; };
 $("rgGo").onclick=async()=>{ $("rgErr").textContent="";
   const name=$("rgName").value.trim(), phone=$("rgPhone").value.replace(/\D/g,""), email=$("rgEmail").value.trim(),
         designation=$("rgDesig").value, pass=$("rgPass").value;
