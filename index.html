@@ -370,6 +370,7 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px 12px;-webkit-over
 .cm-mine-s.passed,.cm-mine-s.idle{color:#5a6672;background:var(--panel2)}
 .big-btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:13px;border-radius:12px;
   border:none;background:linear-gradient(180deg,#1c242e,#12171e);color:#fff;font-weight:600;font-size:14px;margin-bottom:14px}
+.big-btn.danger{background:linear-gradient(180deg,#c1362b,#8f2820)}
 /* admin — trial/subscription overrides + shared access code (admin-only tab) */
 .admin-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 15px;margin-bottom:14px}
 .admin-code-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
@@ -416,11 +417,18 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px 12px;-webkit-over
 .stg-switch::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;
   border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .15s}
 .stg-switch.on::after{transform:translateX(18px)}
+/* Admin — Individuals / Organisations / Platform, as three tabs (viewStrip, same pattern as
+   My cases and Collaborate) rather than one endless stacked scroll (owner: "polish the admin
+   tab. It looks disorganised and crude. Make it elegant and convenient to navigate"). */
 .admin-user{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:8px}
-.admin-user-top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.admin-user-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.admin-av{flex:none;width:36px;height:36px;font-size:13px}
+.admin-av.org{background:var(--gold);color:var(--navy);font-size:16px}
+.admin-user-id{flex:1;min-width:0}
 .admin-user-name{font-weight:600;font-size:14px;color:var(--ink)}
-.admin-user-email{font-size:12px;color:var(--mut);margin-top:1px}
-.admin-ent{flex:none;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;border-radius:20px;padding:3px 9px;white-space:nowrap}
+.admin-sn{color:var(--mut);font-weight:700}
+.admin-user-email{font-size:12px;color:var(--mut);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.admin-ent{flex:none;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;border-radius:20px;padding:3px 9px;white-space:nowrap;margin-left:auto}
 .admin-ent.trial{color:#1e6b3a;background:#e3f2e8}
 .admin-ent.expired{color:#fff;background:var(--now)}
 .admin-ent.comp{color:#7a4f0d;background:#f8efd8}
@@ -429,8 +437,8 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px 12px;-webkit-over
 .admin-actions button{flex:none;font-size:12px;font-weight:600;padding:6px 10px;border-radius:8px;border:1px solid var(--line);
   background:var(--panel2);color:var(--ink)}
 .admin-actions button.danger{color:var(--now);border-color:#f2c9c4}
-/* Admin catalogue: organisations grouped by entity type, each a card holding its own
-   registered-persons list — see the comment above renderAdmin(). */
+/* Organisations grouped by entity type, each a card holding its own registered-persons
+   list — see the comment above renderAdmin(). */
 .admin-orgtype-h{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);margin:14px 2px 6px}
 .admin-org{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px 14px;margin-bottom:12px}
 .admin-org-members{margin-top:11px;padding-top:11px;border-top:1px dashed var(--line)}
@@ -813,11 +821,13 @@ main#main.chatmode{overflow:hidden;display:flex;flex-direction:column}
       </svg>
     </div>
     <h1 id="pwTitle">Trial ended</h1>
-    <div class="sub" id="pwSub">Your 30-day free trial of CourtReach has ended. Subscriptions are launching soon — if you have an access code, enter it below.</div>
-    <label>Access code</label>
-    <input id="pwCode" placeholder="Enter code" autocapitalize="characters">
-    <button class="btn" id="pwGo">Unlock</button>
-    <div class="err" id="pwErr"></div>
+    <div class="sub" id="pwSub">Your free trial has ended. Subscriptions are launching soon — if you have an access code, enter it below.</div>
+    <div id="pwCodeWrap">
+      <label>Access code</label>
+      <input id="pwCode" placeholder="Enter code" autocapitalize="characters">
+      <button class="btn" id="pwGo">Unlock</button>
+      <div class="err" id="pwErr"></div>
+    </div>
     <div class="lg-alt"><button type="button" id="pwSignOut">Sign out</button></div>
   </div>
 </div>
@@ -953,6 +963,28 @@ function lookupItem(date,type,court,item){
 }
 
 const $ = id => document.getElementById(id);
+/* iOS standalone-launch viewport fix — the actual footer-gap bug.
+   The Diagnostics panel (Settings) caught it: on a 393pt-wide phone (iPhone 14 Pro/15/15
+   Pro/16 — all 393x852 points), window.innerHeight, visualViewport.height and
+   documentElement.clientHeight ALL agreed on 793 — 59pt short of the device's real 852pt
+   screen. Every earlier fix here compared #app/body against window.innerHeight and found
+   them equal, which is exactly why they didn't help: innerHeight itself was already wrong.
+   That's a known WebKit quirk specific to a fresh standalone (Home Screen icon) launch —
+   with no browser chrome at all, there's no "toolbar collapses" event to make the layout
+   viewport recompute up to the true full screen, so it can initialise short and just stay
+   that way. Re-measuring on load and re-applying #app's height explicitly (inline style
+   beats the CSS dvh rule) self-heals it, and doing the same on every resize/orientation/
+   visibility change keeps it correct instead of trusting one snapshot to be right forever. */
+function fitAppHeight(){
+  const el=$("app"); if(!el) return;
+  const h=(window.visualViewport && window.visualViewport.height) || window.innerHeight;
+  if(h>0) el.style.height=h+"px";
+}
+fitAppHeight();
+window.addEventListener("resize", fitAppHeight);
+window.addEventListener("orientationchange", ()=>setTimeout(fitAppHeight,60));
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) setTimeout(fitAppHeight,60); });
+if(window.visualViewport) window.visualViewport.addEventListener("resize", fitAppHeight);
 const esc = s => String(s ?? "").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const todayISO = () => new Date().toLocaleDateString('en-CA');
 const nowMinsIST = () => { try{ const t=new Date().toLocaleTimeString('en-GB',{timeZone:'Asia/Kolkata',hour12:false,hour:'2-digit',minute:'2-digit'}); const [h,m]=t.split(':').map(Number); return h*60+m; }catch(e){ const d=new Date(); return d.getHours()*60+d.getMinutes(); } };
@@ -1152,11 +1184,13 @@ if(DEMO){
     signIn(){ cur={uid:"u_demo",email:"rohan@example.in"}; setTimeout(()=>authCb&&authCb(cur),0); return Promise.resolve(); },
     signUp(email,pass,reg){ pendingReg=reg; cur={uid:"u_"+(idc++),email}; setTimeout(()=>authCb&&authCb(cur),0); return Promise.resolve(); },
     changePassword(){ return Promise.resolve(); },
+    reauthenticate(){ return Promise.resolve(); },
+    deleteAccount(){ cur=null; authCb&&authCb(null); return Promise.resolve(); },
     resetPassword(){return Promise.resolve();}, signOut(){cur=null;authCb&&authCb(null);} };
   window.__demoSetUser=uid=>{ const u=C("users").get(uid)||{}; cur={uid,email:u.email||""}; authCb&&authCb(cur); };
   seedDemo(db);
 } else {
-  const [{initializeApp},{getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,onAuthStateChanged,signOut,sendPasswordResetEmail,updatePassword,EmailAuthProvider,reauthenticateWithCredential},
+  const [{initializeApp},{getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,onAuthStateChanged,signOut,sendPasswordResetEmail,updatePassword,EmailAuthProvider,reauthenticateWithCredential,deleteUser},
     {getFirestore,collection,doc,getDoc,setDoc,addDoc,updateDoc,deleteDoc,onSnapshot,query,where,getDocs}] = await Promise.all([
       import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
       import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"),
@@ -1186,6 +1220,17 @@ if(DEMO){
       await reauthenticateWithCredential(u, EmailAuthProvider.credential(u.email, currentPass));
       await updatePassword(u, newPass);
     },
+    // Split from deleteAccount() below so the caller can wipe Firestore data in between —
+    // once deleteAccount() actually succeeds, request.auth goes null immediately and any
+    // further write (even to your own docs) would be rejected by the rules.
+    async reauthenticate(currentPass){
+      const u=fa.currentUser; if(!u) throw new Error("Not signed in.");
+      await reauthenticateWithCredential(u, EmailAuthProvider.credential(u.email, currentPass));
+    },
+    async deleteAccount(){
+      const u=fa.currentUser; if(!u) throw new Error("Not signed in.");
+      await deleteUser(u);
+    },
     signOut(){return signOut(fa);} };
 }
 
@@ -1198,6 +1243,7 @@ let me=null, myOwn=[], board=[], boardAt=0, boardErr=null, curTab="board";
 // exists outside today — see renderDateBoard).
 let boardDate=todayISO();
 let adminUsers=[], adminOrgs=[], adminAccessCode=null, adminUsersUnsub=null, adminOrgsUnsub=null, adminCodeUnsub=null, adminSearch="";
+let adminView="individuals";   // "individuals" | "orgs" | "settings" — see renderAdmin()
 // Admin-set free-trial length. null/unset = unlimited (default right now — owner: "make it
 // free trial for everyone who registers, don't have any time limit... I want an option to
 // impose a time limit for free trial after some time, reserve that power to admin"). Read by
@@ -2132,7 +2178,11 @@ function adminUserCard(u, n){
   const el=entLabel(u), hasOv=!!u.entitlementOverride;
   return `<div class="admin-user">
     <div class="admin-user-top">
-      <div><div class="admin-user-name">${n?n+". ":""}${esc(u.name||"—")}</div><div class="admin-user-email">${esc(u.email||u.id)}</div></div>
+      <span class="bavatar2 admin-av">${esc(initials(u.name||u.email||"?"))}</span>
+      <div class="admin-user-id">
+        <div class="admin-user-name">${n?`<span class="admin-sn">${n}.</span> `:""}${esc(u.name||"—")}</div>
+        <div class="admin-user-email">${esc(u.email||u.id)}</div>
+      </div>
       <span class="admin-ent ${el.cls}">${esc(el.text)}</span>
     </div>
     <div class="case-meta">${tsMs(u.createdAt)?"Joined "+msToDay(tsMs(u.createdAt)):"Join date unknown (legacy account)"}${u.designation?" · "+esc(u.designation):""}</div>
@@ -2140,6 +2190,7 @@ function adminUserCard(u, n){
       <button data-act="comp" data-kind="user" data-uid="${esc(u.id)}">Grant comp</button>
       <button data-act="extend" data-kind="user" data-uid="${esc(u.id)}">Extend…</button>
       ${hasOv?`<button class="danger" data-act="revoke" data-kind="user" data-uid="${esc(u.id)}">Revoke override</button>`:""}
+      <button class="danger" data-act="delete" data-kind="user" data-uid="${esc(u.id)}">Delete account</button>
     </div>
   </div>`;
 }
@@ -2151,95 +2202,154 @@ function adminUserCard(u, n){
 // (every users/{uid} with orgId === that org's id, owner included). Every list is numbered
 // from 1 in registration order, and numbering restarts in each separate list — that's what
 // "separate" means here, not one running count across the whole panel.
+//
+// The panel itself is three TABS (viewStrip — same pattern as My cases/Collaborate) rather
+// than one long stacked scroll (owner: "polish the admin tab, it looks disorganised and
+// crude... elegant and convenient to navigate") — Individuals, Organisations, and Platform
+// (the trial-length + access-code controls, which used to sit above everything else on
+// every visit whether or not that's what you came in to touch).
 function renderAdmin(){
   if(!isAdminUser()){ $("main").innerHTML=`<div class="empty">Not authorized.</div>`; return; }
   const q=adminSearch.trim().toLowerCase();
   const matchUser = u => !q || (u.name||"").toLowerCase().includes(q) || (u.email||"").toLowerCase().includes(q);
   const byJoinAsc = (a,b) => tsMs(a.createdAt)-tsMs(b.createdAt);
 
-  const individuals=(adminUsers||[]).filter(u=>!u.orgId).filter(matchUser).sort(byJoinAsc);
+  // A tombstoned account (adminDeleteAccount()) has no orgId left, so without this it would
+  // reappear right here as an ordinary "individual" — with a fresh trial badge, since it has
+  // no createdAt either — instead of reading as gone. Deleted means gone from the catalogue.
+  const notDeleted = u => !u.deleted;
+  const individuals=(adminUsers||[]).filter(u=>!u.orgId).filter(notDeleted).filter(matchUser).sort(byJoinAsc);
 
   const orgsByType={};
   (adminOrgs||[]).slice().sort(byJoinAsc).forEach(o=>{
-    const members=(adminUsers||[]).filter(u=>u.orgId===o.id).sort(byJoinAsc);
+    const members=(adminUsers||[]).filter(u=>u.orgId===o.id).filter(notDeleted).sort(byJoinAsc);
     if(q && !((o.name||"").toLowerCase().includes(q) || members.some(matchUser))) return;   // org itself, or any of its people, matches
     const t=o.orgType||"chamber";
     (orgsByType[t]=orgsByType[t]||[]).push({org:o, members});
   });
   const orgTypeKeys=Object.keys(ORG_TYPE_LABELS).filter(t=>(orgsByType[t]||[]).length);
   const orgTotal=orgTypeKeys.reduce((n,t)=>n+orgsByType[t].length,0);
+  const allIndividualsCount=(adminUsers||[]).filter(u=>!u.orgId).filter(notDeleted).length;
 
-  let h=`<div class="admin-card">
-    <div class="sec-h" style="margin:0">Free trial length</div>
-    <div class="case-meta" style="margin:2px 0 8px">${trialLimitDays
-      ? `Every new signup gets <b>${trialLimitDays} day${trialLimitDays===1?"":"s"}</b> from registration, then the paywall.`
-      : `No limit right now — every signup gets free trial access with no countdown. Set a number of days below whenever you're ready to start timing it; leave it blank and save to go back to unlimited.`}</div>
-    <div class="admin-code-row">
-      <input id="tl_days" inputmode="numeric" placeholder="Leave blank = unlimited" value="${trialLimitDays||""}">
-      <button id="tl_save">Save</button>
+  const views=[
+    {id:"individuals", icon:"ti-user", label:"Individuals · "+individuals.length},
+    {id:"orgs", icon:"ti-building-bank", label:"Organisations · "+orgTotal},
+    {id:"settings", icon:"ti-adjustments", label:"Platform"},
+  ];
+  let h=viewStrip(views, adminView, "data-av");
+
+  if(adminView==="settings"){
+    h+=`<div class="admin-card">
+      <div class="sec-h" style="margin:0">Free trial length</div>
+      <div class="case-meta" style="margin:2px 0 8px">${trialLimitDays
+        ? `Every new signup gets <b>${trialLimitDays} day${trialLimitDays===1?"":"s"}</b> from registration, then the paywall.`
+        : `No limit right now — every signup gets free trial access with no countdown. Set a number of days below whenever you're ready to start timing it; leave it blank and save to go back to unlimited.`}</div>
+      <div class="admin-code-row">
+        <input id="tl_days" inputmode="numeric" placeholder="Leave blank = unlimited" value="${trialLimitDays||""}">
+        <button id="tl_save">Save</button>
+      </div>
     </div>
-  </div>
-  <div class="admin-card">
-    <div class="sec-h" style="margin:0">Shared access code</div>
-    <div class="admin-code-row">
-      <input id="ac_code" placeholder="e.g. COURTREACH2026" value="${esc(adminAccessCode?.code||"")}" style="text-transform:uppercase">
-      <label class="ac-active"><input type="checkbox" id="ac_active" ${adminAccessCode?.active!==false?"checked":""}> Active</label>
-      <button id="ac_save">Save</button>
-    </div>
-    <div class="case-meta" style="margin-top:8px">Anyone who enters this code on the trial-ended screen gets free (comp) access. Rotate it any time — old codes stop working the moment you save a new one.</div>
-  </div>
-  <input id="au_search" class="admin-search" placeholder="Search name or email" value="${esc(adminSearch)}">
-
-  <div class="sec-h">Individuals · ${individuals.length}</div>
-  <div id="au_list">${individuals.length ? individuals.map((u,i)=>adminUserCard(u,i+1)).join("") : `<div class="empty">No individuals match.</div>`}</div>
-
-  <div class="sec-h">Organisations · ${orgTotal}</div>`;
-  if(!orgTotal) h+=`<div class="empty">No organisations match.</div>`;
-  orgTypeKeys.forEach(t=>{
-    h+=`<div class="admin-orgtype-h">${esc(ORG_TYPE_LABELS[t])} · ${orgsByType[t].length}</div>`;
-    h+=orgsByType[t].map(({org,members},i)=>{
-      const el=entLabel(org), hasOv=!!org.entitlementOverride;
-      return `<div class="admin-org">
-        <div class="admin-user-top">
-          <div><div class="admin-user-name">${i+1}. ${esc(org.name||"—")}</div>
-            <div class="admin-user-email">${members.length} member${members.length===1?"":"s"}</div></div>
-          <span class="admin-ent ${el.cls}">${esc(el.text)}</span>
-        </div>
-        <div class="case-meta">${tsMs(org.createdAt)?"Created "+msToDay(tsMs(org.createdAt)):"Creation date unknown"}</div>
-        <div class="admin-actions">
-          <button data-act="comp" data-kind="org" data-uid="${esc(org.id)}">Grant comp</button>
-          <button data-act="extend" data-kind="org" data-uid="${esc(org.id)}">Extend…</button>
-          ${hasOv?`<button class="danger" data-act="revoke" data-kind="org" data-uid="${esc(org.id)}">Revoke override</button>`:""}
-        </div>
-        <div class="admin-org-members">
-          <div class="case-meta" style="margin-bottom:6px">Registered · ${members.length}</div>
-          ${members.length ? members.map((u,mi)=>adminUserCard(u,mi+1)).join("") : `<div class="empty">No one registered yet.</div>`}
-        </div>
-      </div>`;
-    }).join("");
-  });
+    <div class="admin-card">
+      <div class="sec-h" style="margin:0">Shared access code</div>
+      <div class="admin-code-row">
+        <input id="ac_code" placeholder="e.g. COURTREACH2026" value="${esc(adminAccessCode?.code||"")}" style="text-transform:uppercase">
+        <label class="ac-active"><input type="checkbox" id="ac_active" ${adminAccessCode?.active!==false?"checked":""}> Active</label>
+        <button id="ac_save">Save</button>
+      </div>
+      <div class="case-meta" style="margin-top:8px">Anyone who enters this code on the trial-ended screen gets free (comp) access. Rotate it any time — old codes stop working the moment you save a new one.</div>
+    </div>`;
+  } else if(adminView==="individuals"){
+    h+=`<input id="au_search" class="admin-search" placeholder="Search name or email" value="${esc(adminSearch)}">
+    <div id="au_list">${individuals.length ? individuals.map((u,i)=>adminUserCard(u,i+1)).join("")
+      : `<div class="empty">${q?"No individuals match.":"No individual accounts yet."}</div>`}</div>
+    ${q?`<div class="case-meta">${individuals.length} of ${allIndividualsCount}</div>`:""}`;
+  } else {   // orgs
+    h+=`<input id="au_search" class="admin-search" placeholder="Search organisation, name or email" value="${esc(adminSearch)}">`;
+    if(!orgTotal) h+=`<div class="empty">${q?"No organisations match.":"No organisations yet."}</div>`;
+    orgTypeKeys.forEach(t=>{
+      h+=`<div class="admin-orgtype-h">${esc(ORG_TYPE_LABELS[t])} · ${orgsByType[t].length}</div>`;
+      h+=orgsByType[t].map(({org,members},i)=>{
+        const el=entLabel(org), hasOv=!!org.entitlementOverride;
+        return `<div class="admin-org">
+          <div class="admin-user-top">
+            <span class="bavatar2 admin-av org"><i class="ti ti-building-bank"></i></span>
+            <div class="admin-user-id">
+              <div class="admin-user-name"><span class="admin-sn">${i+1}.</span> ${esc(org.name||"—")}</div>
+              <div class="admin-user-email">${members.length} member${members.length===1?"":"s"}</div>
+            </div>
+            <span class="admin-ent ${el.cls}">${esc(el.text)}</span>
+          </div>
+          <div class="case-meta">${tsMs(org.createdAt)?"Created "+msToDay(tsMs(org.createdAt)):"Creation date unknown"}</div>
+          <div class="admin-actions">
+            <button data-act="comp" data-kind="org" data-uid="${esc(org.id)}">Grant comp</button>
+            <button data-act="extend" data-kind="org" data-uid="${esc(org.id)}">Extend…</button>
+            ${hasOv?`<button class="danger" data-act="revoke" data-kind="org" data-uid="${esc(org.id)}">Revoke override</button>`:""}
+          </div>
+          <div class="admin-org-members">
+            <div class="case-meta" style="margin-bottom:6px">Registered · ${members.length}</div>
+            ${members.length ? members.map((u,mi)=>adminUserCard(u,mi+1)).join("") : `<div class="empty">No one registered yet.</div>`}
+          </div>
+        </div>`;
+      }).join("");
+    });
+  }
   $("main").innerHTML=h;
 
-  $("tl_save").onclick=async()=>{
+  $("main").querySelectorAll("[data-av]").forEach(b=>b.onclick=()=>{ adminView=b.dataset.av; renderAdmin(); });
+  const tl=$("tl_save"); if(tl) tl.onclick=async()=>{
     const raw=($("tl_days").value||"").trim();
     const n=raw?parseInt(raw,10):null;
     if(raw && !(n>0)){ alert("Enter a positive number of days, or leave blank for unlimited."); return; }
     await db.set("config/trialLimit", {days:n, updatedAt:db.now(), updatedBy:me.email||me.uid}, true);
   };
-  $("ac_save").onclick=async()=>{
+  const ac=$("ac_save"); if(ac) ac.onclick=async()=>{
     const code=($("ac_code").value||"").trim().toUpperCase();
     if(!code){ alert("Enter a code first."); return; }
     await db.set("config/accessCode", {code, active:$("ac_active").checked, updatedAt:db.now(), updatedBy:me.email||me.uid}, true);
   };
-  $("au_search").oninput=e=>{ adminSearch=e.target.value; renderAdmin(); };
-  $("au_search").focus(); $("au_search").selectionStart=$("au_search").selectionEnd=$("au_search").value.length;
+  const srch=$("au_search");
+  if(srch){
+    srch.oninput=e=>{ adminSearch=e.target.value; renderAdmin(); };
+    srch.focus(); srch.selectionStart=srch.selectionEnd=srch.value.length;
+  }
   $("main").querySelectorAll("[data-act]").forEach(b=>b.onclick=async()=>{
     const uid=b.dataset.uid, act=b.dataset.act, kind=b.dataset.kind||"user";
     const path=(kind==="org"?"orgs/":"users/")+uid;
     if(act==="comp") await db.update(path, {entitlementOverride:{type:"comp", grantedAt:db.now(), grantedBy:me.email||me.uid}});
     else if(act==="extend") extendForm(uid,kind);
     else if(act==="revoke") await db.update(path, {entitlementOverride:null});
+    else if(act==="delete") await adminDeleteAccount(uid);
   });
+}
+// Admin-side account deletion. Unlike self-delete (Settings), the admin client SDK can't
+// remove another person's Firebase Auth credential — only a Cloud Function with the Admin
+// SDK can do that, which this app doesn't have. So this is a tombstone, not a hard delete:
+// their tracked matters are actually removed, and users/{uid} is overwritten (not merged —
+// old name/phone/designation/org membership genuinely gone) down to a `deleted:true` marker.
+// applyGate() checks that marker and blocks sign-in with an "Account removed" screen, so in
+// EFFECT their access and data are gone even though the underlying Auth row technically
+// still exists. ensureUserDoc() only recreates a blank profile when NO doc exists at all —
+// a tombstone still exists, so signing back in can't silently resurrect them.
+async function adminDeleteAccount(uid){
+  // orgId is the owner's uid by construction at creation time (see resolveOrgFor()), but
+  // check ownerUid too rather than assume it — belt and suspenders against any doc where
+  // that ever isn't true (legacy data, a seed fixture, a future migration).
+  if((adminOrgs||[]).some(o=>o.id===uid || o.ownerUid===uid)){
+    alert("This person owns an organisation — delete or hand off the organisation before deleting their account.");
+    return;
+  }
+  const u=(adminUsers||[]).find(x=>x.id===uid);
+  if(!confirm(`Delete ${u?.name||u?.email||uid}'s account? Removes their profile and every matter they've tracked. Their password still works, but the app will show the account as removed if they try to sign back in.`)) return;
+  try{
+    if(u && u.orgId){
+      const org=(adminOrgs||[]).find(o=>o.id===u.orgId);
+      // same invariant as removeMember() in Settings — never leave leaderUid pointing at
+      // someone who's gone
+      if(org && org.leaderUid===uid) await db.set("orgs/"+u.orgId, {leaderUid:org.ownerUid||org.id}, true);
+    }
+    await db.remove("usermatters/"+uid).catch(()=>{});
+    await db.set("users/"+uid, {deleted:true, deletedAt:db.now(), deletedBy:me.email||me.uid, email:u?.email||""}, false);
+  }catch(e){ alert("Couldn't delete that account."); }
 }
 // Extend a user's or organisation's access by a chosen number of days (admin picks the
 // number — presets or free entry). Extends from whichever is LATER: today, or the access
@@ -2775,6 +2885,8 @@ function renderSettings(){
     ? `<button class="big-btn" id="st_lock"><i class="ti ti-lock"></i> Lock</button>
        <button class="case-del" id="st_signout" style="margin-top:12px"><i class="ti ti-logout"></i> Sign out of this device completely</button>`
     : `<button class="big-btn" id="st_signout"><i class="ti ti-logout"></i> Sign out</button>`;
+  h+=`<div class="sec-h" style="margin-top:24px">Danger zone</div>
+      <button class="big-btn danger" id="st_delAcct"><i class="ti ti-user-x"></i> Delete my account</button>`;
   $("main").innerHTML=h;
   // one section open at a time
   $("main").querySelectorAll("[data-sec]").forEach(b=>b.onclick=()=>{
@@ -2786,9 +2898,15 @@ function renderSettings(){
     $("st_diag").textContent=[
       "standalone: "+(window.navigator.standalone===true||matchMedia("(display-mode: standalone)").matches),
       "innerWidth x innerHeight: "+window.innerWidth+" x "+window.innerHeight,
+      // the ground truth the earlier round of diagnostics was missing — the true physical
+      // screen, in points, independent of anything the page itself measures or sets
+      "screen.width x screen.height: "+screen.width+" x "+screen.height,
+      "screen.availHeight: "+screen.availHeight,
+      "devicePixelRatio: "+window.devicePixelRatio,
       "visualViewport height: "+(window.visualViewport?Math.round(window.visualViewport.height):"n/a"),
       "documentElement.clientHeight: "+document.documentElement.clientHeight,
-      "#app height: "+(appRect?Math.round(appRect.height):"n/a"),
+      "#app height (computed): "+(appRect?Math.round(appRect.height):"n/a"),
+      "#app inline style height (fitAppHeight): "+(appEl?appEl.style.height||"(unset)":"n/a"),
       "#app bottom edge: "+(appRect?Math.round(appRect.bottom):"n/a"),
       "body.scrollHeight: "+document.body.scrollHeight,
       "nav padding-bottom: "+(navEl?getComputedStyle(navEl).paddingBottom:"n/a"),
@@ -2842,6 +2960,44 @@ function renderSettings(){
     // salted hash leaks nothing, and it starts working again the moment you sign back in.
     if(hasPinFor(me.uid) && !confirm("Sign out on this device? You'll need your password to get back in — your PIN then works again straight after.")) return;
     auth.signOut();
+  };
+  $("st_delAcct").onclick=deleteMyAccountFlow;
+}
+// Self-service account deletion. An org owner or its senior can't just vanish — the
+// organisation would be left ownerless (owner) or the client can't fix leaderUid on their
+// own doc anyway (only the owner may write orgs/{orgId} — see firestore.rules), so both are
+// blocked here with a clear next step rather than a confusing failed write.
+function deleteMyAccountFlow(){
+  if(isOrgOwner()){
+    alert(`You own ${myOrg?.name||"your organisation"}. Transfer ownership or delete the organisation first — your account can't be deleted while it would leave the organisation without an owner.`);
+    return;
+  }
+  if(isOrgLeader()){
+    alert(`You're set as ${myOrg?.name||"your organisation"}'s senior. Ask the owner to reassign that first, then you can delete your account.`);
+    return;
+  }
+  $("modalRoot").innerHTML=`<div class="ovl" data-close><div class="sheet"><button class="sh-x" data-close>&times;</button>
+    <h2>Delete your account</h2>
+    <div class="sh-sub">This permanently removes your CourtReach profile and every matter you've tracked${inOrg()?", and takes you out of "+esc(myOrg?.name||"your organisation"):""}. It can't be undone.</div>
+    <label class="am-fld">Confirm your password<input id="da_pass" type="password" autocomplete="current-password"></label>
+    <div class="am-err" id="da_err"></div>
+    <button class="big-btn danger" id="da_go" style="margin-top:10px"><i class="ti ti-trash"></i> Permanently delete my account</button>
+  </div></div>`;
+  $("da_pass").focus();
+  $("da_go").onclick=async()=>{
+    const pass=$("da_pass").value;
+    if(!pass){ $("da_err").textContent="Enter your password to confirm."; return; }
+    $("da_go").disabled=true; $("da_err").textContent="";
+    try{
+      await auth.reauthenticate(pass);          // proves it's really them before anything is touched
+      await db.remove("usermatters/"+me.uid).catch(()=>{});
+      await db.remove("users/"+me.uid);
+      await auth.deleteAccount();                // drops the Firebase Auth credential itself
+      closeModal();
+    }catch(e){
+      $("da_err").textContent=(e.code||"").match(/password|credential/) ? "Wrong password." : (e.message||"Couldn't delete your account.");
+      $("da_go").disabled=false;
+    }
   };
 }
 // Settings → chamber block: invite code, pre-approvals, member list, join/leave.
@@ -3011,12 +3167,28 @@ function watchOrg(orgId){
 // org watcher, because for a chamber member the answer depends on the org doc arriving.
 function applyGate(){
   if(!me) return;
+  // An admin-deleted account (tombstoned users/{uid} — see renderAdmin()'s delete action):
+  // no entitlement check even applies, there's nothing left to check. Checked first and
+  // unconditionally, ahead of the trial/paywall gate below.
+  if(me.deleted){
+    $("login").classList.add("hidden"); $("app").classList.add("hidden");
+    $("paywall").classList.remove("hidden");
+    $("pwTitle").textContent="Account removed";
+    $("pwSub").textContent="This CourtReach account was removed by an administrator. Contact them if this wasn't expected.";
+    $("pwCodeWrap").classList.add("hidden");
+    document.body.classList.add("signed-out");
+    stopPolling();
+    return;
+  }
   const admin=isAdminUser(), ent=myEntitlement();
   $("navAdmin").classList.toggle("hidden", !admin);
   $("navChat").classList.toggle("hidden", !inOrg());
   if(!ent.ok){
     $("login").classList.add("hidden"); $("app").classList.add("hidden");
     $("paywall").classList.remove("hidden"); $("pwErr").textContent="";
+    $("pwTitle").textContent="Trial ended";
+    $("pwSub").textContent="Your free trial has ended. Subscriptions are launching soon — if you have an access code, enter it below.";
+    $("pwCodeWrap").classList.remove("hidden");
     document.body.classList.add("signed-out");
     stopPolling();
     return;                                   // don't boot the rest of the app while locked out
@@ -3024,6 +3196,7 @@ function applyGate(){
   if(pinLocked) return;                       // session is real but the device is PIN-locked
   $("login").classList.add("hidden"); $("paywall").classList.add("hidden"); $("app").classList.remove("hidden");
   document.body.classList.remove("signed-out");
+  fitAppHeight();                              // the viewport may have settled to its real size by now
   paintMasthead();
   paintTrialBanner(ent);
   paintJoinBanner();
