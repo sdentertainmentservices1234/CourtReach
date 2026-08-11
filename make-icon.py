@@ -1,45 +1,38 @@
 #!/usr/bin/env python3
-"""Regenerate CourtReach's PWA app icons — v3, a single unified composition
-(owner: "not liking this, come do better... elegant... pleasing to eye").
+"""Regenerate CourtReach's PWA app icons — v4: logo/monogram ONLY, nothing else
+(owner: "keep our logo and monogram in the app icon and nothing else"), in the
+app's own GOLD (owner tried a sapphire app-wide sweep, then reverted: "Lets
+revert to the gold scheme. Dont like this one. Use the Gold scheme for app
+logo also").
 
-Replaces the earlier stacked navy/white "two band" tile with one continuous
-deep-navy gradient ground (echoes the real Supreme Court display board's
-near-black background), the brand chevron+dot mark as a small refined crown,
-"C1" as the glowing hero in TEAL — the actual colour the live board lights an
-active court in, not just our navy/gold, so the icon calls back to the real
-board's specific look, not only its layout. A thin gold hairline rule (matches
-the short-rule motif already used elsewhere in the brand, e.g. the login
-screen) separates it from a quieter case/item number below.
+Just the brand mark — chevron+dot + "CR" — centered on a deep-navy gradient
+ground, with a soft glow behind it for a premium finish, no court-tile/C1/24
+content.
 
-Owner's call: "take whatever colour code you want" — teal is new, not in
-app.css, deliberately, to carry that board-recognition moment; gold/navy stay
-from the existing brand so the mark is still unmistakably CourtReach.
-
-The "CR" wordmark from the header monogram is deliberately left OUT of the
-icon itself: multi-letter text doesn't hold up at small icon/favicon sizes
-(same reason Slack, Notion, etc. ship symbol-only icons — the app name is
-already labelled by the OS under the icon). The chevron+dot mark carries the
-brand identity instead. Flag to the owner; add "CR" back in if they want it
-regardless of the legibility trade-off.
-
-Deterministic (Pillow + IBM Plex Mono Bold, no base64). Run: python3 make-icon.py
+Deterministic (Pillow + real TTFs, no base64). Run: python3 make-icon.py
 Writes icon-512.png, icon-192.png, apple-touch-icon.png, favicon-32.png.
 """
 import os, urllib.request
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
-GOLD  = (203, 182, 130, 255)  # #cbb682 — the header monogram's own gold
-TEAL  = (99, 220, 208, 255)   # new for this icon — the board's "active tile" glow
-CREAM = (238, 232, 219, 255)
+GOLD = (203, 182, 130, 255)   # #cbb682 — the header monogram's own gold
 GRAD_TOP    = (13, 17, 23, 255)
 GRAD_BOTTOM = (22, 29, 39, 255)
 
-MONO = "/tmp/fonts/IBMPlexMono-Bold.ttf"
-MONO_URL = "https://raw.githubusercontent.com/google/fonts/main/ofl/ibmplexmono/IBMPlexMono-Bold.ttf"
-if not os.path.exists(MONO):
-    os.makedirs(os.path.dirname(MONO), exist_ok=True)
-    print("downloading IBM Plex Mono…")
-    urllib.request.urlretrieve(MONO_URL, MONO)
+SERIF = "/tmp/fonts/IowanOldStyle.ttf"  # Source Serif 4 (variable); stands in for
+                                        # Georgia/Iowan Old Style (not redistributable)
+SERIF_URL = ("https://raw.githubusercontent.com/google/fonts/main/ofl/sourceserif4/"
+             "SourceSerif4%5Bopsz%2Cwght%5D.ttf")
+if not os.path.exists(SERIF):
+    os.makedirs(os.path.dirname(SERIF), exist_ok=True)
+    print("downloading Source Serif 4…")
+    urllib.request.urlretrieve(SERIF_URL, SERIF)
+
+def serif_font(px):
+    f = ImageFont.truetype(SERIF, px)
+    try: f.set_variation_by_axes([14.0, 600.0])  # opsz, wght — semibold
+    except Exception: pass
+    return f
 
 def vgrad(size, top, bottom):
     img = Image.new("RGBA", (size, size), top)
@@ -77,33 +70,23 @@ def draw_icon(size):
     ImageDraw.Draw(mask).rounded_rectangle([0, 0, size, size], radius=corner, fill=255)
     img = Image.composite(base, Image.new("RGBA", (size, size), (0, 0, 0, 0)), mask)
 
-    f_hero = ImageFont.truetype(MONO, int(size * 0.30))
-    hero_yc = size * 0.475
+    s = size / 44 * 0.72
+    ox = size * 0.5 - 22 * s
+    chev_oy = size * 0.135
+    f_cr = serif_font(int(size * 0.225))
+    cr_yc = size * 0.685
 
-    # soft teal glow behind "C1" (its own blurred layer, clipped to the icon shape)
+    # soft gold glow behind the whole mark
     glow = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    centered_text(ImageDraw.Draw(glow), size / 2, hero_yc, "C1", f_hero, TEAL[:3] + (235,))
-    glow = glow.filter(ImageFilter.GaussianBlur(size * 0.022))
+    gd = ImageDraw.Draw(glow)
+    chevrons(gd, ox, chev_oy, s, GOLD[:3] + (200,), max(2, int(size * 0.018)))
+    centered_text(gd, size / 2, cr_yc, "CR", f_cr, GOLD[:3] + (200,))
+    glow = glow.filter(ImageFilter.GaussianBlur(size * 0.020))
     img.alpha_composite(Image.composite(glow, Image.new("RGBA", (size, size), (0, 0, 0, 0)), mask))
 
     d = ImageDraw.Draw(img)
-
-    # crown: chevron+dot, small and refined
-    s = size / 44 * 0.30
-    chevrons(d, size * 0.5 - 22 * s, size * 0.085, s, GOLD, max(2, int(size * 0.011)))
-
-    # hero "C1" — sharp teal on top of its own glow
-    centered_text(d, size / 2, hero_yc, "C1", f_hero, TEAL)
-
-    # thin gold rule
-    rule_y = size * 0.635
-    rule_w = size * 0.16
-    d.line([(size / 2 - rule_w / 2, rule_y), (size / 2 + rule_w / 2, rule_y)],
-           fill=GOLD, width=max(2, int(size * 0.0075)))
-
-    # case number — quiet, smaller, cream
-    f_case = ImageFont.truetype(MONO, int(size * 0.155))
-    centered_text(d, size / 2, size * 0.79, "24", f_case, CREAM)
+    chevrons(d, ox, chev_oy, s, GOLD, max(2, int(size * 0.014)))
+    centered_text(d, size / 2, cr_yc, "CR", f_cr, GOLD)
 
     return img
 
