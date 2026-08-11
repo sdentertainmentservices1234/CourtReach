@@ -1,0 +1,40 @@
+<svg id="icon" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="70" y1="20" x2="450" y2="500" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1c2636"/>
+      <stop offset=".55" stop-color="#131a26"/>
+      <stop offset="1" stop-color="#0a0e15"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="256" cy="150" r="260" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#e8cd82" stop-opacity=".38"/>
+      <stop offset=".5" stop-color="#e8cd82" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#e8cd82" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="256" y1="120" x2="256" y2="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f5e3ab"/>
+      <stop offset=".45" stop-color="#dcb968"/>
+      <stop offset="1" stop-color="#a97f34"/>
+    </linearGradient>
+    <radialGradient id="dot" cx="256" cy="158" r="26" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff6dd"/>
+      <stop offset="1" stop-color="#e2bd6f"/>
+    </radialGradient>
+  </defs>
+
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="url(#glow)"/>
+
+  <!-- live pulse ring behind the dot -->
+  <circle cx="256" cy="158" r="40" fill="none" stroke="#e8cd82" stroke-opacity=".35" stroke-width="3"/>
+
+  <!-- three ascending chevrons, converging upward: the closer to the top, the closer your
+       turn — CourtReach's own "approaching" mark, evolved from the header wordmark's small
+       glyph into the icon's main subject instead of small print above illegible serif text -->
+  <g fill="none" stroke="url(#gold)" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M126 384 L256 284 L386 384" stroke-opacity=".55"/>
+    <path d="M140 314 L256 224 L372 314" stroke-opacity=".8"/>
+    <path d="M154 244 L256 164 L358 244"/>
+  </g>
+
+  <circle cx="256" cy="158" r="17" fill="url(#dot)"/>
+</svg>
