@@ -67,6 +67,13 @@ body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink
 /* two fields side by side on the wider signup card */
 .card .row2{display:flex;gap:10px}
 .card .row2>*{flex:1;min-width:0}
+.pin-note{display:flex;align-items:flex-start;gap:9px;background:#e7ecf5;color:#2b3f66;
+  border-radius:11px;padding:10px 12px;font-size:12.5px;line-height:1.45;margin-bottom:4px}
+.pin-note i{font-size:15px;flex:none;margin-top:1px}
+.pin-note b{font-weight:700}
+.rg-check{display:flex;align-items:flex-start;gap:9px;margin-top:16px;font-size:12.5px;
+  color:var(--mut);line-height:1.45}
+.rg-check input{width:auto;flex:none;margin-top:1px;accent-color:var(--accent)}
 /* ---- app shell ---- */
 #app{display:flex;flex-direction:column;height:100vh;max-width:760px;width:100%;margin-inline:auto;background:var(--bg);overflow:hidden}
 @media(min-width:761px){body{background:#d3d8dd}#app{border-inline:1px solid var(--line)}}
@@ -619,6 +626,13 @@ main#main.chatmode{overflow:hidden;display:flex;flex-direction:column}
     <h1>CourtReach</h1>
     <div class="sub" id="lgSub">Track your cases in real time with a customised display board</div>
     <div id="signinForm">
+      <!-- Shown when this device already holds a PIN. A PIN unlocks a SESSION, so once
+           you've signed out there's nothing for it to unlock until you sign in once more —
+           this says so plainly instead of leaving the PIN looking broken. -->
+      <div class="pin-note hidden" id="lgPinNote">
+        <i class="ti ti-lock"></i>
+        <span>PIN unlock is set up on this device<b id="lgPinWho"></b>. Sign in once and it'll be active again.</span>
+      </div>
       <label>Email</label><input id="lgEmail" type="email" autocomplete="username" placeholder="you@example.com">
       <label>Password</label><input id="lgPass" type="password" autocomplete="current-password" placeholder="••••••••">
       <button class="btn" id="lgGo">Sign in</button>
@@ -684,6 +698,7 @@ main#main.chatmode{overflow:hidden;display:flex;flex-direction:column}
           <div><label>Mobile number</label><input id="rgPhone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="10-digit"></div>
           <div><label>Designation</label>
             <select id="rgDesig">
+              <option value="">Select…</option>
               <option value="Advocate">Advocate</option>
               <option value="Advocate-on-Record">Advocate-on-Record</option>
               <option value="Senior Advocate">Senior Advocate</option>
@@ -693,6 +708,8 @@ main#main.chatmode{overflow:hidden;display:flex;flex-direction:column}
         </div>
         <label>Email</label><input id="rgEmail" type="email" autocomplete="email" placeholder="you@example.com">
         <label>Password</label><input id="rgPass" type="password" autocomplete="new-password" placeholder="at least 6 characters">
+        <label class="rg-check"><input type="checkbox" id="rgWantPin" checked>
+          <span>Set up a 4-digit PIN so I don't have to type this password on this device</span></label>
         <button class="btn" id="rgGo">Create account</button>
         <button class="btn ghost" id="lgToSignin">Back to sign in</button>
         <div class="err" id="rgErr"></div>
@@ -961,7 +978,9 @@ async function resolveOrgFor(uid, email, reg){
   if(reg && reg.mode==="create" && reg.chamber){
     const code=await freshJoinCode();
     await db.set("orgs/"+uid,{ name:reg.chamber, orgType:reg.orgType||"chamber", ownerUid:uid, ownerName:reg.name||"",
-      leaderUid:uid,                       // assume the registrant until they say otherwise
+      // only if the person registering IS the senior — a clerk setting the office up must
+      // not silently become the one Team chat excludes (owner: "designation matters a lot")
+      leaderUid: reg.designation==="Senior Advocate" ? uid : null,
       joinCode:code, joinCodeActive:true, createdAt:db.now() });
     await db.set("orgcodes/"+code,{ orgId:uid, active:true });
     return {orgId:uid, orgRole:"owner"};
@@ -1164,12 +1183,13 @@ const orgOwnerUid = () => myOrg ? (myOrg.ownerUid||myOrg.id) : null;
    senior advocate the office revolves around, and the one the Team thread deliberately
    leaves out. Defaults to the owner (right for a senior who registered themselves), and
    the owner can point it at anyone once the real members exist. */
-const orgLeaderUid = () => myOrg ? (myOrg.leaderUid || myOrg.ownerUid || myOrg.id) : null;
+const orgLeaderUid = () => (myOrg && myOrg.leaderUid) || null;
 const isOrgLeader = () => !!(me && myOrg && orgLeaderUid()===me.uid);
+const hasLeader = () => !!orgLeaderUid();
 const orgLeaderName = () => {
   const uid=orgLeaderUid(); if(!uid) return "the senior";
   const m=orgMembers.find(x=>x.id===uid);
-  return (m&&m.name) || myOrg?.ownerName || "the senior";
+  return (m&&m.name) || "the senior";
 };
 const ORG_TYPE_LABELS={chamber:"Chambers", firm:"Law firm", office:"Law office", inhouse:"In-house legal team"};
 const orgTypeLabel = () => ORG_TYPE_LABELS[myOrg?.orgType||"chamber"]||"Organisation";
@@ -1992,7 +2012,17 @@ function requestModal(u){
   };
   draw();
 }
-async function decideLink(id,status){ try{ await db.update("links/"+id,{status,decidedAt:db.now()}); }catch(e){} }
+/* Approving a collaboration used to hand the requester a direct line to whoever approved
+   it. For a senior that's exactly the flood they don't want, so approval now carries an
+   explicit routing choice: by default a briefing lawyer's messages go to the OFFICE
+   (colleagues + staff), and only "allowDirect" opens a thread to the approver personally. */
+async function decideLink(id,status,allowDirect){
+  const patch={status, decidedAt:db.now()};
+  if(status==="approved") patch.allowDirect=!!allowDirect;
+  try{ await db.update("links/"+id,patch); }catch(e){}
+}
+// May the other side of this link message me/the senior directly?
+const linkAllowsDirect = l => !!(l && l.allowDirect);
 function openThread(id){ collabOpen=id; linkScope="peer";
   if(threadUnsub){threadUnsub();threadUnsub=null;}
   threadUnsub=db.watchQuery("linkmsgs","linkId",id, rows=>{ linkMsgs=(rows||[]).sort((a,b)=>tsMs(a.at)-tsMs(b.at)); if(curTab==="collab"&&collabOpen===id) renderCollab(); });
@@ -2139,6 +2169,8 @@ function renderCollab(){
   if(incoming.length){ h+=`<div class="sec-h" style="margin-top:18px">Requests to you</div>`;
     h+=incoming.map(l=>`<div class="cx-card"><div class="brow"><span class="bval">${esc(l.fromName)}</span><span class="cf-de2">${esc(l.fromDesig||"")}</span></div>
       <div class="bsub">wants to track your board and message you.</div>
+      ${inOrg()?`<label class="rg-check" style="margin-top:10px"><input type="checkbox" id="cx_dm_${esc(l.id)}">
+        <span>Let them message me directly as well. Leave this off and their messages go to my office \u2014 colleagues and staff \u2014 instead of to me.</span></label>`:""}
       <div class="cx-btns"><button class="cx-ok" data-cdec="${esc(l.id)}|approved">Accept</button><button class="cx-no" data-cdec="${esc(l.id)}|declined">Decline</button></div></div>`).join(""); }
   const conns=links.filter(l=>l.status==="approved");
   h+=`<div class="sec-h" style="margin-top:${incoming.length?16:18}px">Connections${conns.length?` · ${conns.length}`:""}</div>`;
@@ -2156,7 +2188,12 @@ function renderCollab(){
   h+=`</div>`; $("main").innerHTML=h;
   const fb=$("cf_find"); if(fb) fb.onclick=findColleague;
   const fq=$("cf_q"); if(fq) fq.onkeydown=e=>{ if(e.key==="Enter") findColleague(); };
-  $("main").querySelectorAll("[data-cdec]").forEach(b=>b.onclick=()=>{ const [id,st]=b.dataset.cdec.split("|"); decideLink(id,st); });
+  $("main").querySelectorAll("[data-cdec]").forEach(b=>b.onclick=()=>{
+    const [id,st]=b.dataset.cdec.split("|");
+    const cb=$("cx_dm_"+id);
+    // an individual (no office to route to) keeps the old direct thread
+    decideLink(id, st, cb ? cb.checked : !inOrg());
+  });
   $("main").querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>openThread(b.dataset.open));
 }
 function renderThread(id){
@@ -2173,22 +2210,30 @@ function renderThread(id){
         : `Approved for <b>${esc(fmtDay(d))}</b>; tracking opens that day.`}
         <button class="sh-btn ghost2" id="cl_rereq" style="margin-top:8px"><i class="ti ti-plus"></i> Request again for another date</button></div>` : "";
   // the peer's chamber, if they have one — and only the messages for the chosen audience
-  const chamberOpt = peerOrgs[otherUid(l)]?.orgId ? (peerOrgs[otherUid(l)].name||"Their chamber") : "";
+  const chamberOpt = peerOrgs[otherUid(l)]?.orgId ? (peerOrgs[otherUid(l)].name||"their office") : "";
+  // Whether I may message this person DIRECTLY. If they run an office and didn't grant it
+  // when approving, my messages go to that office instead — the senior isn't a letterbox
+  // for every briefing lawyer (owner: "I don't want the collaborating messages disturbing
+  // the senior unless... special permission of messaging the senior is also obtained").
+  const iAmRequester = l.fromUid===me.uid;
+  const directOk = !chamberOpt || !iAmRequester || linkAllowsDirect(l);
+  if(!directOk && linkScope==="peer") linkScope="chamber";
   const shown = linkMsgs.filter(m=>(m.scope||"peer")===linkScope);
   $("main").innerHTML=`<div class="cwrap"><button class="bback" id="cl_back"><i class="ti ti-chevron-left"></i> Connections</button>
     <div class="cx-head"><span class="bavatar2">${esc(initials(nm))}</span><div style="flex:1;min-width:0"><div class="cf-nm">${esc(nm)}</div><div class="cf-de">${esc(desig)}</div></div>
       ${boardCtl}</div>
     ${lapsed}
     ${chamberOpt?`<div class="chat-threads" style="padding:6px 0 4px">
-      <button class="thr${linkScope==="peer"?" on":""}" data-ls="peer"><i class="ti ti-user"></i>${esc(nm.split(" ")[0])}</button>
+      ${directOk?`<button class="thr${linkScope==="peer"?" on":""}" data-ls="peer"><i class="ti ti-user"></i>${esc(nm.split(" ")[0])}</button>`:""}
       <button class="thr${linkScope==="chamber"?" on":""}" data-ls="chamber"><i class="ti ti-building-bank"></i>${esc(chamberOpt)}</button>
     </div><div class="reg-hint" style="margin:0 0 6px">${linkScope==="chamber"
-      ? `Everyone at ${esc(chamberOpt)} sees this — use it for clerks and juniors as well.`
+      ? (directOk ? `Everyone at ${esc(chamberOpt)} sees this — use it for clerks and juniors as well.`
+                  : `Goes to ${esc(chamberOpt)} — their colleagues and staff. ${esc(nm)} hasn't opened direct messages for this collaboration.`)
       : `Only ${esc(nm)} sees this.`}</div>`:""}
     <div class="bthread" id="cl_thread">${shown.length? shown.map(m=>{ const mine=m.by===me.uid;
         return `<div class="bbub ${mine?"me":"them"}">${mine?"":`<span class="bn">${esc(m.name||"")}</span>`}<span>${esc(m.text)}</span><span class="bt">${esc(clockIST(tsMs(m.at)))}</span></div>`; }).join("")
         : `<div class="bsub" style="text-align:center;padding:16px">No messages yet — say hello.</div>`}</div>
-    <div class="bcompose"><textarea id="cl_ta" rows="1" placeholder="Message ${esc(linkScope==="chamber"?chamberOpt:nm)}…"></textarea><button class="bsend" id="cl_send"><i class="ti ti-send"></i></button></div></div>`;
+    <div class="bcompose"><textarea id="cl_ta" rows="1" placeholder="Message ${esc(linkScope==="chamber"?chamberOpt:nm)}\u2026"></textarea><button class="bsend" id="cl_send"><i class="ti ti-send"></i></button></div></div>`;
   $("main").querySelectorAll("[data-ls]").forEach(b=>b.onclick=()=>{ linkScope=b.dataset.ls; renderCollab(); });
   $("cl_back").onclick=closeThread;
   const cb=$("cl_board"); if(cb) cb.onclick=()=>viewPeerBoard(l);
@@ -2332,9 +2377,10 @@ function renderChat(){
   const blurb = cur.ext ? `${esc(cur.full)} is briefing this chamber from outside — everyone here can read and reply.`
     : cur.dm ? `Private message to ${esc(cur.full)}`
     : chatChannel==="all" ? (isOrgLeader() ? `Everyone in ${esc(myOrg?.name||"the organisation")} — use this to announce.`
-        : `Everyone in ${esc(myOrg?.name||"the organisation")}, including ${esc(orgLeaderName())}`)
+        : `Everyone in ${esc(myOrg?.name||"the organisation")}${hasLeader()?", including "+esc(orgLeaderName()):""}.`)
     : (isOrgLeader() ? `Your colleagues' and staff's thread — you can read and post, but you're not notified here.`
-        : `Colleagues and staff — ${esc(orgLeaderName())} isn't notified here. Message them directly to reach them.`);
+        : hasLeader() ? `Colleagues and staff — ${esc(orgLeaderName())} isn't notified here. Message them directly to reach them.`
+        : `Colleagues and staff.${isOrgOwner()?" No senior nominated yet — set one in Settings \u2192 Organisation and this thread will leave them out.":""}`);
   $("main").innerHTML=`<div class="chat-wrap">
     <div class="chat-threads">${threads.map(t=>{ const n=unreadCount(t.id);
       const mute=isOrgLeader()&&t.id==="team";
@@ -2428,15 +2474,18 @@ function renderSettings(){
       <div class="stg-gt">Organisation</div>
       <div class="stg-kv"><span class="k">Name</span><span class="v">${esc(myOrg?.name||"—")}</span></div>
       <div class="stg-kv"><span class="k">Type</span><span class="v">${esc(orgTypeLabel())}</span></div>
-      <div class="stg-kv"><span class="k">Senior / leader</span><span class="v">${esc(orgLeaderName())}</span></div>
+      <div class="stg-kv"><span class="k">Senior / leader</span><span class="v">${hasLeader()?esc(orgLeaderName()):`<span style="color:var(--soon)">Not nominated yet</span>`}</span></div>
       <div class="stg-kv"><span class="k">You are</span><span class="v">${owner?"Owner — you administer this organisation":"Member"}${isOrgLeader()?" · Senior":""}</span></div>
       <div class="stg-kv"><span class="k">Members</span><span class="v">${orgMembers.length} on one subscription</span></div>
     </div>`;
     if(owner){
       inner+=`<div class="stg-group">
         <div class="stg-gt">Senior / leader of the organisation</div>
+        ${!hasLeader()?`<div class="notice" style="margin:0 0 10px">No senior nominated yet, so the Team thread currently includes everyone. Pick the senior below and they'll be left out of it.</div>`:""}
         <div class="stg-gh">Whoever the office revolves around — often not the person who set the account up. The Team chat deliberately leaves them out and never badges them, so they aren't pulled into every message; colleagues reach them by messaging them directly.</div>
-        <label class="am-fld"><select id="st_leader">${sorted.map(m=>`<option value="${esc(m.id)}"${m.id===leaderUid?" selected":""}>${esc(m.name||"—")}${m.designation?" · "+esc(m.designation):""}</option>`).join("")}</select></label>
+        <label class="am-fld"><select id="st_leader">
+          <option value=""${!leaderUid?" selected":""}>Nobody — everyone is in the Team thread</option>
+          ${sorted.map(m=>`<option value="${esc(m.id)}"${m.id===leaderUid?" selected":""}>${esc(m.name||"—")}${m.designation?" · "+esc(m.designation):""}</option>`).join("")}</select></label>
         <button class="sh-btn ghost2" id="st_saveLeader" style="margin-top:0">Set as senior</button>
         <div class="am-err" id="st_leaderMsg" style="${/is now the senior/.test(leaderMsg)?"color:var(--later)":""}">${esc(leaderMsg)}</div>
       </div>
@@ -2598,10 +2647,9 @@ function renderSettings(){
   const nt=$("st_notifToggle"); if(nt) nt.onclick=toggleNotify;
   const lockBtn=$("st_lock"); if(lockBtn) lockBtn.onclick=()=>showPinLock(me.uid);
   $("st_signout").onclick=()=>{
-    if(hasPinFor(me.uid)){
-      if(!confirm("Sign out of this device completely? You'll need your password again here, and this device's PIN will be cleared.")) return;
-      clearPin();
-    }
+    // the PIN survives sign-out on purpose: it only ever unlocks a session, so keeping the
+    // salted hash leaks nothing, and it starts working again the moment you sign back in.
+    if(hasPinFor(me.uid) && !confirm("Sign out on this device? You'll need your password to get back in — your PIN then works again straight after.")) return;
     auth.signOut();
   };
 }
@@ -2620,8 +2668,9 @@ function wireOrgSettings(){
     const uid=$("st_leader").value, m=$("st_leaderMsg");
     m.textContent="Saving…"; sl.disabled=true;
     // set BEFORE the write — the org watcher repaints this pane as soon as it lands
-    leaderMsg=(memberName(uid)||"They")+" is now the senior — out of the Team thread from now on.";
-    try{ await db.set("orgs/"+me.orgId,{leaderUid:uid},true); }
+    leaderMsg = uid ? ((memberName(uid)||"They")+" is now the senior — out of the Team thread from now on.")
+                    : "No senior set — the Team thread now includes everyone.";
+    try{ await db.set("orgs/"+me.orgId,{leaderUid:uid||null},true); }
     catch(e){ leaderMsg="Couldn't save that."; }
     sl.disabled=false;
     if(curTab==="settings") renderSettings();
@@ -2799,6 +2848,8 @@ function applyGate(){
   }
   if(inOrg()) watchChat();
   render();
+  // the PIN they asked for at signup — do it now that there's a session to attach it to
+  if(wantPinAfterBoot && !hasPinFor(me.uid)){ wantPinAfterBoot=false; setTimeout(startPinSetup, 400); }
 }
 function boot(user){
   unsub.forEach(u=>u&&u()); unsub=[]; if(userDocUnsub){userDocUnsub();userDocUnsub=null;}
@@ -2813,6 +2864,7 @@ function boot(user){
     me=null; watchOrg(null); _watchedOrgId=undefined;
     hidePinLock();
     $("app").classList.add("hidden"); $("paywall").classList.add("hidden"); $("login").classList.remove("hidden");
+    paintLoginPin();
     stopPolling(); return;
   }
   const uid=user.uid;
@@ -2906,10 +2958,12 @@ $("rgGo").onclick=async()=>{ $("rgErr").textContent="";
   if(regMode==="create" && chamber.length<3){ $("rgErr").textContent="Enter your organisation's name."; return; }
   if(regMode==="join" && code.length<4){ $("rgErr").textContent="Enter the invite code your organisation gave you."; return; }
   if(name.length<2){ $("rgErr").textContent="Enter your full name."; return; }
+  if(!designation){ $("rgErr").textContent="Choose your designation — it decides how your organisation's board and chat treat you."; return; }
   if(phone.length<10){ $("rgErr").textContent="Enter a valid mobile number."; return; }
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ $("rgErr").textContent="Enter a valid email."; return; }
   if(pass.length<6){ $("rgErr").textContent="Password must be at least 6 characters."; return; }
   $("rgGo").disabled=true; $("rgErr").textContent="Creating your account…"; justAuthed=true;
+  wantPinAfterBoot=!!$("rgWantPin").checked;      // offered at signup; set up once we're in
   try{ await auth.signUp(email,pass,{name,phone,designation,mode:regMode,chamber,code,orgType}); }
   catch(e){ justAuthed=false; $("rgGo").disabled=false; $("rgErr").textContent=(e.code||"").includes("email-already-in-use")?"That email already has an account — sign in.":(e.message||"Could not create account."); } };
 $("btnRefresh").onclick=()=>{ if(!DEMO) location.reload(); else fetchBoard(); };
@@ -2949,9 +3003,16 @@ paintCalBtn();
    a new device or a sign-out still needs the real password, and clearing site data just
    means falling back to the password. Five wrong tries signs out rather than letting
    someone sit there guessing 10,000 combinations. */
-let pinLocked=false, pinEntry="", pinUid=null, pinSetupMode=false, pinSetupFirst="", justAuthed=false;
+let pinLocked=false, pinEntry="", pinUid=null, pinSetupMode=false, pinSetupFirst="", justAuthed=false, wantPinAfterBoot=false;
 const PIN_KEY="crPin";
 function pinStore(){ try{ return JSON.parse(localStorage.getItem(PIN_KEY)||"{}"); }catch(e){ return {}; } }
+// Tell someone at the sign-in screen that their PIN is still here and will resume.
+function paintLoginPin(){
+  const el=$("lgPinNote"); if(!el) return;
+  const st=pinStore(), on=!!(st && st.hash);
+  el.classList.toggle("hidden", !on);
+  if(on){ $("lgPinWho").textContent = st.email ? " for "+st.email : ""; if(st.email && !$("lgEmail").value) $("lgEmail").value=st.email; }
+}
 function hasPinFor(uid){ const s=pinStore(); return !!(s && s.uid===uid && s.hash); }
 async function pinHash(pin,salt){
   const buf=new TextEncoder().encode(salt+":"+pin);
@@ -2960,7 +3021,7 @@ async function pinHash(pin,salt){
 }
 async function setPin(uid,pin){
   const salt=randomCode(16);
-  localStorage.setItem(PIN_KEY, JSON.stringify({uid, salt, hash:await pinHash(pin,salt), tries:0}));
+  localStorage.setItem(PIN_KEY, JSON.stringify({uid, email:me?.email||"", salt, hash:await pinHash(pin,salt), tries:0}));
 }
 function clearPin(){ try{ localStorage.removeItem(PIN_KEY); }catch(e){} }
 async function pinMatches(pin){
@@ -3039,7 +3100,7 @@ $("pinClose").onclick=()=>{
   // so this branch is a no-op in normal use.
   if(pinSetupMode){ hidePinLock(); if(curTab==="settings") render(); }
 };
-$("pinUsePass").onclick=()=>{ hidePinLock(); auth.signOut(); };
+$("pinUsePass").onclick=()=>{ hidePinLock(); auth.signOut(); };   // PIN kept — see setPin/paintLoginPin
 // Matter-reaching alerts: toggled from Settings — browser notifications for when one of
 // your tracked matters is approaching on the board (fires while the app is open).
 let notifOn=(()=>{ try{ return localStorage.getItem("crNotify")==="1"; }catch(e){ return false; } })();
@@ -3077,7 +3138,7 @@ function seedDemo(db){
   db.set("users/u_peer2",{name:"Arjun Rao",email:"arjun@example.in",phone:"9899001122",designation:"Senior Advocate",role:"user",office:"Arjun Rao",active:true});
   db.set("usermatters/u_peer2",{matters:[{id:"q1",court:"8",item:"1620",title:"Rao v. Union of India"}]});
   // an already-approved connection where Rohan is briefing Meera in one case (Ct1/12) — to test the "your case" flag on her board
-  db.set("links/u_demo_u_peer",{fromUid:"u_demo",fromName:"Rohan Mehta",fromDesig:"Advocate-on-Record",toUid:"u_peer",toName:"Meera Krishnan",toDesig:"Senior Advocate",status:"approved",at:db.now(),
+  db.set("links/u_demo_u_peer",{fromUid:"u_demo",fromName:"Rohan Mehta",fromDesig:"Advocate-on-Record",toUid:"u_peer",toName:"Meera Krishnan",toDesig:"Senior Advocate",status:"approved",at:db.now(),allowDirect:true,
     matters:[{court:"1",item:"12",date:todayISO(),listType:"Miscellaneous",party:"Petitioner",title:"Krishnan v. LIC of India",bench:"",aor:""}]});
   // an EXPIRED connection (permission was for yesterday) — to test day-scoped tracking
   const _yday=new Date(Date.now()-864e5).toLocaleDateString('en-CA');
@@ -3117,6 +3178,7 @@ function seedDemo(db){
   // this is the case that exercises "message the senior, or message his whole office".
   db.set("links/u_demo_u_ch_owner",{fromUid:"u_demo",fromName:"Rohan Mehta",fromDesig:"Advocate-on-Record",
     toUid:"u_ch_owner",toName:"Sameer Deshmukh",toDesig:"Senior Advocate",status:"approved",at:db.now(),
+    allowDirect:false,          // messages route to the office, not to the senior personally
     matters:[{court:"1",item:"14",date:todayISO(),listType:"Miscellaneous",party:"Petitioner",title:"Deshmukh v. Union of India",bench:"",aor:""}]});
   // a pre-approved colleague who hasn't registered yet (email allow-list path)
   db.set("orginvites/anita@chambers.in",{orgId:"o_chamber",orgName:"Chambers of S. Deshmukh",addedBy:"u_ch_owner",at:db.now()});
