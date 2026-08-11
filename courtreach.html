@@ -472,6 +472,10 @@ function linkState(l){ if(!l||l.status!=="approved") return (l&&l.status)||"none
 const linkActive = l => linkState(l)==="active";
 const linkSoonDate = l => { const t=todayISO(), ds=linkDates(l); return ds.filter(d=>d>=t).sort()[0] || ds.sort().slice(-1)[0] || null; };
 const fmtDay = d => { try{ return new Date(d+"T00:00:00").toLocaleDateString('en-GB',{day:'numeric',month:'short'}); }catch(e){ return d; } };
+// The tracking window (ms, IST calendar days) the approval is valid for — stamped on the
+// link so the Firestore rules enforce the one-day scope server-side, not just the UI.
+function linkWindow(dates){ const ds=[...new Set((dates||[]).filter(Boolean))].sort(); if(!ds.length) return {};
+  return { startsAt:new Date(ds[0]+"T00:00:00+05:30").getTime(), expiresAt:new Date(ds[ds.length-1]+"T00:00:00+05:30").getTime()+864e5 }; }
 
 const boardByCourt = () => { const m={}; board.forEach(c=>{ if(c.court && !m[c.court]) m[c.court]=c; }); return m; };
 const myMatters = () => (myOwn||[]).filter(m=>m.court&&m.item&&isCourtroom(m.court))
@@ -792,7 +796,7 @@ function requestModal(u){
     };
     $("rq_send").onclick=async()=>{
       try{ await db.set("links/"+linkKey(me.uid,u.id),{fromUid:me.uid, fromName:me.name||"", fromDesig:me.designation||"",
-          toUid:u.id, toName:u.name||"", toDesig:u.designation||"", status:"pending", at:db.now(), matters:cases});
+          toUid:u.id, toName:u.name||"", toDesig:u.designation||"", status:"pending", at:db.now(), matters:cases, ...linkWindow(cases.map(c=>c.date))});
         closeModal(); linkFound=null; renderCollab();
       }catch(e){ $("rq_err").textContent="Could not send — "+(e.message||e); }
     };
