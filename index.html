@@ -63,12 +63,16 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px calc(66px + env(s
 .cell{flex:1 1 calc(33.33% - 6px);max-width:calc(33.33% - 6px);background:var(--panel);border:1.5px solid var(--line);
   border-radius:13px;padding:10px 8px;text-align:center;min-width:0}
 .cell.mini{flex:1 1 calc(20% - 6.5px);max-width:calc(20% - 6.5px);padding:8px 5px}
-.cell-ct{display:inline-block;background:var(--navy);color:#fff;font-weight:700;font-size:12px;border-radius:20px;padding:3px 10px;margin-bottom:5px}
-.cell-ct .ctn{color:var(--gold)}
-.cell-item{font-family:Fraunces,serif;font-size:26px;font-weight:600;line-height:1}
-.cell-sub{font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);margin-top:2px}
-.cell.mini .cell-item{font-size:20px}
-.cell-ours{margin-top:6px;border-radius:8px;padding:5px 4px;font-size:11px;font-weight:700;color:#fff;line-height:1.15}
+.cell-head{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;width:100%}
+.ct-block{display:flex;flex-direction:column;align-items:flex-start;line-height:1;min-width:0}
+.on-block{display:flex;flex-direction:column;align-items:flex-end;line-height:1;min-width:0}
+.ct-lab,.on-lab{font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--mut)}
+.ct-num{font-family:var(--mono);font-size:31px;font-weight:800;color:var(--navy);line-height:.9;margin-top:1px}
+.on-num{font-family:var(--mono);font-size:21px;font-weight:700;color:var(--ink);line-height:.95;margin-top:2px}
+.cell.mini .ct-num{font-size:23px}
+.cell.mini .on-num{font-size:16px}
+.cell.idle .on-num,.cell.idle .on-lab{color:var(--passed)}
+.cell-ours{margin-top:7px;border-radius:8px;padding:5px 4px;font-size:11px;font-weight:700;color:#fff;line-height:1.15;text-align:center}
 .cell.ours{border-width:2px}
 .cell.ours.now{border-color:var(--now)}.cell.ours.now .cell-ours{background:linear-gradient(180deg,#d1453a,#a5231a)}
 .cell.ours.soon{border-color:var(--soon)}.cell.ours.soon .cell-ours{background:linear-gradient(180deg,#ca9827,#876010)}
@@ -593,10 +597,13 @@ function boardCell(c, mini){
   const idle=/not in session/i.test(c.status||"");
   const ours=activeMatters().filter(e=>String(e.courtNo)===String(c.court));
   const mine=isMyCaseCourt(c.court);
-  if(!ours.length && !mine){ return `<div class="cell${mini?" mini":""}">
-    <div class="cell-ct">Court <span class="ctn">${esc(c.court)}</span></div>
-    <div class="cell-item">${idle?"—":esc(c.item||"·")}</div>
-    <div class="cell-sub">${idle?"not sitting":"hearing"}</div></div>`; }
+  // top row: court no. prominent on the LEFT, the item now on the RIGHT
+  const head=`<div class="cell-head">
+    <div class="ct-block"><span class="ct-lab">Court</span><span class="ct-num">${esc(c.court)}</span></div>
+    <div class="on-block">${idle?`<span class="on-lab">not sitting</span><span class="on-num">—</span>`
+      :`<span class="on-lab">on</span><span class="on-num">${esc(c.item||"·")}</span>`}</div>
+  </div>`;
+  if(!ours.length && !mine){ return `<div class="cell${mini?" mini":""}${idle?" idle":""}">${head}</div>`; }
   // in a "your case" court, track MY item(s); otherwise the peer's / my own tracked matters
   const src = mine ? myCaseItemsIn(c.court).map(it=>({courtNo:c.court,itemNo:it})) : ours;
   const ks=src.map(e=>({e,k:classify(e)})).sort((a,b)=>(TIER_RANK[a.k.tier]-TIER_RANK[b.k.tier])||((a.k.gap??999)-(b.k.gap??999)));
@@ -604,9 +611,7 @@ function boardCell(c, mini){
   const items=ks.map(x=>esc(x.e.itemNo)).join(" · ");
   return `<div class="cell ours ${tier} ${idle?"idle":""}${mine?" mycase":""}">
     ${mine?`<div class="mycase-rib"><i class="ti ti-star-filled"></i> Your case</div>`:""}
-    <div class="cell-ct">Court <span class="ctn">${esc(c.court)}</span></div>
-    <div class="cell-item">${idle?"—":esc(c.item||"·")}</div>
-    <div class="cell-sub">${idle?"not sitting":esc(c.status||"hearing")}</div>
+    ${head}
     <div class="cell-ours"><span class="oi">${items}</span><br>${esc(ks[0]?.k.short||ks[0]?.k.label||"—")}</div></div>`;
 }
 
