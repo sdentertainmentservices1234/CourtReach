@@ -59,17 +59,17 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:6px
 .freshdot.off{background:#7d8894}.freshdot.stale{background:var(--soon)}
 main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px calc(66px + env(safe-area-inset-bottom,0px));-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 /* board grid */
-.grid{display:flex;flex-wrap:wrap;gap:8px}
+.grid{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start}
 .cell{flex:1 1 calc(33.33% - 6px);max-width:calc(33.33% - 6px);background:var(--panel);border:1.5px solid var(--line);
   border-radius:13px;padding:10px 8px;text-align:center;min-width:0}
 .cell.mini{flex:1 1 calc(20% - 6.5px);max-width:calc(20% - 6.5px);padding:8px 5px}
 .cell-head{display:flex;align-items:center;width:100%}
 .ct-side{flex:1;display:flex;justify-content:flex-start;min-width:0}
-.on-side{flex:1;display:flex;flex-direction:column;align-items:flex-end;line-height:1;min-width:0}
+.on-side{flex:1;display:flex;flex-direction:column;align-items:center;line-height:1;min-width:0}
 .on-lab{font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--mut)}
 .ct-num{background:var(--navy);color:#fff;font-family:var(--mono);font-size:24px;font-weight:800;line-height:1;border-radius:9px;padding:5px 10px;letter-spacing:.5px}
 .ct-num .cd{color:var(--gold)}
-.cell-div{flex:none;width:1.5px;align-self:stretch;min-height:32px;background:var(--line);border-radius:2px;margin:0 8px}
+.cell-div{flex:none;width:2px;align-self:stretch;min-height:34px;background:var(--mut);opacity:.5;border-radius:2px;margin:0 8px}
 .on-num{font-family:var(--mono);font-size:21px;font-weight:700;color:var(--ink);line-height:.95;margin-top:2px}
 /* mini tiles are too narrow for a horizontal chip+divider+item — stack them:
    C<n> chip on top, item below (no divider), so nothing overlaps. */
@@ -591,14 +591,13 @@ function renderBoard(){
   const ours=new Set(set.map(e=>String(e.courtNo)));
   const shown=board.filter(c=>isCourtroom(c.court));
   const byNo=(a,b)=>(parseInt(a.court)||99)-(parseInt(b.court)||99);
-  // in peer view, float the courts holding MY case to the top so I find them fast
+  // Every courtroom in serial order (Court 1 … 17). Courts where we have a matter are
+  // full islands; the rest are small tiles — same chain, in sequence.
   const inFull=c=>ours.has(String(c.court))||isMyCaseCourt(c.court);
-  const full=shown.filter(inFull).sort((a,b)=>((isMyCaseCourt(b.court)?1:0)-(isMyCaseCourt(a.court)?1:0))||byNo(a,b));
-  const mini=shown.filter(c=>!inFull(c)).sort(byNo);
+  const all=shown.slice().sort(byNo);
   if(!set.length) h+= peerBoardUid ? `<div class="notice">${esc(peerBoardName)} isn't tracking any matter right now.</div>`
     : `<div class="notice">You're not tracking any matter yet. Add one from <b>My matters</b> and it lights up here as it reaches.</div>`;
-  h+=`<div class="grid">`+full.map(c=>boardCell(c,false)).join("")+`</div>`;
-  if(mini.length) h+=`<div class="grid" style="margin-top:7px">`+mini.map(c=>boardCell(c,true)).join("")+`</div>`;
+  h+=`<div class="grid">`+all.map(c=>boardCell(c, !inFull(c))).join("")+`</div>`;
   $("main").innerHTML=h;
   const pb=$("peerBack"); if(pb) pb.onclick=exitPeerBoard;
 }
