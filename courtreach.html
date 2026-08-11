@@ -543,22 +543,39 @@ main#main.chatmode{overflow:hidden;display:flex;flex-direction:column}
   border:1px solid var(--line);background:var(--panel);font-family:inherit;font-size:14.5px;color:var(--ink);line-height:1.35}
 .chat-send textarea:focus{outline:none;border-color:var(--accent)}
 .chat-send button{flex:none;width:42px;height:42px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:17px}
-/* ===== PIN LOCK ===== */
+/* ===== PIN LOCK =====
+   An iOS/banking-app-style keypad rather than a grid of bordered rectangles: circular
+   keys with real depth, a glyph-only backspace, dots that pop rather than just swap
+   colour, and a proper corner close control in setup mode instead of a 9th grid cell
+   labelled "Cancel" (owner: "the presentation of numbers for pin is very crude. Be
+   professional, make it more elegant"). */
 #pinlock{position:fixed;inset:0;z-index:120;display:flex;align-items:center;justify-content:center;padding:22px;
   background:radial-gradient(120% 90% at 50% 0,#1b2430,#0f141b)}
-.pin-card{width:100%;max-width:330px;text-align:center;color:#fff}
-.pin-hi{font-family:Fraunces,serif;font-size:23px;font-weight:600;margin-bottom:3px}
-.pin-sub{font-size:13px;color:#9fb0c0;margin-bottom:22px}
-.pin-dots{display:flex;justify-content:center;gap:14px;margin-bottom:8px}
-.pin-dot{width:14px;height:14px;border-radius:50%;border:1.5px solid rgba(255,255,255,.4)}
-.pin-dot.on{background:var(--gold);border-color:var(--gold)}
-.pin-err{color:#ff9d94;font-size:12.5px;min-height:18px;margin-bottom:6px}
-.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-top:12px}
-.pin-pad button{padding:16px 0;border-radius:14px;border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.07);color:#fff;font-size:21px;font-weight:600;font-family:var(--mono)}
-.pin-pad button:active{background:rgba(255,255,255,.16)}
-.pin-pad button.fn{font-size:13px;font-family:inherit;font-weight:600;background:transparent;border-color:transparent;color:#9fb0c0}
-.pin-alt{margin-top:18px;background:none;border:none;color:#9fb0c0;font-size:13px;font-weight:600}
+.pin-card{position:relative;width:100%;max-width:320px;text-align:center;color:#fff}
+.pin-close{position:absolute;top:-6px;right:-6px;width:34px;height:34px;border-radius:50%;
+  border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#cdd6df;font-size:16px}
+.pin-close:active{background:rgba(255,255,255,.14)}
+.pin-mark{width:52px;height:52px;margin:0 auto 16px;border-radius:50%;
+  background:linear-gradient(160deg,rgba(194,168,106,.22),rgba(194,168,106,.06));
+  border:1px solid rgba(194,168,106,.35);display:flex;align-items:center;justify-content:center;
+  color:var(--gold);font-size:21px}
+.pin-hi{font-family:Fraunces,serif;font-size:22px;font-weight:600;margin-bottom:3px;letter-spacing:.2px}
+.pin-sub{font-size:13px;color:#9fb0c0;margin-bottom:26px}
+.pin-dots{display:flex;justify-content:center;gap:16px;margin-bottom:10px}
+.pin-dot{width:12px;height:12px;border-radius:50%;border:1.5px solid rgba(255,255,255,.32);
+  background:transparent;transition:transform .16s cubic-bezier(.34,1.56,.64,1),background .16s,border-color .16s}
+.pin-dot.on{background:var(--gold);border-color:var(--gold);transform:scale(1.22)}
+.pin-err{color:#ff9d94;font-size:12.5px;min-height:18px;margin-bottom:4px;font-weight:500}
+.pin-pad{display:grid;grid-template-columns:repeat(3,64px);justify-content:center;gap:16px 22px;margin-top:16px}
+.pin-pad button{width:64px;height:64px;border-radius:50%;border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.06);color:#fff;display:flex;align-items:center;justify-content:center;
+  transition:background .1s,transform .08s}
+.pin-pad button span{font-size:24px;font-weight:500;font-family:var(--mono);line-height:1}
+.pin-pad button:active{background:rgba(255,255,255,.18);transform:scale(.94)}
+.pin-pad button.fn{border-color:transparent;background:transparent;font-size:20px;color:#cdd6df}
+.pin-pad button.fn:active{background:rgba(255,255,255,.08);transform:scale(.94)}
+.pin-spacer{width:64px;height:64px}
+.pin-alt{margin-top:22px;background:none;border:none;color:#9fb0c0;font-size:13px;font-weight:600;padding:6px}
 @keyframes pinshake{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
 .pin-card.shake{animation:pinshake .3s}
 </style>
@@ -674,17 +691,25 @@ main#main.chatmode{overflow:hidden;display:flex;flex-direction:column}
      new device, or after signing out, the password is still required. -->
 <div id="pinlock" class="hidden">
   <div class="pin-card" id="pinCard">
+    <button type="button" class="pin-close hidden" id="pinClose" aria-label="Cancel"><i class="ti ti-x"></i></button>
+    <div class="pin-mark"><i class="ti ti-lock"></i></div>
     <div class="pin-hi" id="pinHi">Welcome back</div>
     <div class="pin-sub" id="pinSub">Enter your PIN</div>
     <div class="pin-dots" id="pinDots"></div>
     <div class="pin-err" id="pinErr"></div>
     <div class="pin-pad" id="pinPad">
-      <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
-      <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
-      <button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>
-      <button type="button" class="fn" data-k="cancel">Cancel</button>
-      <button type="button" data-k="0">0</button>
-      <button type="button" class="fn" data-k="del">Delete</button>
+      <button type="button" data-k="1"><span>1</span></button>
+      <button type="button" data-k="2"><span>2</span></button>
+      <button type="button" data-k="3"><span>3</span></button>
+      <button type="button" data-k="4"><span>4</span></button>
+      <button type="button" data-k="5"><span>5</span></button>
+      <button type="button" data-k="6"><span>6</span></button>
+      <button type="button" data-k="7"><span>7</span></button>
+      <button type="button" data-k="8"><span>8</span></button>
+      <button type="button" data-k="9"><span>9</span></button>
+      <span class="pin-spacer" aria-hidden="true"></span>
+      <button type="button" data-k="0"><span>0</span></button>
+      <button type="button" class="fn" data-k="del" aria-label="Delete"><i class="ti ti-backspace"></i></button>
     </div>
     <button class="pin-alt" id="pinUsePass">Use password instead</button>
   </div>
@@ -2435,8 +2460,16 @@ function renderSettings(){
       <div class="am-err" id="st_resetMsg"></div>
     </div>`);
 
-  h+=`<div class="sec-h">Account</div>
-    <button class="big-btn" id="st_signout"><i class="ti ti-logout"></i> Sign out</button>`;
+  // With a PIN set, "Lock" is the everyday action — it's what offers PIN login back on
+  // the next open, on demand, rather than leaving that to chance (owner: "it doesn't show
+  // option to login by pin once you have registered the pin — it should offer that").
+  // Full sign-out stays reachable but demoted, and now clears the PIN — leaving it behind
+  // would silently promise a PIN screen that can never actually appear again.
+  h+=`<div class="sec-h">Account</div>`;
+  h+= pinOn
+    ? `<button class="big-btn" id="st_lock"><i class="ti ti-lock"></i> Lock</button>
+       <button class="case-del" id="st_signout" style="margin-top:12px"><i class="ti ti-logout"></i> Sign out of this device completely</button>`
+    : `<button class="big-btn" id="st_signout"><i class="ti ti-logout"></i> Sign out</button>`;
   $("main").innerHTML=h;
   // one section open at a time
   $("main").querySelectorAll("[data-sec]").forEach(b=>b.onclick=()=>{
@@ -2480,7 +2513,14 @@ function renderSettings(){
   };
   paintNotify();
   const nt=$("st_notifToggle"); if(nt) nt.onclick=toggleNotify;
-  $("st_signout").onclick=()=>auth.signOut();
+  const lockBtn=$("st_lock"); if(lockBtn) lockBtn.onclick=()=>showPinLock(me.uid);
+  $("st_signout").onclick=()=>{
+    if(hasPinFor(me.uid)){
+      if(!confirm("Sign out of this device completely? You'll need your password again here, and this device's PIN will be cleared.")) return;
+      clearPin();
+    }
+    auth.signOut();
+  };
 }
 // Settings → chamber block: invite code, pre-approvals, member list, join/leave.
 function wireOrgSettings(){
@@ -2827,9 +2867,12 @@ async function pinMatches(pin){
   return (await pinHash(pin, s.salt)) === s.hash;
 }
 function paintPinDots(){
-  const n = pinSetupMode ? 4 : 4;
-  $("pinDots").innerHTML=Array.from({length:n},(_,i)=>`<span class="pin-dot${i<pinEntry.length?" on":""}"></span>`).join("");
+  $("pinDots").innerHTML=Array.from({length:4},(_,i)=>`<span class="pin-dot${i<pinEntry.length?" on":""}"></span>`).join("");
 }
+// Shows the lock screen WITHOUT touching the Firebase session — this is the whole point:
+// tapping "Lock" (Settings → Security, once a PIN exists) calls this directly, so PIN
+// login is an actually-reachable, on-demand action rather than something that only
+// appears if the browser happens to still be holding a persisted session on its own.
 function showPinLock(uid){
   pinLocked=true; pinUid=uid; pinEntry=""; pinSetupMode=false; pinSetupFirst="";
   $("pinHi").textContent="Welcome back";
@@ -2837,7 +2880,7 @@ function showPinLock(uid){
   $("pinErr").textContent="";
   $("pinUsePass").classList.remove("hidden");
   $("pinUsePass").textContent="Use password instead";
-  document.querySelector('#pinPad [data-k="cancel"]').classList.add("hidden");
+  $("pinClose").classList.add("hidden");
   $("login").classList.add("hidden"); $("app").classList.add("hidden"); $("paywall").classList.add("hidden");
   $("pinlock").classList.remove("hidden");
   paintPinDots();
@@ -2850,7 +2893,7 @@ function startPinSetup(){
   $("pinSub").textContent="4 digits, for this device";
   $("pinErr").textContent="";
   $("pinUsePass").classList.add("hidden");
-  document.querySelector('#pinPad [data-k="cancel"]').classList.remove("hidden");
+  $("pinClose").classList.remove("hidden");
   $("pinlock").classList.remove("hidden");
   paintPinDots();
 }
@@ -2887,9 +2930,14 @@ async function pinDigit(d){
 document.querySelectorAll("#pinPad button").forEach(b=>b.onclick=()=>{
   const k=b.dataset.k;
   if(k==="del"){ pinEntry=pinEntry.slice(0,-1); paintPinDots(); return; }
-  if(k==="cancel"){ hidePinLock(); return; }
   pinDigit(k);
 });
+$("pinClose").onclick=()=>{
+  // mid-setup: just close. Mid-unlock (shouldn't be visible then, but be safe): re-show
+  // the app if the session is actually fine — pinClose is hidden outside setup precisely
+  // so this branch is a no-op in normal use.
+  if(pinSetupMode){ hidePinLock(); if(curTab==="settings") render(); }
+};
 $("pinUsePass").onclick=()=>{ hidePinLock(); auth.signOut(); };
 // Matter-reaching alerts: toggled from Settings — browser notifications for when one of
 // your tracked matters is approaching on the board (fires while the app is open).
