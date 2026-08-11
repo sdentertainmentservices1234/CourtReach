@@ -1157,9 +1157,17 @@ const boardByCourt = () => { const m={}; board.forEach(c=>{ if(c.court && !m[c.c
 const matterDate = m => (m && m.date) ? m.date : todayISO();
 const onDate = (m, date) => matterDate(m) === date;
 const isChamberMatter = m => (m?.scope||"chamber")==="chamber";     // legacy/unset = chamber
+// byLabel lets a matter say who's appearing WITHOUT that being a real CourtReach account —
+// e.g. a matter mirrored in from an external day sheet, tagged to a junior who has never
+// logged into CourtReach. Falls back to the normal account-based name otherwise.
 const shape = (m, uid) => ({courtNo:String(m.court), itemNo:String(m.item), caseTitle:m.title||"",
-  listType:m.listType||"", _id:m.id, by:uid, byName:uid===me?.uid?(me?.name||"You"):memberName(uid),
-  date:matterDate(m), scope:m.scope||"chamber"});
+  listType:m.listType||"", _id:m.id, by:uid,
+  // byLabel wins outright — it exists precisely because the STORAGE account (uid) doesn't
+  // reflect true ownership for a synced matter (e.g. a junior's case mirrored into the
+  // chamber owner's own usermatters doc). Only when absent do we fall to the literal "You"
+  // for your own matter, else the colleague's real account name.
+  byName:m.byLabel || (uid===me?.uid?"You":memberName(uid)),
+  date:matterDate(m), scope:m.scope||"chamber", source:m.source||""});
 const usable = m => m && m.court && m.item && isCourtroom(m.court);
 // MY matters for a date. In a chamber, "mine" means the ones I keep OUT of the office.
 const myMatters = (date, personalOnly) => (myOwn||[])
@@ -1489,7 +1497,9 @@ function boardCell(c, mini){
   // appearing, so the island answers "whose is this?" without opening it.
   let whose="";
   if(inOrg() && !mine){
-    const names=[...new Set(ordered.map(x=>x.e.by===me?.uid?"You":(x.e.byName||"")).filter(Boolean))];
+    // shape() already resolved the right label — byLabel (e.g. a synced day-sheet name)
+    // takes priority over the account-based "You"/colleague name; don't recompute it here.
+    const names=[...new Set(ordered.map(x=>x.e.byName||"").filter(Boolean))];
     if(names.length) whose=`<div class="whose">${esc(names.length>2?names.slice(0,2).join(", ")+" +"+(names.length-2):names.join(", "))}</div>`;
   }
   return `<div class="cell${stk} ours ${tier} ${idle?"idle":""}${mine?" mycase":""}" ${dc}>
@@ -1555,7 +1565,7 @@ function openCourtModal(court,_refetched){
       <span class="cm-status ${idle?"idle":""}">${idle?"–":"On item "+esc(bc?.item||"·")}</span></div>
     ${mineHere.length?`<div class="cm-h"><i class="ti ti-star-filled"></i> ${inOrg()?"Chamber case":"Your case"}${mineHere.length>1?"s":""} here</div>${mineHere.map(e=>{ const k=classify(e);
       // on a chamber board, say whose matter each item is
-      const who = inOrg() ? (e.by===me?.uid ? "You" : (e.byName||"")) : "";
+      const who = inOrg() ? (e.byName||"") : "";   // already resolved by shape() — byLabel first, then account name
       return `<div class="cm-mine"><span class="cm-mine-it">${esc(e.itemNo)}</span><span class="cm-mine-t">${esc(e.caseTitle||("item "+e.itemNo))}${who?` <span style="color:var(--mut)">· ${esc(who)}</span>`:""}</span><span class="cm-mine-s ${proxBandOf(k)}">${esc(k.short||"—")}</span></div>`; }).join("")}`:""}
     ${coram?`<div class="cm-card"><div class="cm-h"><i class="ti ti-gavel"></i> Coram</div><div class="cm-body">${esc(coramJJ(coram))}</div></div>`:""}
     <div class="cm-card"><div class="cm-h"><i class="ti ti-list-numbers"></i> Declared sequence</div>${seq.length
@@ -1636,7 +1646,7 @@ function openDateCourtModal(court,date){
     <div class="cm-top"><div class="cm-court">Court <b>${esc(court)}</b></div>
       <span class="cm-status idle">${esc(fmtDateLong(date))}</span></div>
     ${mine.length?`<div class="cm-h"><i class="ti ti-star-filled"></i> Listed here</div>${mine.map(e=>{
-      const who = e.by===me?.uid ? "You" : (e.byName||"");
+      const who = e.byName||"";   // already resolved by shape() — byLabel first, then account name
       return `<div class="cm-mine"><span class="cm-mine-it">${esc(e.itemNo)}</span>
         <span class="cm-mine-t">${esc(e.caseTitle||("item "+e.itemNo))}${who?` <span style="color:var(--mut)">· ${esc(who)}</span>`:""}</span></div>`;
     }).join("")}`:""}
@@ -1753,7 +1763,9 @@ function renderMine(){
       // proximity is only meaningful for today's board
       const k = d===t ? classify({courtNo:m.court,itemNo:m.item,listType:m.listType||""}) : null;
       const bits=[m.listType, m.appearingFor?("for "+m.appearingFor):""].filter(Boolean).join(" · ");
-      const who = m._with ? "with "+m._with : (m._by&&m._by!==me?.uid ? memberName(m._by) : "");
+      // byLabel covers a matter mirrored in from outside CourtReach (e.g. a day sheet)
+      // and tagged to someone with no CourtReach account of their own to attribute to.
+      const who = m._with ? "with "+m._with : (m.byLabel || (m._by&&m._by!==me?.uid ? memberName(m._by) : ""));
       return `<div class="case-row" style="${courtStyle(m.court)}">
         <div class="case-row-head" data-toggle="1">
           <span class="cr-sn">${i+1}</span>
@@ -1769,7 +1781,8 @@ function renderMine(){
           ${bits?`<div class="case-meta">${esc(bits)}</div>`:""}
           ${m.bench?`<div class="case-meta"><span class="cm-k">Bench</span>${esc(m.bench)}</div>`:""}
           ${m.aor?`<div class="case-meta"><span class="cm-k">AoR</span>${esc(m.aor)}</div>`:""}
-          ${(!m._readonly && m._by===me?.uid)?`<div class="case-acts">
+          ${m.source==="daysheet"?`<div class="case-meta" style="opacity:.7"><i class="ti ti-refresh"></i> Synced from the day sheet — edit it there, not here.</div>`
+            :(!m._readonly && m._by===me?.uid)?`<div class="case-acts">
             ${inOrg()?`<button class="case-del" data-scope="${esc(m.id)}"><i class="ti ti-${isChamberMatter(m)?"eye-off":"building-bank"}"></i> ${isChamberMatter(m)?"Make private":"Share with organisation"}</button>`:""}
             <button class="case-del" data-del="${esc(m.id)}"><i class="ti ti-trash"></i> Remove</button></div>`:""}
         </div>
@@ -2359,7 +2372,10 @@ function renderSettings(){
           <button id="st_copyCode">Copy</button><button id="st_rotateCode">New code</button></div>
         <div class="stg-sub" style="margin-top:14px"><b>Pre-approve a colleague</b> — they join automatically when they register with that email, no code needed.</div>
         <div class="admin-code-row"><input id="st_invEmail" type="email" placeholder="colleague@example.com"><button id="st_invAdd">Add</button></div>
-        <div class="am-err" id="st_orgMsg"></div>`:""}
+        <div class="am-err" id="st_orgMsg"></div>
+        <div class="stg-sub" style="margin-top:14px"><b>Organisation ID</b> — only needed if you're wiring in an outside integration (e.g. syncing a day sheet). Nobody needs this to join; use the invite code above for that.</div>
+        <div class="code-box"><span class="code-val" id="st_orgId" style="font-size:13px;letter-spacing:.3px">${esc(me.uid)}</span>
+          <button id="st_copyOrgId">Copy</button></div>`:""}
       <div class="sec-h" style="margin:14px 2px 2px">Members</div>
       ${orgMembers.slice().sort((a,b)=>((b.orgRole==="owner")-(a.orgRole==="owner"))||String(a.name||"").localeCompare(String(b.name||"")))
         .map(m=>`<div class="mem-row">
@@ -2473,6 +2489,11 @@ function wireOrgSettings(){
   if(cp) cp.onclick=async()=>{
     try{ await navigator.clipboard.writeText(myOrg?.joinCode||""); cp.textContent="Copied"; setTimeout(()=>{ if($("st_copyCode")) $("st_copyCode").textContent="Copy"; },1500); }
     catch(e){ msg("Couldn't copy — the code is "+(myOrg?.joinCode||"")); }
+  };
+  const cpOrg=$("st_copyOrgId");
+  if(cpOrg) cpOrg.onclick=async()=>{
+    try{ await navigator.clipboard.writeText(me.uid); cpOrg.textContent="Copied"; setTimeout(()=>{ if($("st_copyOrgId")) $("st_copyOrgId").textContent="Copy"; },1500); }
+    catch(e){ msg("Couldn't copy — the ID is "+me.uid); }
   };
   const rot=$("st_rotateCode");
   if(rot) rot.onclick=async()=>{

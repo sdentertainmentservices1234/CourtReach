@@ -6,6 +6,9 @@ matters by court + item, and CourtReach tells you the moment each one is reachin
 
 - **`index.html` / `courtreach.html`** — the app (same file; `index.html` is the Pages entry point).
 - **`board-engine.js`** — the shared, chamber-agnostic proximity engine (how "N away" is computed).
+- **`sync_daysheet.py`** — optional bridge that mirrors ONE organisation's SD-Chamber
+  day sheet into its CourtReach board, on a schedule. Off by default; see
+  `DAYSHEET-SYNC-SETUP.md`.
 
 ## Account types
 Signup is two steps: pick a type, then fill only that type's fields.
@@ -51,6 +54,12 @@ dates were enforced have none and are grandfathered onto today.
 | `orgmsgs/{id}` | chat, keyed by `orgId` + `channel` (`team` / `all` / `dm:a_b`) |
 | `chatreads/{uid}` | per-channel "read up to" marker — drives unread counts and seen ticks |
 | `linkmsgs/{id}` | collaboration chat; `scope:'peer'` (1:1) or `'chamber'` (addressed to a whole office) |
+
+A matter can carry `source:"daysheet"` + `byLabel` — written only by
+`sync_daysheet.py`, never by the app itself. It marks a matter mirrored in from
+outside CourtReach and names who's appearing as plain text rather than a real
+account. The UI hides edit/remove on these (edit the source instead) and never
+recomputes the label — `byLabel` always wins over the account-based name.
 
 Joining a chamber hands over someone else's subscription, so it is verified
 server-side: the write must carry `joinedVia:<CODE>` matching a live `orgcodes`

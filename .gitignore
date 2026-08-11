@@ -3,3 +3,4 @@ courtreach-demo.html
 *.local
 
 firestore.rules
+__pycache__/

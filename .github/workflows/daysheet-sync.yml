@@ -1,0 +1,39 @@
+name: Sync SD-Chamber day sheet into CourtReach
+
+# Mirrors ONE organisation's day sheet (SD-Chamber) into its CourtReach shared
+# board. Two separate Firebase projects, two separate Auth systems — a browser
+# session in one is meaningless in the other — so this runs server-side with
+# an admin key for each project. See sync_daysheet.py and DAYSHEET-SYNC-SETUP.md.
+#
+# A day sheet changes all day as clerks add/reassign matters, so this runs on
+# a short interval rather than the cause-list fetcher's hourly cadence. GitHub
+# cron is UTC; IST = UTC + 5:30.
+on:
+  schedule:
+    - cron: "*/10 3-18 * * *"   # every 10 min, 08:30-00:00 IST, every day
+  workflow_dispatch:             # manual "Run workflow" button
+
+# Never let two runs overlap.
+concurrency:
+  group: daysheet-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    # Skip entirely (rather than fail loudly on every scheduled tick) until the
+    # required secrets have actually been added — see DAYSHEET-SYNC-SETUP.md.
+    if: ${{ vars.DAYSHEET_SYNC_ENABLED == 'true' }}
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install firebase-admin
+        run: pip install firebase-admin
+      - uses: actions/checkout@v4
+      - name: Sync day sheet → CourtReach board
+        env:
+          SD_CHAMBER_SA_KEY: ${{ secrets.SD_CHAMBER_SA_KEY }}
+          COURTREACH_SA_KEY: ${{ secrets.COURTREACH_SA_KEY }}
+          COURTREACH_ORG_UID: ${{ secrets.COURTREACH_ORG_UID }}
+        run: python sync_daysheet.py
