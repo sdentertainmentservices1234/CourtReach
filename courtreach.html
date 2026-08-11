@@ -431,6 +431,12 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px 12px;-webkit-over
 .admin-actions button{flex:none;font-size:12px;font-weight:600;padding:6px 10px;border-radius:8px;border:1px solid var(--line);
   background:var(--panel2);color:var(--ink)}
 .admin-actions button.danger{color:var(--now);border-color:#f2c9c4}
+/* Admin catalogue: organisations grouped by entity type, each a card holding its own
+   registered-persons list — see the comment above renderAdmin(). */
+.admin-orgtype-h{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);margin:14px 2px 6px}
+.admin-org{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px 14px;margin-bottom:12px}
+.admin-org-members{margin-top:11px;padding-top:11px;border-top:1px dashed var(--line)}
+.admin-org-members .admin-user{background:var(--panel2)}
 .ex-presets{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px}
 .ex-preset{flex:none;font-size:13px;font-weight:600;padding:8px 13px;border-radius:9px;border:1px solid var(--line);
   background:var(--panel2);color:var(--ink)}
@@ -972,8 +978,10 @@ const ADMIN_EMAILS = ["sdentertainmentservices@gmail.com", "adithdeshmukh@gmail.
 const isAdminUser = () => !!(me && me.email && ADMIN_EMAILS.includes(String(me.email).toLowerCase()));
 const msToDay = ms => { try{ return new Date(ms).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }catch(e){ return ""; } };
 const daysLeft = untilMs => Math.max(0, Math.ceil((untilMs - Date.now()) / 86400000));
-function trialEndsAtMs(u){ const c = tsMs(u && u.createdAt); return (c || Date.now()) + TRIAL_DAYS*86400000; }
-// {ok, reason: trial|comp|extend|expired, until?}
+function trialEndsAtMs(u){ const c = tsMs(u && u.createdAt); return (c || Date.now()) + (trialLimitDays||TRIAL_DAYS)*86400000; }
+// {ok, reason: trial|comp|extend|expired, until?}. With no admin-set trialLimitDays, trial
+// is unlimited: reason "trial", ok:true, no `until` at all — nobody is timed out of
+// something that was never given a length.
 function entitlementOf(u){
   if(!u) return {ok:false, reason:"expired"};
   const ov = u.entitlementOverride;
@@ -981,6 +989,7 @@ function entitlementOf(u){
     if(ov.type==="comp") return {ok:true, reason:"comp"};
     if(ov.type==="extend"){ const until=tsMs(ov.until); if(Date.now()<until) return {ok:true, reason:"extend", until}; }
   }
+  if(!trialLimitDays) return {ok:true, reason:"trial"};
   const until = trialEndsAtMs(u);
   if(Date.now() < until) return {ok:true, reason:"trial", until};
   return {ok:false, reason:"expired", until};
@@ -991,7 +1000,7 @@ function entitlementOf(u){
 // so staff added on day 29 don't each start a fresh clock of their own.
 // Rank two entitlements so we can keep the better one. Comp beats everything; otherwise
 // whichever runs longer, and an expired one always loses to a live one.
-const entScore = e => !e ? -2 : e.reason==="comp" ? Infinity : e.ok ? (e.until||0) : -1;
+const entScore = e => !e ? -2 : e.reason==="comp" ? Infinity : !e.ok ? -1 : (e.until==null ? Infinity : e.until);
 function myEntitlement(){
   if(isAdminUser()) return {ok:true, reason:"admin"};
   const mine=entitlementOf(me);
@@ -1190,7 +1199,12 @@ let me=null, myOwn=[], board=[], boardAt=0, boardErr=null, curTab="board";
 // a read-only static preview of that day's published cause list (no live "on now" status
 // exists outside today — see renderDateBoard).
 let boardDate=todayISO();
-let adminUsers=[], adminAccessCode=null, adminUsersUnsub=null, adminCodeUnsub=null, adminSearch="";
+let adminUsers=[], adminOrgs=[], adminAccessCode=null, adminUsersUnsub=null, adminOrgsUnsub=null, adminCodeUnsub=null, adminSearch="";
+// Admin-set free-trial length. null/unset = unlimited (default right now — owner: "make it
+// free trial for everyone who registers, don't have any time limit... I want an option to
+// impose a time limit for free trial after some time, reserve that power to admin"). Read by
+// EVERY signed-in user (entitlementOf needs it to gate anyone at all), written by admin only.
+let trialLimitCfg=null, trialLimitDays=null;
 // Transient Settings feedback ("Saved.") — saving writes users/{uid}, whose watchDoc fires
 // render() and rebuilds the whole Settings pane, so a message written straight into the DOM
 // would vanish instantly. Parking it here lets the re-render paint it back.
@@ -2108,17 +2122,67 @@ function entLabelOf(ent){
   if(ent.reason==="admin") return {text:"Admin — unrestricted access", cls:"comp"};
   if(ent.reason==="comp") return {text:"Comp access", cls:"comp"};
   if(ent.reason==="extend") return {text:"Extended to "+msToDay(ent.until), cls:"extend"};
-  if(ent.ok) return {text:daysLeft(ent.until)+" day"+(daysLeft(ent.until)===1?"":"s")+" left · trial", cls:"trial"};
+  if(ent.ok) return ent.until
+    ? {text:daysLeft(ent.until)+" day"+(daysLeft(ent.until)===1?"":"s")+" left · trial", cls:"trial"}
+    : {text:"Free trial", cls:"trial"};
   return {text:"Trial ended "+msToDay(ent.until), cls:"expired"};
 }
 // ...and the admin-panel variant, which resolves a single user/org doc.
 function entLabel(u){ return entLabelOf(entitlementOf(u)); }
+// One card, reused for an individual and for a member registered under an organisation —
+// they're the same kind of doc (users/{uid}), just filtered into different lists below.
+function adminUserCard(u, n){
+  const el=entLabel(u), hasOv=!!u.entitlementOverride;
+  return `<div class="admin-user">
+    <div class="admin-user-top">
+      <div><div class="admin-user-name">${n?n+". ":""}${esc(u.name||"—")}</div><div class="admin-user-email">${esc(u.email||u.id)}</div></div>
+      <span class="admin-ent ${el.cls}">${esc(el.text)}</span>
+    </div>
+    <div class="case-meta">${tsMs(u.createdAt)?"Joined "+msToDay(tsMs(u.createdAt)):"Join date unknown (legacy account)"}${u.designation?" · "+esc(u.designation):""}</div>
+    <div class="admin-actions">
+      <button data-act="comp" data-kind="user" data-uid="${esc(u.id)}">Grant comp</button>
+      <button data-act="extend" data-kind="user" data-uid="${esc(u.id)}">Extend…</button>
+      ${hasOv?`<button class="danger" data-act="revoke" data-kind="user" data-uid="${esc(u.id)}">Revoke override</button>`:""}
+    </div>
+  </div>`;
+}
+// Admin is catalogued as three separate, serially-numbered lists (owner: "separate lists
+// for individuals, organisations and within organisation separate list for entities and
+// within entities person registered... catalogued serially") — Individuals (users with no
+// orgId at all), then Organisations grouped by their entity type (Chambers / Law firm / Law
+// office / In-house — orgs/{orgId}.orgType), each with its own registered-persons list
+// (every users/{uid} with orgId === that org's id, owner included). Every list is numbered
+// from 1 in registration order, and numbering restarts in each separate list — that's what
+// "separate" means here, not one running count across the whole panel.
 function renderAdmin(){
   if(!isAdminUser()){ $("main").innerHTML=`<div class="empty">Not authorized.</div>`; return; }
   const q=adminSearch.trim().toLowerCase();
-  const list=(adminUsers||[]).filter(u=>!q || (u.name||"").toLowerCase().includes(q) || (u.email||"").toLowerCase().includes(q))
-    .sort((a,b)=>tsMs(b.createdAt)-tsMs(a.createdAt));
+  const matchUser = u => !q || (u.name||"").toLowerCase().includes(q) || (u.email||"").toLowerCase().includes(q);
+  const byJoinAsc = (a,b) => tsMs(a.createdAt)-tsMs(b.createdAt);
+
+  const individuals=(adminUsers||[]).filter(u=>!u.orgId).filter(matchUser).sort(byJoinAsc);
+
+  const orgsByType={};
+  (adminOrgs||[]).slice().sort(byJoinAsc).forEach(o=>{
+    const members=(adminUsers||[]).filter(u=>u.orgId===o.id).sort(byJoinAsc);
+    if(q && !((o.name||"").toLowerCase().includes(q) || members.some(matchUser))) return;   // org itself, or any of its people, matches
+    const t=o.orgType||"chamber";
+    (orgsByType[t]=orgsByType[t]||[]).push({org:o, members});
+  });
+  const orgTypeKeys=Object.keys(ORG_TYPE_LABELS).filter(t=>(orgsByType[t]||[]).length);
+  const orgTotal=orgTypeKeys.reduce((n,t)=>n+orgsByType[t].length,0);
+
   let h=`<div class="admin-card">
+    <div class="sec-h" style="margin:0">Free trial length</div>
+    <div class="case-meta" style="margin:2px 0 8px">${trialLimitDays
+      ? `Every new signup gets <b>${trialLimitDays} day${trialLimitDays===1?"":"s"}</b> from registration, then the paywall.`
+      : `No limit right now — every signup gets free trial access with no countdown. Set a number of days below whenever you're ready to start timing it; leave it blank and save to go back to unlimited.`}</div>
+    <div class="admin-code-row">
+      <input id="tl_days" inputmode="numeric" placeholder="Leave blank = unlimited" value="${trialLimitDays||""}">
+      <button id="tl_save">Save</button>
+    </div>
+  </div>
+  <div class="admin-card">
     <div class="sec-h" style="margin:0">Shared access code</div>
     <div class="admin-code-row">
       <input id="ac_code" placeholder="e.g. COURTREACH2026" value="${esc(adminAccessCode?.code||"")}" style="text-transform:uppercase">
@@ -2127,28 +2191,44 @@ function renderAdmin(){
     </div>
     <div class="case-meta" style="margin-top:8px">Anyone who enters this code on the trial-ended screen gets free (comp) access. Rotate it any time — old codes stop working the moment you save a new one.</div>
   </div>
-  <div class="sec-h">Users · ${list.length}${q?` of ${adminUsers.length}`:""}</div>
   <input id="au_search" class="admin-search" placeholder="Search name or email" value="${esc(adminSearch)}">
-  <div id="au_list">`;
-  if(!list.length) h+=`<div class="empty">No users match.</div>`;
-  else h+=list.map(u=>{
-    const el=entLabel(u), hasOv=!!u.entitlementOverride;
-    return `<div class="admin-user">
-      <div class="admin-user-top">
-        <div><div class="admin-user-name">${esc(u.name||"—")}</div><div class="admin-user-email">${esc(u.email||u.id)}</div></div>
-        <span class="admin-ent ${el.cls}">${esc(el.text)}</span>
-      </div>
-      <div class="case-meta">${tsMs(u.createdAt)?"Joined "+msToDay(tsMs(u.createdAt)):"Join date unknown (legacy account)"}</div>
-      <div class="admin-actions">
-        <button data-act="comp" data-uid="${esc(u.id)}">Grant comp</button>
-        <button data-act="extend" data-uid="${esc(u.id)}">Extend…</button>
-        ${hasOv?`<button class="danger" data-act="revoke" data-uid="${esc(u.id)}">Revoke override</button>`:""}
-      </div>
-    </div>`;
-  }).join("");
-  h+=`</div>`;
+
+  <div class="sec-h">Individuals · ${individuals.length}</div>
+  <div id="au_list">${individuals.length ? individuals.map((u,i)=>adminUserCard(u,i+1)).join("") : `<div class="empty">No individuals match.</div>`}</div>
+
+  <div class="sec-h">Organisations · ${orgTotal}</div>`;
+  if(!orgTotal) h+=`<div class="empty">No organisations match.</div>`;
+  orgTypeKeys.forEach(t=>{
+    h+=`<div class="admin-orgtype-h">${esc(ORG_TYPE_LABELS[t])} · ${orgsByType[t].length}</div>`;
+    h+=orgsByType[t].map(({org,members},i)=>{
+      const el=entLabel(org), hasOv=!!org.entitlementOverride;
+      return `<div class="admin-org">
+        <div class="admin-user-top">
+          <div><div class="admin-user-name">${i+1}. ${esc(org.name||"—")}</div>
+            <div class="admin-user-email">${members.length} member${members.length===1?"":"s"}</div></div>
+          <span class="admin-ent ${el.cls}">${esc(el.text)}</span>
+        </div>
+        <div class="case-meta">${tsMs(org.createdAt)?"Created "+msToDay(tsMs(org.createdAt)):"Creation date unknown"}</div>
+        <div class="admin-actions">
+          <button data-act="comp" data-kind="org" data-uid="${esc(org.id)}">Grant comp</button>
+          <button data-act="extend" data-kind="org" data-uid="${esc(org.id)}">Extend…</button>
+          ${hasOv?`<button class="danger" data-act="revoke" data-kind="org" data-uid="${esc(org.id)}">Revoke override</button>`:""}
+        </div>
+        <div class="admin-org-members">
+          <div class="case-meta" style="margin-bottom:6px">Registered · ${members.length}</div>
+          ${members.length ? members.map((u,mi)=>adminUserCard(u,mi+1)).join("") : `<div class="empty">No one registered yet.</div>`}
+        </div>
+      </div>`;
+    }).join("");
+  });
   $("main").innerHTML=h;
 
+  $("tl_save").onclick=async()=>{
+    const raw=($("tl_days").value||"").trim();
+    const n=raw?parseInt(raw,10):null;
+    if(raw && !(n>0)){ alert("Enter a positive number of days, or leave blank for unlimited."); return; }
+    await db.set("config/trialLimit", {days:n, updatedAt:db.now(), updatedBy:me.email||me.uid}, true);
+  };
   $("ac_save").onclick=async()=>{
     const code=($("ac_code").value||"").trim().toUpperCase();
     if(!code){ alert("Enter a code first."); return; }
@@ -2157,28 +2237,29 @@ function renderAdmin(){
   $("au_search").oninput=e=>{ adminSearch=e.target.value; renderAdmin(); };
   $("au_search").focus(); $("au_search").selectionStart=$("au_search").selectionEnd=$("au_search").value.length;
   $("main").querySelectorAll("[data-act]").forEach(b=>b.onclick=async()=>{
-    const uid=b.dataset.uid, act=b.dataset.act;
-    if(act==="comp") await db.update("users/"+uid, {entitlementOverride:{type:"comp", grantedAt:db.now(), grantedBy:me.email||me.uid}});
-    else if(act==="extend") extendForm(uid);
-    else if(act==="revoke") await db.update("users/"+uid, {entitlementOverride:null});
+    const uid=b.dataset.uid, act=b.dataset.act, kind=b.dataset.kind||"user";
+    const path=(kind==="org"?"orgs/":"users/")+uid;
+    if(act==="comp") await db.update(path, {entitlementOverride:{type:"comp", grantedAt:db.now(), grantedBy:me.email||me.uid}});
+    else if(act==="extend") extendForm(uid,kind);
+    else if(act==="revoke") await db.update(path, {entitlementOverride:null});
   });
 }
-// Extend a user's access by a chosen number of days (admin picks the number —
-// presets or free entry). Extends from whichever is LATER: today, or the access
-// they already have — so extending someone mid-trial adds to it rather than
-// silently shortening it.
-function extendForm(uid){
-  const u=(adminUsers||[]).find(x=>x.id===uid); if(!u) return;
+// Extend a user's or organisation's access by a chosen number of days (admin picks the
+// number — presets or free entry). Extends from whichever is LATER: today, or the access
+// they already have — so extending mid-trial adds to it rather than silently shortening it.
+function extendForm(uid, kind){
+  kind = kind||"user";
+  const u=((kind==="org"?adminOrgs:adminUsers)||[]).find(x=>x.id===uid); if(!u) return;
   const ent=entitlementOf(u);
   const baseMs=Math.max(Date.now(), (ent.ok && ent.until) ? ent.until : 0);
   const baseNote = ent.reason==="comp"
-      ? "This user currently has indefinite comp access — extending replaces it with a fixed end date."
+      ? `This ${kind==="org"?"organisation":"user"} currently has indefinite comp access — extending replaces it with a fixed end date.`
       : (baseMs>Date.now()
-          ? `Their access currently runs to <b>${esc(msToDay(baseMs))}</b> — the extension is added on top of that.`
-          : `Their access has already lapsed — the extension runs from today.`);
+          ? `Access currently runs to <b>${esc(msToDay(baseMs))}</b> — the extension is added on top of that.`
+          : `Access has already lapsed — the extension runs from today.`);
   $("modalRoot").innerHTML=`<div class="ovl" data-close><div class="sheet"><button class="sh-x" data-close>&times;</button>
     <h2>Extend access</h2>
-    <div class="sh-sub">${esc(u.name||u.email||uid)} · ${esc(u.email||"")}</div>
+    <div class="sh-sub">${esc(u.name||u.email||uid)}${u.email?" · "+esc(u.email):""}</div>
     <div class="case-meta" style="margin-bottom:12px">${baseNote}</div>
     <div class="ex-presets">
       ${[7,15,30,60,90].map(d=>`<button class="ex-preset" data-days="${d}">${d} days</button>`).join("")}
@@ -2200,7 +2281,7 @@ function extendForm(uid){
   $("ex_save").onclick=async()=>{
     const n=parseInt(($("ex_days").value||"").trim(),10);
     if(!(n>0)){ $("ex_err").textContent="Enter how many days to extend by."; return; }
-    await db.update("users/"+uid, {entitlementOverride:{type:"extend", until:new Date(baseMs + n*86400000),
+    await db.update((kind==="org"?"orgs/":"users/")+uid, {entitlementOverride:{type:"extend", until:new Date(baseMs + n*86400000),
       days:n, grantedAt:db.now(), grantedBy:me.email||me.uid}});
     closeModal();
   };
@@ -2954,8 +3035,13 @@ function applyGate(){
     unsub.push(db.watchDoc("usermatters/"+uid, d=>{ myOwn=(d&&d.matters)||[]; if(curTab!=="collab"&&!peerBoardUid) render(); }));
     unsub.push(db.watchQuery("links","fromUid",uid, rows=>{ linksOut=rows||[]; recomputeLinks(); }));
     unsub.push(db.watchQuery("links","toUid",uid, rows=>{ linksIn=rows||[]; recomputeLinks(); }));
+    // Read by EVERYONE, not just admin — this is what entitlementOf() checks to decide
+    // whether trials expire at all. Re-runs the gate live so flipping a limit on takes
+    // effect for open sessions without waiting for a reload.
+    unsub.push(db.watchDoc("config/trialLimit", d=>{ trialLimitCfg=d; trialLimitDays=(d&&d.days>0)?d.days:null; applyGate(); }));
     if(admin){
       adminUsersUnsub=db.watchCollection("users", rows=>{ adminUsers=rows||[]; if(curTab==="admin") renderAdmin(); });
+      adminOrgsUnsub=db.watchCollection("orgs", rows=>{ adminOrgs=rows||[]; if(curTab==="admin") renderAdmin(); });
       adminCodeUnsub=db.watchDoc("config/accessCode", d=>{ adminAccessCode=d; if(curTab==="admin") renderAdmin(); });
     }
     loadCourtUpdates();
@@ -2969,7 +3055,8 @@ function applyGate(){
 function boot(user){
   unsub.forEach(u=>u&&u()); unsub=[]; if(userDocUnsub){userDocUnsub();userDocUnsub=null;}
   if(threadUnsub){threadUnsub();threadUnsub=null;} if(peerUnsub){peerUnsub();peerUnsub=null;}
-  if(adminUsersUnsub){adminUsersUnsub();adminUsersUnsub=null;} if(adminCodeUnsub){adminCodeUnsub();adminCodeUnsub=null;}
+  if(adminUsersUnsub){adminUsersUnsub();adminUsersUnsub=null;} if(adminOrgsUnsub){adminOrgsUnsub();adminOrgsUnsub=null;}
+  if(adminCodeUnsub){adminCodeUnsub();adminCodeUnsub=null;}
   if(chatUnsub){chatUnsub();chatUnsub=null;} if(chatReadUnsub){chatReadUnsub();chatReadUnsub=null;} if(extUnsub){extUnsub();extUnsub=null;}
   links=[];linksOut=[];linksIn=[];collabOpen=null;linkMsgs=[];peerBoardUid=null;peerBoardName="";peerMatters=[];linkFound=null;
   chatMsgs=[]; extMsgs=[]; chatChannel="team"; chatChannelPicked=false; chatReads={}; _chatStick=true;
@@ -3023,7 +3110,7 @@ function paintJoinBanner(){
 }
 function paintTrialBanner(ent){
   const el=$("trialBanner"); if(!el) return;
-  if(ent.reason==="trial"){
+  if(ent.reason==="trial" && ent.until){         // no `until` at all means unlimited — nothing to warn about
     const d=daysLeft(ent.until);
     if(d<=5){ el.classList.remove("hidden"); el.textContent=`Your free trial ends ${d<=0?"today":"in "+d+" day"+(d===1?"":"s")}.`; return; }
   }
