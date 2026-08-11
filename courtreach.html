@@ -95,18 +95,17 @@ body.signed-out{background:#0f141b}
 /* ---- app shell ---- */
 #app{display:flex;flex-direction:column;height:100vh;height:100dvh;max-width:760px;width:100%;margin-inline:auto;background:var(--bg);overflow:hidden}
 @media(min-width:761px){body{background:#d3d8dd}#app{border-inline:1px solid var(--line)}}
-header.top{display:flex;flex-direction:column;padding:calc(env(safe-area-inset-top,0px) + 8px) 10px 10px;
+header.top{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:calc(env(safe-area-inset-top,0px) + 14px) 10px 14px;
   background:linear-gradient(180deg,#1a222c,#12171e);color:#fff;flex:none;border-bottom:1px solid rgba(176,148,86,.4)}
-.top-bar{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%}
-.top-actions{display:flex;align-items:center;gap:2px;min-width:0}
+.top-actions{display:flex;align-items:center;gap:2px;flex:1 1 0;min-width:0}
 .top-actions.right{justify-content:flex-end;gap:18px}   /* deliberate space before the exit control */
-/* brand: mark above the wordmark, both centred, sitting right under the calendar-button
-   row rather than a separate block further down (owner: "logo and monogram to be at the
-   level of the calendar button in height... CourtReach name... sitting too low") */
-.brand{display:flex;flex-direction:column;align-items:center;gap:1px;margin-top:2px}
-.brand-logo{display:flex;align-items:center;justify-content:center;width:46px;height:46px;flex:none}
+/* brand: logo/monogram and wordmark side by side, back to the original single-row
+   layout (owner: "revert the header to our original design of the name and logo and
+   monogram being side by side" — the stacked, own-row brand tried above didn't land). */
+.brand{display:flex;align-items:center;gap:9px;flex:none}
+.brand-logo{display:flex;align-items:center;justify-content:center;width:40px;height:40px;flex:none}
 .brand-logo svg{display:block;width:100%;height:100%}
-.brand-name{font-family:Fraunces,serif;font-weight:600;font-size:clamp(30px,9vw,40px);color:#fff;letter-spacing:.3px;line-height:1.05;white-space:nowrap}
+.brand-name{font-family:Fraunces,serif;font-weight:600;font-size:clamp(24px,6.4vw,31px);color:#fff;letter-spacing:.2px;line-height:1;white-space:nowrap}
 .iconbtn.danger{color:#e8a49c}
 .iconbtn.danger:active{background:rgba(209,69,58,.22)}
 .iconbtn{position:relative;background:transparent;border:none;color:#cdd6df;font-size:21px;padding:7px;line-height:1;border-radius:9px}
@@ -130,13 +129,16 @@ header.top{display:flex;flex-direction:column;padding:calc(env(safe-area-inset-t
    not just the banner in the board below */
 .cal-field.off-today{background:rgba(194,168,106,.2);border-color:var(--gold)}
 .cal-field.off-today span{color:var(--gold)}
-/* phone widths: only the date pill needs tightening now. The wordmark used to be shrunk
-   here too, because it shared one row with the pill and both buttons and they overlapped —
-   the brand has its own row now, so it keeps its full size on a phone. */
+/* phone widths: pill, wordmark and both buttons share one row again, and at their
+   full desktop sizes the three groups total more than the bar — since .brand is
+   flex:none the pill/buttons would overlap it without this. */
 @media(max-width:420px){
   .cal-field{padding:8px 10px;gap:6px}
   .cal-field i{font-size:17px}
   .cal-field span{font-size:13px}
+  .brand-name{font-size:21px}
+  .brand-logo{width:34px;height:34px}
+  .brand{gap:6px}
 }
 .cal-native-overlay{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:none;
   padding:0;margin:0;-webkit-appearance:none;appearance:none;color-scheme:dark}
@@ -816,20 +818,11 @@ main#main.chatmode{overflow:hidden;display:flex;flex-direction:column}
 <!-- APP -->
 <div id="app" class="hidden">
   <header class="top">
-    <!-- Controls on their own row so the brand below can be centred and given real size,
-         and so Refresh and the exit control aren't neighbours (owner: "I don't want people
-         accidentally pressing the logout button while pressing refresh"). -->
-    <div class="top-bar">
-      <div class="top-actions left">
-        <div class="cal-field" id="calField">
-          <i class="ti ti-calendar" aria-hidden="true"></i>
-          <span id="calDateLabel">Today</span>
-          <input type="date" id="calInput" class="cal-native-overlay" aria-label="Pick a date to view that day's board">
-        </div>
-      </div>
-      <div class="top-actions right">
-        <button class="iconbtn" id="btnRefresh" title="Refresh"><i class="ti ti-refresh"></i></button>
-        <button class="iconbtn danger" id="btnOut" title="Lock or sign out"><i class="ti ti-logout"></i></button>
+    <div class="top-actions left">
+      <div class="cal-field" id="calField">
+        <i class="ti ti-calendar" aria-hidden="true"></i>
+        <span id="calDateLabel">Today</span>
+        <input type="date" id="calInput" class="cal-native-overlay" aria-label="Pick a date to view that day's board">
       </div>
     </div>
     <div class="brand">
@@ -843,6 +836,14 @@ main#main.chatmode{overflow:hidden;display:flex;flex-direction:column}
         </svg>
       </span>
       <span class="brand-name">CourtReach</span>
+    </div>
+    <!-- Refresh and the exit control keep their deliberate 18px gap and the exit control's
+         red tint from the earlier "don't want people accidentally pressing logout while
+         pressing refresh" fix — that spacing fix is independent of the row/stack layout
+         question and stays even though the stacked brand experiment was reverted below. -->
+    <div class="top-actions right">
+      <button class="iconbtn" id="btnRefresh" title="Refresh"><i class="ti ti-refresh"></i></button>
+      <button class="iconbtn danger" id="btnOut" title="Lock or sign out"><i class="ti ti-logout"></i></button>
     </div>
   </header>
   <div id="paneTop">
