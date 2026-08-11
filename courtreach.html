@@ -174,7 +174,7 @@ header.top{display:flex;flex-direction:column;padding:calc(env(safe-area-inset-t
 .join-banner i{font-size:15px;flex:none}
 .join-banner button{flex:none;background:none;border:none;color:var(--accent);font-weight:700;font-size:12px;padding:3px 4px}
 .join-banner button#joinBannerX{color:#7e8ba3;font-size:14px}
-main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px calc(66px + env(safe-area-inset-bottom,0px));-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px 12px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 /* board grid */
 .grid{display:flex;flex-wrap:wrap;gap:8px}
 .cell{flex:1 1 calc(33.33% - 6px);max-width:calc(33.33% - 6px);background:var(--panel);border:1.5px solid var(--line);
@@ -477,7 +477,13 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px calc(66px + env(s
 .rq-rm{flex:none;background:none;border:none;color:var(--now);font-size:12px;font-weight:600}
 .badge{position:absolute;top:4px;left:calc(50% + 8px);background:var(--now);color:#fff;border-radius:20px;font-size:9px;padding:1px 5px;min-width:15px;line-height:1.4}
 /* bottom nav */
-nav.botnav{position:fixed;bottom:0;left:0;right:0;max-width:760px;margin-inline:auto;display:flex;z-index:30;
+/* A normal flex child of #app, not position:fixed — WebKit has long-standing bugs where a
+   fixed-position element doesn't track iOS Safari's dynamic toolbar collapsing/expanding
+   correctly, leaving a gap at the bottom. #app is already exactly 100dvh with overflow
+   hidden and main#main as the only flex:1 (growing) child, so letting the nav flow as a
+   normal flex:none child at the end achieves the same "always at the bottom" result
+   without ever touching position:fixed. */
+nav.botnav{flex:none;width:100%;display:flex;z-index:30;
   background:var(--panel);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
 nav.botnav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;border:none;
   color:var(--mut);font-size:11px;font-weight:600;padding:9px 4px 8px}
