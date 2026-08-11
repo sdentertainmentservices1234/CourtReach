@@ -61,7 +61,8 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px calc(66px + env(s
 /* board grid */
 .grid{display:flex;flex-wrap:wrap;gap:8px}
 .cell{flex:1 1 calc(33.33% - 6px);max-width:calc(33.33% - 6px);background:var(--panel);border:1.5px solid var(--line);
-  border-radius:13px;padding:10px 8px;text-align:center;min-width:0}
+  border-radius:13px;padding:10px 8px;text-align:center;min-width:0;cursor:pointer}
+.cell:active{transform:scale(.985)}
 .cell.mini{flex:1 1 calc(20% - 6.5px);max-width:calc(20% - 6.5px);padding:8px 5px}
 /* full island head: LEFT half is a solid dark block (court no.), RIGHT half is light
    (item now on). No line — the dark/light contrast is the division. */
@@ -78,6 +79,19 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px calc(66px + env(s
 .cell.mini .on-side{flex:none;padding:0}
 .cell.mini .on-lab{display:none}
 .cell.mini .ct-num{background:var(--navy);border-radius:7px;padding:2px 8px;font-size:16px}
+/* STACKED island: big full-width court header on top, ongoing below (ISLAND_STACKED) */
+.cell.stk{padding:0;overflow:hidden;text-align:center}
+.cell.stk .cell-topbar{background:var(--navy);color:#fff;font-family:var(--mono);font-weight:800;font-size:27px;letter-spacing:1px;padding:10px 4px;line-height:1}
+.cell.stk .cell-topbar .cd{color:var(--gold)}
+.cell.stk .cell-on{padding:8px 4px 7px}
+.cell.stk .cell-on-lab{font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--mut);margin-right:5px}
+.cell.stk .cell-on-num{font-family:var(--mono);font-size:20px;font-weight:800;color:var(--ink)}
+.cell.stk.idle .cell-on-num,.cell.stk.idle .cell-on-lab{color:var(--passed)}
+.cell.stk .cell-ours{margin:0 8px 9px}
+.cell.stk .mycase-rib{margin:0}
+.cell.stk.mini .cell-topbar{font-size:20px;padding:7px 3px;letter-spacing:.5px}
+.cell.stk.mini .cell-on{padding:5px 3px 6px}
+.cell.stk.mini .cell-on-num{font-size:16px}
 .cell.mini .on-num{font-size:17px;margin-top:1px}
 .cell.idle .on-num,.cell.idle .on-lab{color:var(--passed)}
 .cell-ours{margin-top:7px;border-radius:8px;padding:5px 4px;font-size:11px;font-weight:700;color:#fff;line-height:1.15;text-align:center}
@@ -131,6 +145,35 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px calc(66px + env(s
 .mm-meta{flex:1;min-width:0;display:flex;flex-direction:column}.mm-t{font-size:14px;font-weight:600}.mm-s{font-size:12px;color:var(--mut);margin-top:2px}
 .mm-del{background:none;border:none;color:var(--now);font-size:12px;font-weight:600}
 .sec-h{font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--mut);margin:6px 2px 9px}
+/* My cases — refined case cards */
+.case-card{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:14px 15px;margin-bottom:11px;box-shadow:0 1px 3px rgba(20,26,34,.05)}
+.case-top{display:flex;align-items:center;gap:10px}
+.case-ci{display:inline-flex;align-items:center;gap:8px;flex:none}
+.cc-ct{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:#fff;background:var(--navy);border-radius:6px;padding:4px 9px}
+.cc-it{font-family:var(--mono);font-size:19px;font-weight:800;color:var(--ink);line-height:1}
+.case-prox{margin-left:auto;flex:none;font-size:11px;font-weight:800;letter-spacing:.3px;border-radius:20px;padding:4px 11px;text-transform:uppercase;white-space:nowrap}
+.case-prox.now{color:#fff;background:var(--now)}
+.case-prox.soon{color:#7a4f0d;background:#f8efd8}
+.case-prox.later{color:#1e6b3a;background:#e3f2e8}
+.case-prox.passed,.case-prox.idle{color:#5a6672;background:var(--panel2)}
+.case-title{font-family:Fraunces,serif;font-weight:600;font-size:16.5px;color:var(--ink);margin-top:11px;line-height:1.28}
+.case-meta{font-size:12.5px;color:var(--mut);margin-top:4px;line-height:1.35}
+.case-meta .cm-k{font-weight:700;color:var(--ink);opacity:.65;text-transform:uppercase;font-size:9.5px;letter-spacing:.4px;margin-right:6px}
+.case-del{margin-top:11px;background:none;border:none;color:var(--mut);font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:5px;padding:0}
+.case-del:active{color:var(--now)}
+/* Court detail modal */
+.ct-on-chip{font-size:11px;font-weight:700;color:var(--mut);background:var(--panel2);border-radius:20px;padding:3px 10px;vertical-align:middle;margin-left:6px}
+.cm-sec{margin-top:15px}
+.cm-h{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
+.cm-body{font-size:14px;color:var(--ink);line-height:1.4}
+.cm-seq{display:flex;flex-wrap:wrap;gap:5px}
+.cm-seq span{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:3px 7px}
+.cm-seq span.cur{background:var(--navy);color:#fff;border-color:var(--navy)}
+.cm-chips{display:flex;flex-wrap:wrap;gap:5px}
+.cm-chips span{font-family:var(--mono);font-size:12.5px;font-weight:700;border-radius:7px;padding:3px 8px}
+.cm-po{color:#7a4f0d;background:#f8efd8}
+.cm-ov{color:#5a6672;background:var(--panel2);text-decoration:line-through}
+.cm-empty{margin-top:14px;font-size:13px;color:var(--mut);line-height:1.5;background:var(--panel2);border-radius:12px;padding:14px}
 .big-btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:13px;border-radius:12px;
   border:none;background:linear-gradient(180deg,#1c242e,#12171e);color:#fff;font-weight:600;font-size:14px;margin-bottom:14px}
 /* collaborate */
@@ -292,7 +335,7 @@ nav.botnav button.on{color:var(--accent)}
   <main id="main"></main>
   <nav class="botnav">
     <button data-tab="board" class="on"><i class="ti ti-layout-grid"></i>Board</button>
-    <button data-tab="mine"><i class="ti ti-list-details"></i>My matters</button>
+    <button data-tab="mine"><i class="ti ti-gavel"></i>My cases</button>
     <button data-tab="collab"><i class="ti ti-users-group"></i>Collaborate<span class="badge hidden" id="collabBadge">0</span></button>
   </nav>
 </div>
@@ -596,32 +639,87 @@ function renderBoard(){
   const full=shown.filter(inFull).sort((a,b)=>((isMyCaseCourt(b.court)?1:0)-(isMyCaseCourt(a.court)?1:0))||byNo(a,b));
   const mini=shown.filter(c=>!inFull(c)).sort(byNo);
   if(!set.length) h+= peerBoardUid ? `<div class="notice">${esc(peerBoardName)} isn't tracking any matter right now.</div>`
-    : `<div class="notice">You're not tracking any matter yet. Add one from <b>My matters</b> and it lights up here as it reaches.</div>`;
+    : `<div class="notice">You're not tracking any matter yet. Add one from <b>My cases</b> and it lights up here as it reaches.</div>`;
   h+=`<div class="grid">`+full.map(c=>boardCell(c,false)).join("")+`</div>`;
   if(mini.length) h+=`<div class="grid" style="margin-top:7px">`+mini.map(c=>boardCell(c,true)).join("")+`</div>`;
   $("main").innerHTML=h;
   const pb=$("peerBack"); if(pb) pb.onclick=exitPeerBoard;
+  $("main").querySelectorAll(".cell[data-court]").forEach(el=>el.onclick=()=>openCourtModal(el.dataset.court));
 }
+// Court-island layout. ISLAND_STACKED=true → court number as a big full-width header on
+// top, ongoing item below (then our item + how-many-away for our courts). Set it false to
+// revert to the court-left / item-right split head. (One-line revert.)
+const ISLAND_STACKED = true;
 function boardCell(c, mini){
   const idle=/not in session/i.test(c.status||"");
   const ours=activeMatters().filter(e=>String(e.courtNo)===String(c.court));
   const mine=isMyCaseCourt(c.court);
-  // top row: court no. prominent on the LEFT, the item now on the RIGHT
-  const head=`<div class="cell-head">
+  const dc=`data-court="${esc(c.court)}"`;
+  // two header styles — a stacked big header (default) or the left/right split (revert)
+  const splitHead=`<div class="cell-head">
     <div class="ct-side"><span class="ct-num">C<span class="cd">${esc(c.court)}</span></span></div>
     <div class="on-side">${idle?`<span class="on-lab">not sitting</span><span class="on-num">—</span>`
       :`<span class="on-lab">on</span><span class="on-num">${esc(c.item||"·")}</span>`}</div>
   </div>`;
-  if(!ours.length && !mine){ return `<div class="cell${mini?" mini":""}${idle?" idle":""}">${head}</div>`; }
+  const stackHead=`<div class="cell-topbar">C<span class="cd">${esc(c.court)}</span></div>
+    <div class="cell-on">${idle?`<span class="cell-on-lab">not sitting</span>`
+      :`<span class="cell-on-lab">on</span><span class="cell-on-num">${esc(c.item||"·")}</span>`}</div>`;
+  const head = ISLAND_STACKED ? stackHead : splitHead;
+  const stk = ISLAND_STACKED ? " stk" : "";
+  if(!ours.length && !mine){ return `<div class="cell${stk}${mini?" mini":""}${idle?" idle":""}" ${dc}>${head}</div>`; }
   // in a "your case" court, track MY item(s); otherwise the peer's / my own tracked matters
   const src = mine ? myCaseItemsIn(c.court).map(it=>({courtNo:c.court,itemNo:it})) : ours;
   const ks=src.map(e=>({e,k:classify(e)})).sort((a,b)=>(TIER_RANK[a.k.tier]-TIER_RANK[b.k.tier])||((a.k.gap??999)-(b.k.gap??999)));
   const tier=ks[0]?.k.tier||"idle";
   const items=ks.map(x=>esc(x.e.itemNo)).join(" · ");
-  return `<div class="cell ours ${tier} ${idle?"idle":""}${mine?" mycase":""}">
+  return `<div class="cell${stk} ours ${tier} ${idle?"idle":""}${mine?" mycase":""}" ${dc}>
     ${mine?`<div class="mycase-rib"><i class="ti ti-star-filled"></i> Your case</div>`:""}
     ${head}
     <div class="cell-ours"><span class="oi">${items}</span><br>${esc(ks[0]?.k.short||ks[0]?.k.label||"—")}</div></div>`;
+}
+
+/* ===== COURT DETAIL — tap an island for its coram, declared sequence, passovers ===== */
+function courtCoram(court){
+  const lists=courtUpdates?.by_date?.[todayISO()]?.lists||{};
+  for(const t of CAUSELIST_TYPES){ const rec=lists[t]?.[String(court)]; if(rec&&rec.coram) return cleanCoram(rec.coram); }
+  return "";
+}
+function courtTotals(court){
+  const lists=courtUpdates?.by_date?.[todayISO()]?.lists||{}, out=[];
+  for(const t of CAUSELIST_TYPES){ const rec=lists[t]?.[String(court)]; if(rec&&rec.total) out.push(t+": "+rec.total); }
+  return out;
+}
+function courtRemarkItems(court,rx){
+  const r=remarksByCourt[String(court)], out=[];
+  if(r&&r.items) for(const k in r.items){ if(rx.test(r.items[k])) out.push(k); }
+  return out;
+}
+function courtPassovers(court){
+  const po=courtRemarkItems(court,/pass\s*over/i);
+  if(boardPO.date===todayISO()) for(const key in boardPO.marks){ const i=key.indexOf("_");
+    if(i>0 && key.slice(0,i)===String(court)){ const it=key.slice(i+1); if(!po.includes(it)) po.push(it); } }
+  return po.sort((a,b)=>parseFloat(a)-parseFloat(b));
+}
+function openCourtModal(court,_refetched){
+  court=String(court);
+  const bc=boardByCourt()[court];
+  // pull this court's remark column fresh ONCE (OVER / PASS OVER), then re-render when it lands
+  if(!_refetched && bc&&bc.token) fetchRemarksFor(court,bc.token).then(()=>{ if($("modalRoot").querySelector(`.sheet[data-court="${court}"]`)) openCourtModal(court,true); });
+  const idle=bc?/not in session/i.test(bc.status||""):true;
+  const coram=courtCoram(court);
+  const seq=(ENG.seqInfo?ENG.seqInfo(seqByCourt[court]||""):{seq:[]}).seq||[];
+  const pass=courtPassovers(court), overs=courtRemarkItems(court,/^over$/i), totals=courtTotals(court);
+  const nothing=!coram&&!seq.length&&!pass.length&&!overs.length&&!totals.length;
+  $("modalRoot").innerHTML=`<div class="ovl" data-close><div class="sheet" data-court="${esc(court)}"><button class="sh-x" data-close>&times;</button>
+    <h2>Court ${esc(court)} <span class="ct-on-chip">${idle?"not sitting":"on item "+esc(bc?.item||"·")}</span></h2>
+    <div class="sh-sub">${idle?"Not in session":esc(bc?.status||"Hearing")}</div>
+    ${coram?`<div class="cm-sec"><div class="cm-h">Coram</div><div class="cm-body">${esc(coram)}</div></div>`:""}
+    ${seq.length?`<div class="cm-sec"><div class="cm-h">Declared sequence</div><div class="cm-seq">${seq.map(n=>`<span${String(n)===String(bc?.item)?' class="cur"':''}>${esc(n)}</span>`).join("")}</div></div>`:""}
+    ${pass.length?`<div class="cm-sec"><div class="cm-h">Passed over</div><div class="cm-chips">${pass.map(n=>`<span class="cm-po">${esc(n)}</span>`).join("")}</div></div>`:""}
+    ${overs.length?`<div class="cm-sec"><div class="cm-h">Over</div><div class="cm-chips">${overs.map(n=>`<span class="cm-ov">${esc(n)}</span>`).join("")}</div></div>`:""}
+    ${totals.length?`<div class="cm-sec"><div class="cm-h">Matters today</div><div class="cm-body">${totals.map(esc).join(" · ")}</div></div>`:""}
+    ${nothing?`<div class="cm-empty">No sequence, coram or passover published for this court yet — it fills in as the bench updates the list.</div>`:""}
+  </div></div>`;
 }
 
 /* ===== APPROACH FLASH — full-screen overlay when our matters are reaching (ported from the display board) ===== */
@@ -673,20 +771,27 @@ function showFlash(items){
 }
 function hideFlash(){ if(_flashTimer){clearTimeout(_flashTimer);_flashTimer=null;} const h=$("flashHost"); if(h) h.remove(); }
 
+const proxBandOf = k => k.tier==="now"?"now":k.tier==="soon"?"soon":k.tier==="later"?"later":k.tier==="passed"?"passed":"idle";
 function renderMine(){
-  const list=(myOwn||[]).slice().sort((a,b)=>(parseInt(a.court)||99)-(parseInt(b.court)||99));
-  let h=`<button class="big-btn" id="mmAdd"><i class="ti ti-plus"></i> Track a matter</button>`;
-  h+=`<div class="sec-h">My matters (${list.length})</div>`;
-  if(!list.length) h+=`<div class="empty">No matters yet. Add your court &amp; item number and CourtReach tracks it live on the board.</div>`;
+  const list=(myOwn||[]).slice().sort((a,b)=>(parseInt(a.court)||99)-(parseInt(b.court)||99)||(parseFloat(a.item)||0)-(parseFloat(b.item)||0));
+  let h=`<button class="big-btn" id="mmAdd"><i class="ti ti-plus"></i> Track a case</button>`;
+  h+=`<div class="sec-h">My cases${list.length?` · ${list.length}`:""}</div>`;
+  if(!list.length) h+=`<div class="empty">No cases yet. Add your court &amp; item number and CourtReach tracks it live on the board.</div>`;
   else h+=list.map(m=>{
-    const k=classify({courtNo:m.court,itemNo:m.item});
-    const bits=[m.listType, m.appearingFor?("for "+m.appearingFor):"", m.aor?("AoR: "+m.aor):""].filter(Boolean).join(" · ");
-    return `<div class="mm-row"><span class="mm-ci">Ct ${esc(m.court)} · ${esc(m.item)}</span>
-      <span class="mm-meta"><span class="mm-t">${esc(m.title||("Court "+m.court+" item "+m.item))}</span>
-        ${bits?`<span class="mm-x">${esc(bits)}</span>`:""}
-        ${m.bench?`<span class="mm-x">Bench: ${esc(m.bench)}</span>`:""}
-        <span class="mm-s">${esc(k.label||k.short||"—")}</span></span>
-      <button class="mm-del" data-del="${esc(m.id)}">Remove</button></div>`;
+    const k=classify({courtNo:m.court,itemNo:m.item,listType:m.listType||""});
+    const band=proxBandOf(k);
+    const bits=[m.listType, m.appearingFor?("for "+m.appearingFor):""].filter(Boolean).join(" · ");
+    return `<div class="case-card">
+      <div class="case-top">
+        <span class="case-ci"><span class="cc-ct">Court ${esc(m.court)}</span><span class="cc-it">${esc(m.item)}</span></span>
+        <span class="case-prox ${band}">${esc(k.short||"—")}</span>
+      </div>
+      <div class="case-title">${esc(m.title||("Court "+m.court+" · item "+m.item))}</div>
+      ${bits?`<div class="case-meta">${esc(bits)}</div>`:""}
+      ${m.bench?`<div class="case-meta"><span class="cm-k">Bench</span>${esc(m.bench)}</div>`:""}
+      ${m.aor?`<div class="case-meta"><span class="cm-k">AoR</span>${esc(m.aor)}</div>`:""}
+      <button class="case-del" data-del="${esc(m.id)}"><i class="ti ti-trash"></i> Remove</button>
+    </div>`;
   }).join("");
   $("main").innerHTML=h;
   const a=$("mmAdd"); if(a) a.onclick=addMatterForm;
@@ -703,7 +808,7 @@ function addMatterForm(){
     <label class="am-fld">Causelist type<select id="am_type">${CAUSELIST_TYPES.map(t=>`<option>${esc(t)}</option>`).join("")}</select></label>
     <div class="am-row">
       <label class="am-fld">Court<input id="am_court" inputmode="numeric" placeholder="e.g. 5"></label>
-      <label class="am-fld">Item<input id="am_item" inputmode="numeric" placeholder="e.g. 32"></label>
+      <label class="am-fld">Item<input id="am_item" inputmode="decimal" placeholder="e.g. 32 or 40.1"></label>
     </div>
     <label class="am-fld">Appearing for<select id="am_party"><option>Petitioner</option><option>Respondent</option></select></label>
     <button class="sh-btn ghost2" id="am_fetch"><i class="ti ti-search"></i> Fetch details</button>
@@ -713,7 +818,7 @@ function addMatterForm(){
   const readForm=()=>({court:($("am_court").value||"").trim(), item:($("am_item").value||"").trim(),
     date:$("am_date").value||todayISO(), type:$("am_type").value, party:$("am_party").value});
   const valid=f=>{ if(!/^\d{1,2}$/.test(f.court)||+f.court<1||+f.court>17){ $("am_err").textContent="Enter a court number (1–17)."; return false; }
-    if(!f.item){ $("am_err").textContent="Enter your item number."; return false; } $("am_err").textContent=""; return true; };
+    if(!/^\d{1,4}(\.\d+)?$/.test(f.item)){ $("am_err").textContent="Enter an item number (e.g. 32 or 40.1)."; return false; } $("am_err").textContent=""; return true; };
   const doFetch=async()=>{
     const f=readForm(); if(!valid(f)) return;
     $("am_fetch").innerHTML="Fetching…"; await loadCourtUpdates();
