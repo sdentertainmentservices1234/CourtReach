@@ -17,7 +17,10 @@
 <style>
 :root{--bg:#eef1f4;--panel:#fff;--panel2:#f4f6f8;--ink:#161b22;--mut:#6b7787;--line:#dfe4ea;
   --navy:#141a22;--gold:#c2a86a;--accent:#33507e;--now:#c1362b;--soon:#c68a24;--later:#3a7d50;
-  --now-bg:#fbeeec;--soon-bg:#f8efd8;--later-bg:#eef5f0;--passed:#8a94a0;--mono:'IBM Plex Mono',monospace}
+  --now-bg:#fbeeec;--soon-bg:#f8efd8;--later-bg:#eef5f0;--passed:#8a94a0;--mono:'IBM Plex Mono',monospace;
+  /* readable back out via getComputedStyle in the Settings > Diagnostics panel — env() isn't
+     otherwise queryable from JS directly */
+  --sab-probe:env(safe-area-inset-bottom,0px)}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 /* The app is a fixed shell — #app is pinned to the viewport and ONLY main#main scrolls
    inside it. html/body carry no explicit height at all, on purpose: a percentage height
@@ -2671,6 +2674,19 @@ function renderSettings(){
       <div class="am-err" id="st_resetMsg"></div>
     </div>`);
 
+  /* ---- Diagnostics ----
+     Temporary: measures the exact numbers behind the iOS Home Screen footer-gap bug on the
+     device that's actually seeing it, since two guesses from theory alone (Safari's dynamic
+     toolbar) both missed — the report turned out to come from standalone/Home Screen mode,
+     which has no toolbar at all, so that whole theory didn't even apply. Screenshot this
+     section and send it rather than describing the gap in words. Safe to remove once the
+     real fix is confirmed. */
+  h+=sec("diag","ti-bug","Diagnostics","For the footer-gap report", `
+    <div class="stg-group"><div class="stg-gt">Screenshot this and send it</div>
+      <pre id="st_diag" style="white-space:pre-wrap;font-family:var(--mono);font-size:11.5px;
+        color:var(--mut);background:var(--panel2);border-radius:10px;padding:10px;line-height:1.6"></pre>
+    </div>`);
+
   // With a PIN set, "Lock" is the everyday action — it's what offers PIN login back on
   // the next open, on demand, rather than leaving that to chance (owner: "it doesn't show
   // option to login by pin once you have registered the pin — it should offer that").
@@ -2685,6 +2701,22 @@ function renderSettings(){
   // one section open at a time
   $("main").querySelectorAll("[data-sec]").forEach(b=>b.onclick=()=>{
     stgOpen = stgOpen===b.dataset.sec ? "" : b.dataset.sec; renderSettings(); });
+  // See the Diagnostics comment above sec("diag",...) for why this exists.
+  if($("st_diag")){
+    const appEl=$("app"), navEl=document.querySelector("nav.botnav");
+    const appRect=appEl?appEl.getBoundingClientRect():null;
+    $("st_diag").textContent=[
+      "standalone: "+(window.navigator.standalone===true||matchMedia("(display-mode: standalone)").matches),
+      "innerWidth x innerHeight: "+window.innerWidth+" x "+window.innerHeight,
+      "visualViewport height: "+(window.visualViewport?Math.round(window.visualViewport.height):"n/a"),
+      "documentElement.clientHeight: "+document.documentElement.clientHeight,
+      "#app height: "+(appRect?Math.round(appRect.height):"n/a"),
+      "#app bottom edge: "+(appRect?Math.round(appRect.bottom):"n/a"),
+      "body.scrollHeight: "+document.body.scrollHeight,
+      "nav padding-bottom: "+(navEl?getComputedStyle(navEl).paddingBottom:"n/a"),
+      "safe-area-inset-bottom: "+getComputedStyle(document.documentElement).getPropertyValue("--sab-probe").trim()
+    ].join("\n");
+  }
   // hold the join message across the burst of re-renders joining triggers (user doc, then
   // org doc, then members), then retire it — clearing it on first paint made it invisible.
   if(joinNotice && !_joinNoticeTimer) _joinNoticeTimer=setTimeout(()=>{ joinNotice=""; _joinNoticeTimer=null;
