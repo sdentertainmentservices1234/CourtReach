@@ -19,18 +19,20 @@ GOLD = (203, 182, 130, 255)   # #cbb682 — the header monogram's own gold
 GRAD_TOP    = (13, 17, 23, 255)
 GRAD_BOTTOM = (22, 29, 39, 255)
 
-SERIF = "/tmp/fonts/IowanOldStyle.ttf"  # Source Serif 4 (variable); stands in for
-                                        # Georgia/Iowan Old Style (not redistributable)
-SERIF_URL = ("https://raw.githubusercontent.com/google/fonts/main/ofl/sourceserif4/"
-             "SourceSerif4%5Bopsz%2Cwght%5D.ttf")
+SERIF = "/tmp/fonts/Fraunces.ttf"  # the app's REAL brand serif — same font as
+                                   # "CourtReach"/"Court N"/case titles everywhere
+                                   # else in the app (owner: didn't like the old
+                                   # Georgia/Iowan-Old-Style stand-in's font)
+SERIF_URL = ("https://raw.githubusercontent.com/google/fonts/main/ofl/fraunces/"
+             "Fraunces%5BSOFT%2CWONK%2Copsz%2Cwght%5D.ttf")
 if not os.path.exists(SERIF):
     os.makedirs(os.path.dirname(SERIF), exist_ok=True)
-    print("downloading Source Serif 4…")
+    print("downloading Fraunces…")
     urllib.request.urlretrieve(SERIF_URL, SERIF)
 
 def serif_font(px):
     f = ImageFont.truetype(SERIF, px)
-    try: f.set_variation_by_axes([14.0, 600.0])  # opsz, wght — semibold
+    try: f.set_variation_by_axes([0.0, 0.0, 72.0, 600.0])  # SOFT,WONK,opsz,wght
     except Exception: pass
     return f
 
@@ -70,22 +72,22 @@ def draw_icon(size):
     ImageDraw.Draw(mask).rounded_rectangle([0, 0, size, size], radius=corner, fill=255)
     img = Image.composite(base, Image.new("RGBA", (size, size), (0, 0, 0, 0)), mask)
 
-    s = size / 44 * 0.72
+    s = size / 44 * 0.90
     ox = size * 0.5 - 22 * s
-    chev_oy = size * 0.135
-    f_cr = serif_font(int(size * 0.225))
-    cr_yc = size * 0.685
+    chev_oy = size * 0.055
+    f_cr = serif_font(int(size * 0.31))
+    cr_yc = size * 0.745
 
     # soft gold glow behind the whole mark
     glow = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     gd = ImageDraw.Draw(glow)
-    chevrons(gd, ox, chev_oy, s, GOLD[:3] + (200,), max(2, int(size * 0.018)))
+    chevrons(gd, ox, chev_oy, s, GOLD[:3] + (200,), max(2, int(size * 0.021)))
     centered_text(gd, size / 2, cr_yc, "CR", f_cr, GOLD[:3] + (200,))
     glow = glow.filter(ImageFilter.GaussianBlur(size * 0.020))
     img.alpha_composite(Image.composite(glow, Image.new("RGBA", (size, size), (0, 0, 0, 0)), mask))
 
     d = ImageDraw.Draw(img)
-    chevrons(d, ox, chev_oy, s, GOLD, max(2, int(size * 0.014)))
+    chevrons(d, ox, chev_oy, s, GOLD, max(2, int(size * 0.017)))
     centered_text(d, size / 2, cr_yc, "CR", f_cr, GOLD)
 
     return img
