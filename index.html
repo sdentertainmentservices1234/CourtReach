@@ -88,33 +88,39 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px calc(66px + env(s
 .cell.stk .cell-on-num{font-family:var(--mono);font-size:28px;font-weight:800;color:var(--ink);line-height:1}
 .cell.stk.idle .cell-on-num,.cell.stk.idle .cell-on-lab{color:var(--passed)}
 /* footer band — fixed height, edge-to-edge (like the header), regardless of item count;
-   content inside scales down to fit via .cnt2/.cnt3/.cnt4p modifier classes */
-.cell.stk .cell-ours{margin:0;width:100%;height:40px;padding:3px 6px;border-radius:0;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;box-sizing:border-box}
+   split left (our item numbers) / right (how-many-away) so each side gets bigger type.
+   Content scales down only as far as needed via the .cnt3/.cnt4p modifiers. */
+.cell.stk .cell-ours{margin:0;width:100%;height:46px;padding:0;border-radius:0;
+  display:flex;align-items:stretch;box-sizing:border-box}
 .cell.stk .mycase-rib{margin:0}
 .cell.stk.mini .cell-topbar{font-size:20px;padding:7px 3px;letter-spacing:.5px}
 .cell.stk.mini .cell-on{padding:5px 3px 6px}
 .cell.stk.mini .cell-on-num{font-size:19px}
-.cell.stk.mini .cell-ours{height:30px;padding:2px 4px}
+.cell.stk.mini .cell-ours{height:36px}
 .cell.mini .on-num{font-size:17px;margin-top:1px}
 .cell.idle .on-num,.cell.idle .on-lab{color:var(--passed)}
-.cell-ours{margin-top:7px;border-radius:8px;padding:5px 4px;font-size:11px;font-weight:700;color:#fff;line-height:1.15;text-align:center}
+.cell-ours{margin-top:7px;border-radius:8px;color:#fff}
 .cell.ours{border-width:2px}
 .cell.ours.now{border-color:var(--now)}.cell.ours.now .cell-ours{background:linear-gradient(180deg,#d1453a,#a5231a)}
 .cell.ours.soon{border-color:var(--soon)}.cell.ours.soon .cell-ours{background:linear-gradient(180deg,#ca9827,#876010)}
 .cell.ours.later{border-color:var(--later)}.cell.ours.later .cell-ours{background:linear-gradient(180deg,#448c5c,#337046)}
 .cell.ours.passed .cell-ours,.cell.ours.idle .cell-ours{background:var(--passed)}
-.oi{font-family:var(--mono);font-size:13px;display:inline-flex;flex-wrap:wrap;justify-content:center;gap:0 3px}
-.cell-ours.cnt3 .oi{font-size:11.5px}
-.cell-ours.cnt4p .oi{font-size:10px}
-.cell.stk.mini .oi{font-size:10.5px}
-.cell.stk.mini .cell-ours.cnt3 .oi{font-size:9.5px}
-.cell.stk.mini .cell-ours.cnt4p .oi{font-size:8.5px}
-.cell-ours .ourlab{font-size:9.5px;opacity:.92}
-.cell-ours.cnt3 .ourlab,.cell-ours.cnt4p .ourlab{font-size:8.5px}
-.oi-sep{opacity:.6;margin:0 1px}
+.ours-cases{flex:1.2;min-width:0;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:1px 5px;padding:2px 4px}
+.ours-div{flex:none;width:1px;margin:7px 0;background:rgba(255,255,255,.32)}
+.ours-away{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;padding:2px 4px;text-align:center}
+.oi{font-family:var(--mono);font-size:17px;font-weight:800;display:inline-flex;flex-wrap:wrap;justify-content:center;gap:0 4px;line-height:1.05}
+.cell-ours.cnt3 .oi{font-size:14.5px}
+.cell-ours.cnt4p .oi{font-size:12.5px}
+.cell.stk.mini .oi{font-size:13px}
+.cell.stk.mini .cell-ours.cnt3 .oi{font-size:11px}
+.cell.stk.mini .cell-ours.cnt4p .oi{font-size:9.5px}
+.ourlab{font-size:15px;font-weight:800;line-height:1.1;letter-spacing:.1px}
+.cell-ours.cnt3 .ourlab{font-size:13px}
+.cell-ours.cnt4p .ourlab{font-size:11.5px}
+.cell.stk.mini .ourlab{font-size:11.5px}
+.oi-sep{opacity:.55;margin:0 1px}
 .oi-it{cursor:pointer;border-radius:3px;padding:0 1px}
-.oi-it.struck{text-decoration:line-through;text-decoration-thickness:1.6px;opacity:.72}
+.oi-it.struck{text-decoration:line-through;text-decoration-thickness:1.8px;opacity:.68}
 .oi-it.overridden{box-shadow:0 0 0 1.5px rgba(255,255,255,.65) inset}
 /* ===== APPROACH FLASH — full-screen overlay when our matters are reaching (ported from the display board) ===== */
 /* EQUAL-SIZE islands: several courts → each island fills its equal cell with a shared min-height,
@@ -179,30 +185,23 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px calc(66px + env(s
 .case-meta .cm-k{font-weight:700;color:var(--ink);opacity:.65;text-transform:uppercase;font-size:9.5px;letter-spacing:.4px;margin-right:6px}
 .case-del{margin-top:11px;background:none;border:none;color:var(--mut);font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:5px;padding:0}
 .case-del:active{color:var(--now)}
-/* Court detail modal */
-.ct-on-chip{font-size:11px;font-weight:700;color:var(--mut);background:var(--panel2);border-radius:20px;padding:3px 10px;vertical-align:middle;margin-left:6px}
-.cm-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 34px 4px 0}
-.cm-court{font-family:Fraunces,serif;font-weight:600;font-size:34px;line-height:1;color:var(--navy)}
+/* Court detail modal — always-visible info cards, no tabs (owner: "why do i need to
+   click on the passover tab to see the passover items - they should be readily available") */
+.cm-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 34px 10px 0;
+  padding-bottom:14px;border-bottom:1.5px solid var(--line)}
+.cm-court{font-family:Fraunces,serif;font-weight:600;font-size:32px;line-height:1;color:var(--navy)}
 .cm-court b{font-weight:700}
-.cm-status{flex:none;font-size:11.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--now);background:#fff2f0;border-radius:20px;padding:5px 12px}
+.cm-status{flex:none;font-size:11.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--now);background:#fff2f0;border-radius:20px;padding:6px 13px}
 .cm-status.idle{color:#5a6672;background:var(--panel2)}
-.cm-tabs{display:flex;gap:6px;margin-top:16px;border-bottom:1.5px solid var(--line)}
-.cm-tab{appearance:none;border:none;background:none;font:inherit;cursor:pointer;padding:8px 4px;margin-bottom:-1.5px;
-  font-size:12.5px;font-weight:700;color:var(--mut);border-bottom:2.5px solid transparent}
-.cm-tab.on{color:var(--navy);border-bottom-color:var(--gold)}
-.cm-pane{padding-top:12px}
-.cm-pane[hidden]{display:none}
 .cm-none{font-size:13px;color:var(--mut);line-height:1.5}
-.cm-sec{margin-top:15px}
-.cm-h{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
+.cm-card{background:var(--panel2);border-radius:14px;padding:13px 14px;margin-top:10px}
+.cm-h{display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--gold);margin-bottom:7px}
+.cm-h i{font-size:12px}
+.cm-h .cm-count{font-family:var(--mono);color:var(--mut);font-weight:700;letter-spacing:0;text-transform:none}
 .cm-body{font-size:14px;color:var(--ink);line-height:1.4}
-.cm-seq{display:flex;flex-wrap:wrap;gap:5px}
-.cm-seq span{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:3px 7px}
-.cm-seq span.cur{background:var(--navy);color:#fff;border-color:var(--navy)}
-.cm-chips{display:flex;flex-wrap:wrap;gap:5px}
-.cm-chips span{font-family:var(--mono);font-size:12.5px;font-weight:700;border-radius:7px;padding:3px 8px}
-.cm-po{color:#7a4f0d;background:#f8efd8}
-.cm-ov{color:#5a6672;background:var(--panel2);text-decoration:line-through}
+.cm-chips{display:flex;flex-wrap:wrap;gap:6px}
+.cm-chips span{font-family:var(--mono);font-size:13px;font-weight:800;border-radius:8px;padding:4px 10px}
+.cm-po{color:#7a4f0d;background:#f2e2b8}
 .cm-empty{margin-top:14px;font-size:13px;color:var(--mut);line-height:1.5;background:var(--panel2);border-radius:12px;padding:14px}
 .cm-mine{display:flex;align-items:center;gap:10px;background:#fbf3df;border:1px solid #e6d29a;border-radius:11px;padding:9px 12px;margin-bottom:6px}
 .cm-mine-it{font-family:var(--mono);font-size:16px;font-weight:800;color:var(--navy);flex:none}
@@ -748,7 +747,11 @@ function boardCell(c, mini){
   return `<div class="cell${stk} ours ${tier} ${idle?"idle":""}${mine?" mycase":""}" ${dc}>
     ${mine?`<div class="mycase-rib"><i class="ti ti-star-filled"></i> Your case</div>`:""}
     ${head}
-    <div class="cell-ours${cnt}"><span class="oi">${items}</span><span class="ourlab">${esc(best?.k.short||best?.k.label||"—")}</span></div></div>`;
+    <div class="cell-ours${cnt}">
+      <div class="ours-cases"><span class="oi">${items}</span></div>
+      <div class="ours-div"></div>
+      <div class="ours-away"><span class="ourlab">${esc(best?.k.short||best?.k.label||"—")}</span></div>
+    </div></div>`;
 }
 
 /* ===== COURT DETAIL — tap an island for its coram, declared sequence, passovers ===== */
@@ -790,7 +793,8 @@ function coramJJ(coram){
   const n=coram.split(",").filter(s=>s.trim()).length;
   return coram+(n>1?" JJ.":" J.");
 }
-let _courtTab="seq";   // which court-modal tab is active (persists across the remark re-render)
+// Court detail sheet — every fact (coram, sequence, passovers, totals) sits in its own
+// always-visible card; nothing is behind a tab (owner: it should all be "readily available").
 function openCourtModal(court,_refetched){
   court=String(court);
   const bc=boardByCourt()[court];
@@ -801,30 +805,22 @@ function openCourtModal(court,_refetched){
   const coram=courtCoram(court);
   const seq=(ENG.seqInfo?ENG.seqInfo(seqByCourt[court]||""):{seq:[]}).seq||[];
   const pass=courtPassovers(court), totals=courtTotals(court);
-  const hasTabs=seq.length||pass.length;
-  const nothing=!mineHere.length&&!coram&&!hasTabs&&!totals.length;
+  const nothing=!mineHere.length&&!coram&&!seq.length&&!pass.length&&!totals.length;
   $("modalRoot").innerHTML=`<div class="ovl" data-close><div class="sheet" data-court="${esc(court)}"><button class="sh-x" data-close>&times;</button>
     <div class="cm-top"><div class="cm-court">Court <b>${esc(court)}</b></div>
       <span class="cm-status ${idle?"idle":""}">${idle?"–":"On item "+esc(bc?.item||"·")}</span></div>
-    ${mineHere.length?`<div class="cm-sec"><div class="cm-h">Your case${mineHere.length>1?"s":""} here</div>${mineHere.map(e=>{ const k=classify(e);
-      return `<div class="cm-mine"><span class="cm-mine-it">${esc(e.itemNo)}</span><span class="cm-mine-t">${esc(e.caseTitle||("item "+e.itemNo))}</span><span class="cm-mine-s ${proxBandOf(k)}">${esc(k.short||"—")}</span></div>`; }).join("")}</div>`:""}
-    ${coram?`<div class="cm-sec"><div class="cm-h">Coram</div><div class="cm-body">${esc(coramJJ(coram))}</div></div>`:""}
-    ${hasTabs?`<div class="cm-tabs">
-        <button class="cm-tab ${_courtTab==="seq"?"on":""}" data-ctab="seq">Declared sequence</button>
-        <button class="cm-tab ${_courtTab==="po"?"on":""}" data-ctab="po">Passovers${pass.length?" ("+pass.length+")":""}</button>
-      </div>
-      <div class="cm-pane" data-cpane="seq" ${_courtTab==="seq"?"":"hidden"}>${seq.length
-        ?`<div class="cm-body">${esc(seqRanges(seq))}, then the rest of the matters</div>`
-        :`<div class="cm-none">No sequence declared for this court yet.</div>`}</div>
-      <div class="cm-pane" data-cpane="po" ${_courtTab==="po"?"":"hidden"}>${pass.length
-        ?`<div class="cm-chips">${pass.map(n=>`<span class="cm-po">${esc(n)}</span>`).join("")}</div>`
-        :`<div class="cm-none">No matters passed over yet.</div>`}</div>`:""}
-    ${totals.length?`<div class="cm-sec"><div class="cm-h">Matters today</div><div class="cm-body">${totals.map(esc).join(" · ")}</div></div>`:""}
+    ${mineHere.length?`<div class="cm-h"><i class="ti ti-star-filled"></i> Your case${mineHere.length>1?"s":""} here</div>${mineHere.map(e=>{ const k=classify(e);
+      return `<div class="cm-mine"><span class="cm-mine-it">${esc(e.itemNo)}</span><span class="cm-mine-t">${esc(e.caseTitle||("item "+e.itemNo))}</span><span class="cm-mine-s ${proxBandOf(k)}">${esc(k.short||"—")}</span></div>`; }).join("")}`:""}
+    ${coram?`<div class="cm-card"><div class="cm-h"><i class="ti ti-gavel"></i> Coram</div><div class="cm-body">${esc(coramJJ(coram))}</div></div>`:""}
+    <div class="cm-card"><div class="cm-h"><i class="ti ti-list-numbers"></i> Declared sequence</div>${seq.length
+      ?`<div class="cm-body">${esc(seqRanges(seq))}, then the rest of the matters</div>`
+      :`<div class="cm-none">Not declared yet.</div>`}</div>
+    <div class="cm-card"><div class="cm-h"><i class="ti ti-corner-up-left"></i> Passed over${pass.length?` <span class="cm-count">· ${pass.length}</span>`:""}</div>${pass.length
+      ?`<div class="cm-chips">${pass.map(n=>`<span class="cm-po">${esc(n)}</span>`).join("")}</div>`
+      :`<div class="cm-none">None yet.</div>`}</div>
+    ${totals.length?`<div class="cm-card"><div class="cm-h"><i class="ti ti-clipboard-list"></i> Matters today</div><div class="cm-body">${totals.map(esc).join(" · ")}</div></div>`:""}
     ${nothing?`<div class="cm-empty">No sequence, coram or passover published for this court yet — it fills in as the bench updates the list.</div>`:""}
   </div></div>`;
-  $("modalRoot").querySelectorAll(".cm-tab").forEach(b=>b.onclick=()=>{ _courtTab=b.dataset.ctab;
-    $("modalRoot").querySelectorAll(".cm-tab").forEach(x=>x.classList.toggle("on",x.dataset.ctab===_courtTab));
-    $("modalRoot").querySelectorAll(".cm-pane").forEach(p=>p.hidden=(p.dataset.cpane!==_courtTab)); });
 }
 
 /* ===== APPROACH FLASH — full-screen overlay when our matters are reaching (ported from the display board) ===== */
