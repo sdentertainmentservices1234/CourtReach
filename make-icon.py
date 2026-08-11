@@ -1,48 +1,57 @@
 #!/usr/bin/env python3
-"""Regenerate CourtReach's PWA app icons — the real brand monogram (the
-chevron-arrow + dot + "CR" wordmark used in the header/login, lifted from that
-SVG's own path data, viewBox 0 0 44 44) on the navy top band of a court-island
-tile, with a case/item number ("24", IBM Plex Mono — the app's own number
-font) on the light bottom band. Owner's pick among 4 options (Aug 2026):
-full monogram > abstract grid, > a bare "C1" with no brand mark.
+"""Regenerate CourtReach's PWA app icons — v3, a single unified composition
+(owner: "not liking this, come do better... elegant... pleasing to eye").
 
-Deterministic (Pillow + real TTFs, no base64). Run: python3 make-icon.py
+Replaces the earlier stacked navy/white "two band" tile with one continuous
+deep-navy gradient ground (echoes the real Supreme Court display board's
+near-black background), the brand chevron+dot mark as a small refined crown,
+"C1" as the glowing hero in TEAL — the actual colour the live board lights an
+active court in, not just our navy/gold, so the icon calls back to the real
+board's specific look, not only its layout. A thin gold hairline rule (matches
+the short-rule motif already used elsewhere in the brand, e.g. the login
+screen) separates it from a quieter case/item number below.
+
+Owner's call: "take whatever colour code you want" — teal is new, not in
+app.css, deliberately, to carry that board-recognition moment; gold/navy stay
+from the existing brand so the mark is still unmistakably CourtReach.
+
+The "CR" wordmark from the header monogram is deliberately left OUT of the
+icon itself: multi-letter text doesn't hold up at small icon/favicon sizes
+(same reason Slack, Notion, etc. ship symbol-only icons — the app name is
+already labelled by the OS under the icon). The chevron+dot mark carries the
+brand identity instead. Flag to the owner; add "CR" back in if they want it
+regardless of the legibility trade-off.
+
+Deterministic (Pillow + IBM Plex Mono Bold, no base64). Run: python3 make-icon.py
 Writes icon-512.png, icon-192.png, apple-touch-icon.png, favicon-32.png.
-
-Fonts (auto-downloaded to /tmp/fonts/ if missing):
-  - IBM Plex Mono Bold — the case number (app.css --mono)
-  - Source Serif 4 (variable, opsz/wght set to semibold) — stands in for the
-    header's Georgia/Iowan Old Style/Palatino stack, which isn't freely
-    redistributable; visually close serif for the "CR" wordmark.
 """
 import os, urllib.request
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
-NAVY  = (20, 26, 34, 255)     # #141a22 — app.css --navy
 GOLD  = (203, 182, 130, 255)  # #cbb682 — the header monogram's own gold
-INK   = (22, 27, 34, 255)     # #161b22 — app.css --ink
-WHITE = (255, 255, 255, 255)
+TEAL  = (99, 220, 208, 255)   # new for this icon — the board's "active tile" glow
+CREAM = (238, 232, 219, 255)
+GRAD_TOP    = (13, 17, 23, 255)
+GRAD_BOTTOM = (22, 29, 39, 255)
 
 MONO = "/tmp/fonts/IBMPlexMono-Bold.ttf"
 MONO_URL = "https://raw.githubusercontent.com/google/fonts/main/ofl/ibmplexmono/IBMPlexMono-Bold.ttf"
-SERIF = "/tmp/fonts/IowanOldStyle.ttf"   # Source Serif 4 (variable), despite the filename
-SERIF_URL = ("https://raw.githubusercontent.com/google/fonts/main/ofl/sourceserif4/"
-             "SourceSerif4%5Bopsz%2Cwght%5D.ttf")
+if not os.path.exists(MONO):
+    os.makedirs(os.path.dirname(MONO), exist_ok=True)
+    print("downloading IBM Plex Mono…")
+    urllib.request.urlretrieve(MONO_URL, MONO)
 
-def ensure(path, url):
-    if not os.path.exists(path):
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        print(f"downloading {os.path.basename(path)}…")
-        urllib.request.urlretrieve(url, path)
-
-ensure(MONO, MONO_URL)
-ensure(SERIF, SERIF_URL)
-
-def serif_font(px):
-    f = ImageFont.truetype(SERIF, px)
-    try: f.set_variation_by_axes([14.0, 600.0])  # opsz, wght — semibold
-    except Exception: pass
-    return f
+def vgrad(size, top, bottom):
+    img = Image.new("RGBA", (size, size), top)
+    px = img.load()
+    for y in range(size):
+        t = y / size
+        row = (int(top[0] + (bottom[0] - top[0]) * t),
+               int(top[1] + (bottom[1] - top[1]) * t),
+               int(top[2] + (bottom[2] - top[2]) * t), 255)
+        for x in range(size):
+            px[x, y] = row
+    return img
 
 def centered_text(d, xc, yc, text, font, fill):
     bbox = d.textbbox((0, 0), text, font=font)
@@ -50,8 +59,7 @@ def centered_text(d, xc, yc, text, font, fill):
     d.text((xc - w / 2 - bbox[0], yc - h / 2 - bbox[1]), text, font=font, fill=fill)
 
 def chevrons(d, ox, oy, s, color, stroke_w):
-    """The header monogram's arrow+dot glyph. (ox,oy)=pixel origin for svg (0,0);
-    s=px per svg-unit. Path data lifted straight from #brandLogo's <svg>."""
+    """The header monogram's arrow+dot glyph — path data lifted from #brandLogo's <svg>."""
     def pt(x, y): return (ox + x * s, oy + y * s)
     for pts in ([pt(15, 15), pt(22, 9), pt(29, 15)], [pt(13, 21), pt(22, 14), pt(31, 21)]):
         d.line(pts, fill=color, width=stroke_w, joint="curve")
@@ -63,28 +71,39 @@ def chevrons(d, ox, oy, s, color, stroke_w):
     d.ellipse([cx - rdot, cy - rdot, cx + rdot, cy + rdot], fill=color)
 
 def draw_icon(size):
-    corner = size * 0.22
-    split = size * 0.50
-
+    corner = size * 0.223
+    base = vgrad(size, GRAD_TOP, GRAD_BOTTOM)
     mask = Image.new("L", (size, size), 0)
     ImageDraw.Draw(mask).rounded_rectangle([0, 0, size, size], radius=corner, fill=255)
-    band = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    bd = ImageDraw.Draw(band)
-    bd.rectangle([0, 0, size, split], fill=NAVY)
-    bd.rectangle([0, split, size, size], fill=WHITE)
-    img = Image.composite(band, Image.new("RGBA", (size, size), (0, 0, 0, 0)), mask)
+    img = Image.composite(base, Image.new("RGBA", (size, size), (0, 0, 0, 0)), mask)
+
+    f_hero = ImageFont.truetype(MONO, int(size * 0.30))
+    hero_yc = size * 0.475
+
+    # soft teal glow behind "C1" (its own blurred layer, clipped to the icon shape)
+    glow = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    centered_text(ImageDraw.Draw(glow), size / 2, hero_yc, "C1", f_hero, TEAL[:3] + (235,))
+    glow = glow.filter(ImageFilter.GaussianBlur(size * 0.022))
+    img.alpha_composite(Image.composite(glow, Image.new("RGBA", (size, size), (0, 0, 0, 0)), mask))
+
     d = ImageDraw.Draw(img)
 
-    # monogram: chevrons+dot, then "CR" beneath, filling the top band
-    s = size / 44 * 0.66
-    ox = size * 0.5 - 22 * s
-    chevrons(d, ox, size * 0.035, s, GOLD, max(2, int(size * 0.015)))
-    f_cr = serif_font(int(size * 0.185))
-    centered_text(d, size / 2, split * 0.80, "CR", f_cr, GOLD)
+    # crown: chevron+dot, small and refined
+    s = size / 44 * 0.30
+    chevrons(d, size * 0.5 - 22 * s, size * 0.085, s, GOLD, max(2, int(size * 0.011)))
 
-    # case/item number — bottom band, navy on white (matches .cell-on-num)
-    f_num = ImageFont.truetype(MONO, int(size * 0.28))
-    centered_text(d, size / 2, split + (size - split) * 0.52, "24", f_num, INK)
+    # hero "C1" — sharp teal on top of its own glow
+    centered_text(d, size / 2, hero_yc, "C1", f_hero, TEAL)
+
+    # thin gold rule
+    rule_y = size * 0.635
+    rule_w = size * 0.16
+    d.line([(size / 2 - rule_w / 2, rule_y), (size / 2 + rule_w / 2, rule_y)],
+           fill=GOLD, width=max(2, int(size * 0.0075)))
+
+    # case number — quiet, smaller, cream
+    f_case = ImageFont.truetype(MONO, int(size * 0.155))
+    centered_text(d, size / 2, size * 0.79, "24", f_case, CREAM)
 
     return img
 
