@@ -350,10 +350,13 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px calc(66px + env(s
 .cm-chips span{font-family:var(--mono);font-size:13px;font-weight:800;border-radius:8px;padding:4px 10px}
 .cm-po{color:#7a4f0d;background:#f2e2b8}
 .cm-empty{margin-top:14px;font-size:13px;color:var(--mut);line-height:1.5;background:var(--panel2);border-radius:12px;padding:14px}
-.cm-mine{display:flex;align-items:center;gap:10px;background:#fbf3df;border:1px solid #e6d29a;border-radius:11px;padding:9px 12px;margin-bottom:6px}
-.cm-mine-it{font-family:var(--mono);font-size:16px;font-weight:800;color:var(--navy);flex:none}
-.cm-mine-t{flex:1;min-width:0;font-size:13.5px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cm-mine-s{flex:none;font-size:10.5px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;border-radius:20px;padding:3px 9px}
+/* align to the top now that a long cause title wraps to two or three lines instead of
+   being cut off mid-word (owner: "the name of cases in the island pop up are not fitting
+   in full — reduce their font to make them fit") */
+.cm-mine{display:flex;align-items:flex-start;gap:10px;background:#fbf3df;border:1px solid #e6d29a;border-radius:11px;padding:9px 12px;margin-bottom:6px}
+.cm-mine-it{font-family:var(--mono);font-size:15px;font-weight:800;color:var(--navy);flex:none;line-height:1.35}
+.cm-mine-t{flex:1;min-width:0;font-size:12.5px;line-height:1.35;color:var(--ink);overflow-wrap:anywhere}
+.cm-mine-s{flex:none;font-size:10px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;border-radius:20px;padding:3px 8px;white-space:nowrap}
 .cm-mine-s.now{color:#fff;background:var(--now)}
 .cm-mine-s.soon{color:#7a4f0d;background:#f8efd8}
 .cm-mine-s.later{color:#1e6b3a;background:#e3f2e8}
@@ -897,12 +900,16 @@ function titleFromCauseLine(line){
   const pet=clean(parts[0]), resp=clean(parts[1]||"");
   return resp ? _titleCase(pet)+" vs "+_titleCase(resp) : _titleCase(pet);
 }
+// "HON'BLE MR. JUSTICE A B SHARMA" -> "Justice A B Sharma". The honorific is stripped and
+// re-applied in one consistent form rather than echoing whatever the PDF happened to use
+// (owner: "add Justice before the name of the judges in coram"). The C.J.I. keeps its own
+// title — nobody writes "Justice C.J.I.".
 function cleanCoram(coram){
   if(!coram) return "";
   return String(coram).split(/HON'BLE/i).map(x=>x.trim()).filter(Boolean).map(p=>{
     if(/CHIEF\s+JUSTICE/i.test(p)) return "C.J.I.";
     p=p.replace(/\b(THE|MR|MRS|MS|DR|JUSTICE)\b\.?/gi," ").replace(/^[.\s]+/,"").replace(/\s+/g," ").trim();
-    return p ? _titleCase(p) : "";
+    return p ? "Justice "+_titleCase(p) : "";
   }).filter(Boolean).join(", ");
 }
 function lookupItem(date,type,court,item){
@@ -1635,11 +1642,15 @@ function seqRanges(arr){
   return parts.join(", ");
 }
 // Append the "JJ." (Justices) / "J." (single judge) honorific after the coram.
-function coramJJ(coram){
+// cleanCoram() now prefixes each name with "Justice", so the old trailing "J."/"JJ."
+// would give "Justice A, Justice B JJ." — one honorific per judge is enough.
+function coramJJ(coram){ return coram||""; }
+// Coram with each judge's name in bold, for the court sheet. Escapes first, then bolds,
+// so a name can never inject markup.
+function coramHTML(coram){
   if(!coram) return "";
-  if(/\bJJ?\.\s*$/.test(coram)) return coram;                    // already suffixed
-  const n=coram.split(",").filter(s=>s.trim()).length;
-  return coram+(n>1?" JJ.":" J.");
+  return coram.split(",").map(x=>x.trim()).filter(Boolean)
+    .map(n=>`<b>${esc(n)}</b>`).join(", ");
 }
 // Court detail sheet — every fact (coram, sequence, passovers, totals) sits in its own
 // always-visible card; nothing is behind a tab (owner: it should all be "readily available").
@@ -1657,11 +1668,11 @@ function openCourtModal(court,_refetched){
   $("modalRoot").innerHTML=`<div class="ovl" data-close><div class="sheet" data-court="${esc(court)}"><button class="sh-x" data-close>&times;</button>
     <div class="cm-top"><div class="cm-court">Court <b>${esc(court)}</b></div>
       <span class="cm-status ${idle?"idle":""}">${idle?"–":"On item "+esc(bc?.item||"·")}</span></div>
+    ${coram?`<div class="cm-card"><div class="cm-h"><i class="ti ti-gavel"></i> Coram</div><div class="cm-body">${coramHTML(coram)}</div></div>`:""}
     ${mineHere.length?`<div class="cm-h"><i class="ti ti-star-filled"></i> ${inOrg()?"Chamber case":"Your case"}${mineHere.length>1?"s":""} here</div>${mineHere.map(e=>{ const k=classify(e);
       // on a chamber board, say whose matter each item is
       const who = inOrg() ? (e.byName||"") : "";   // already resolved by shape() — byLabel first, then account name
       return `<div class="cm-mine"><span class="cm-mine-it">${esc(e.itemNo)}</span><span class="cm-mine-t">${esc(e.caseTitle||("item "+e.itemNo))}${who?` <span style="color:var(--mut)">· ${esc(who)}</span>`:""}</span><span class="cm-mine-s ${proxBandOf(k)}">${esc(k.short||"—")}</span></div>`; }).join("")}`:""}
-    ${coram?`<div class="cm-card"><div class="cm-h"><i class="ti ti-gavel"></i> Coram</div><div class="cm-body">${esc(coramJJ(coram))}</div></div>`:""}
     <div class="cm-card"><div class="cm-h"><i class="ti ti-list-numbers"></i> Declared sequence</div>${seq.length
       ?`<div class="cm-body">${esc(seqRanges(seq))}, then the rest of the matters</div>`
       :`<div class="cm-none">Not declared yet.</div>`}</div>
@@ -1738,12 +1749,12 @@ function openDateCourtModal(court,date){
   $("modalRoot").innerHTML=`<div class="ovl" data-close><div class="sheet"><button class="sh-x" data-close>&times;</button>
     <div class="cm-top"><div class="cm-court">Court <b>${esc(court)}</b></div>
       <span class="cm-status idle">${esc(fmtDateLong(date))}</span></div>
+    ${coram?`<div class="cm-card"><div class="cm-h"><i class="ti ti-gavel"></i> Coram</div><div class="cm-body">${coramHTML(coram)}</div></div>`:""}
     ${mine.length?`<div class="cm-h"><i class="ti ti-star-filled"></i> Listed here</div>${mine.map(e=>{
       const who = e.byName||"";   // already resolved by shape() — byLabel first, then account name
       return `<div class="cm-mine"><span class="cm-mine-it">${esc(e.itemNo)}</span>
         <span class="cm-mine-t">${esc(e.caseTitle||("item "+e.itemNo))}${who?` <span style="color:var(--mut)">· ${esc(who)}</span>`:""}</span></div>`;
     }).join("")}`:""}
-    ${coram?`<div class="cm-card"><div class="cm-h"><i class="ti ti-gavel"></i> Coram</div><div class="cm-body">${esc(coramJJ(coram))}</div></div>`:""}
     ${totals.length?`<div class="cm-card"><div class="cm-h"><i class="ti ti-clipboard-list"></i> Board that day</div><div class="cm-body">${totals.map(esc).join(" · ")}</div></div>`:""}
     ${!coram&&!totals.length?`<div class="cm-empty">The cause list for ${esc(fmtDateLong(date))} hasn't been published yet — coram and the day's board size fill in once it is.</div>`:""}
   </div></div>`;
