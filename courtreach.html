@@ -20,17 +20,21 @@
   --now-bg:#fbeeec;--soon-bg:#f8efd8;--later-bg:#eef5f0;--passed:#8a94a0;--mono:'IBM Plex Mono',monospace}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 /* The app is a fixed shell — #app is pinned to the viewport and ONLY main#main scrolls
-   inside it. html/body must never scroll themselves, or two things break together on
-   iOS: the header stops sitting flush against the top (owner: "make it touch the top"),
-   and position:fixed elements like the bottom nav visibly detach during the page's own
-   scroll (owner: "the bottom is not fixed now"). A stray `html,body{height:100%}` here
-   previously let that page-level scroll happen — percentage heights on html/body resolve
-   against the LARGE viewport while #app's 100dvh tracks the SMALL one, so whenever
-   Safari's toolbar was showing, body ended up taller than #app and the whole page could
-   scroll. overflow:hidden makes that structurally impossible instead of coincidentally
-   avoided. The login/PIN overlays don't need body's height at all — they're
-   position:fixed;inset:0 with their own internal scroll. */
-html,body{height:100%;overflow:hidden}
+   inside it. html/body carry no explicit height at all, on purpose: a percentage height
+   on html/body resolves against the LARGE viewport (toolbars collapsed), while #app's
+   height:100dvh tracks the SMALL one (toolbars visible) — two DIFFERENT numbers. The
+   previous fix here set html,body{height:100%}, which pinned body to the large-viewport
+   number while #app sized itself to the (usually shorter) small-viewport one, leaving a
+   static gap of bare body background below #app equal to the toolbar's height — the
+   footer blank space, surviving even after the bottom nav was taken off position:fixed,
+   because the gap was never about the nav; it was body being taller than #app itself.
+   Neither the login/PIN overlays (position:fixed;inset:0, sized from the viewport
+   directly, not from body) nor #app (sized in vh/dvh, likewise viewport-relative, not a
+   percentage of an ancestor) need body to have a height at all. With none set, body's
+   height is simply "however tall its content is" — i.e. exactly #app's own height, so
+   there is nothing left for it to disagree with. overflow:hidden alone still fully
+   prevents body itself from ever becoming a second, competing scroll container. */
+html,body{overflow:hidden}
 body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
 body.signed-out{background:#0f141b}
 .hidden{display:none!important}
@@ -91,13 +95,15 @@ body.signed-out{background:#0f141b}
 /* ---- app shell ---- */
 #app{display:flex;flex-direction:column;height:100vh;height:100dvh;max-width:760px;width:100%;margin-inline:auto;background:var(--bg);overflow:hidden}
 @media(min-width:761px){body{background:#d3d8dd}#app{border-inline:1px solid var(--line)}}
-header.top{display:flex;flex-direction:column;padding:calc(env(safe-area-inset-top,0px) + 10px) 10px 14px;
+header.top{display:flex;flex-direction:column;padding:calc(env(safe-area-inset-top,0px) + 8px) 10px 10px;
   background:linear-gradient(180deg,#1a222c,#12171e);color:#fff;flex:none;border-bottom:1px solid rgba(176,148,86,.4)}
 .top-bar{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%}
 .top-actions{display:flex;align-items:center;gap:2px;min-width:0}
 .top-actions.right{justify-content:flex-end;gap:18px}   /* deliberate space before the exit control */
-/* brand: mark above the wordmark, both centred, with the name given real presence */
-.brand{display:flex;flex-direction:column;align-items:center;gap:2px;margin-top:8px}
+/* brand: mark above the wordmark, both centred, sitting right under the calendar-button
+   row rather than a separate block further down (owner: "logo and monogram to be at the
+   level of the calendar button in height... CourtReach name... sitting too low") */
+.brand{display:flex;flex-direction:column;align-items:center;gap:1px;margin-top:2px}
 .brand-logo{display:flex;align-items:center;justify-content:center;width:46px;height:46px;flex:none}
 .brand-logo svg{display:block;width:100%;height:100%}
 .brand-name{font-family:Fraunces,serif;font-weight:600;font-size:clamp(30px,9vw,40px);color:#fff;letter-spacing:.3px;line-height:1.05;white-space:nowrap}
