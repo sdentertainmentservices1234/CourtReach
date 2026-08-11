@@ -57,15 +57,37 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:6px
 .iconbtn{position:relative;background:transparent;border:none;color:#cdd6df;font-size:21px;padding:7px;line-height:1;border-radius:9px}
 .iconbtn:active{background:rgba(255,255,255,.1)}
 .iconbtn.on{color:var(--gold)}
-/* calendar button — shows today's (or the picked) date-of-month right on the icon glyph,
-   like a desk-calendar page (owner: replace the header + button with a calendar that
-   "shows today's date"; native <input type=date> underneath does the actual picking).
-   .cal-glyph wraps ONLY the <i> icon (inline-flex hugs its natural box) so the day-number
-   can be pinned to the icon's own bottom edge, not guessed as a % of the padded button. */
-.cal-glyph{position:relative;display:inline-flex}
-.cal-daynum{position:absolute;left:0;right:0;bottom:3px;text-align:center;font-family:var(--mono);
-  font-size:8.5px;font-weight:800;color:#cdd6df;line-height:1;pointer-events:none}
-.cal-hidden-input{position:absolute;width:1px;height:1px;opacity:0;left:-9999px;pointer-events:none}
+/* calendar field — the header's left slot, now that the bell has moved to Settings
+   (owner: "expand the calendar icon button to fill the empty space... bigger, display
+   today's date"). #calInput is a REAL <input type=date> stretched over the whole pill
+   (position:absolute;inset:0;opacity:0) so a tap lands on the actual native control and
+   the OS opens its own picker — no synthetic .click()/.showPicker() forwarding, which is
+   exactly what silently failed before: that trick hid the input off-screen at
+   left:-9999px, so the picker (anchored to the input's real position) opened off-screen
+   too, invisible. The visible icon+label underneath is purely decorative. */
+.cal-field{position:relative;display:flex;align-items:center;gap:8px;flex:none;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:11px;
+  padding:9px 13px;color:#fff}
+.cal-field:active{background:rgba(255,255,255,.14)}
+.cal-field i{font-size:19px;color:var(--gold);flex:none}
+.cal-field span{font-family:var(--mono);font-weight:800;font-size:14px;color:#fff;white-space:nowrap}
+/* viewing a day other than today — tint the pill gold so the header itself says so,
+   not just the banner in the board below */
+.cal-field.off-today{background:rgba(194,168,106,.2);border-color:var(--gold)}
+.cal-field.off-today span{color:var(--gold)}
+/* phone widths: header is date-pill + wordmark + 2 buttons on ~375px. Tighten the pill
+   AND ease the wordmark/logo down a step — at their desktop sizes the three groups total
+   more than the bar, and since .brand is flex:none the pill ends up overlapping it. */
+@media(max-width:420px){
+  .cal-field{padding:8px 10px;gap:6px}
+  .cal-field i{font-size:17px}
+  .cal-field span{font-size:13px}
+  .brand-name{font-size:21px}
+  .brand-logo{width:34px;height:34px}
+  .brand{gap:6px}
+}
+.cal-native-overlay{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:none;
+  padding:0;margin:0;-webkit-appearance:none;appearance:none;color-scheme:dark}
 #paneTop{flex:none;padding:9px 12px 2px}
 .statusrow{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--mut)}
 .freshdot{width:7px;height:7px;border-radius:50%;background:#4bbd6b}
@@ -270,6 +292,18 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px calc(66px + env(s
 .admin-code-row button{flex:none;padding:10px 14px;border-radius:9px;border:none;background:var(--accent);color:#fff;font-weight:600;font-size:13px}
 .admin-search{width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);
   color:var(--ink);font-size:14px;margin:4px 0 12px}
+/* Settings — profile / subscription / notifications, reusing the admin-card/am-fld/
+   sh-btn language above. .stg-switch is a small iOS-style toggle for the notification
+   permission (owner: "settings button... notification permissions and any other matter"). */
+.stg-row{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.stg-label{font-size:14px;font-weight:600;color:var(--ink)}
+.stg-sub{font-size:12px;color:var(--mut);margin-top:2px;line-height:1.4}
+.stg-switch{position:relative;width:44px;height:26px;border-radius:14px;background:var(--line);
+  border:none;flex:none;transition:background .15s}
+.stg-switch.on{background:var(--accent)}
+.stg-switch::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;
+  border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .15s}
+.stg-switch.on::after{transform:translateX(18px)}
 .admin-user{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:8px}
 .admin-user-top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .admin-user-name{font-weight:600;font-size:14px;color:var(--ink)}
@@ -450,9 +484,11 @@ nav.botnav button.on{color:var(--accent)}
 <div id="app" class="hidden">
   <header class="top">
     <div class="top-actions left">
-      <button class="iconbtn calbtn" id="btnCal" title="Pick a date"><span class="cal-glyph"><i class="ti ti-calendar"></i><span class="cal-daynum" id="calDayNum"></span></span></button>
-      <input type="date" id="calInput" class="cal-hidden-input" tabindex="-1" aria-hidden="true">
-      <button class="iconbtn" id="btnNotify" title="Matter-reaching alerts"><i class="ti ti-bell"></i></button>
+      <div class="cal-field" id="calField">
+        <i class="ti ti-calendar" aria-hidden="true"></i>
+        <span id="calDateLabel">Today</span>
+        <input type="date" id="calInput" class="cal-native-overlay" aria-label="Pick a date to view that day's board">
+      </div>
     </div>
     <div class="brand">
       <span class="brand-logo" id="brandLogo"><!-- Approach chevrons over a plain CR monogram -->
@@ -481,6 +517,7 @@ nav.botnav button.on{color:var(--accent)}
     <button data-tab="board" class="on"><i class="ti ti-layout-grid"></i>Board</button>
     <button data-tab="mine"><i class="ti ti-gavel"></i>My cases</button>
     <button data-tab="collab"><i class="ti ti-users-group"></i>Collaborate<span class="badge hidden" id="collabBadge">0</span></button>
+    <button data-tab="settings"><i class="ti ti-settings"></i>Settings</button>
     <button data-tab="admin" class="hidden" id="navAdmin"><i class="ti ti-shield-lock"></i>Admin</button>
   </nav>
 </div>
@@ -691,6 +728,10 @@ let me=null, myOwn=[], board=[], boardAt=0, boardErr=null, curTab="board";
 // exists outside today — see renderDateBoard).
 let boardDate=todayISO();
 let adminUsers=[], adminAccessCode=null, adminUsersUnsub=null, adminCodeUnsub=null, adminSearch="";
+// Transient Settings feedback ("Saved.") — saving writes users/{uid}, whose watchDoc fires
+// render() and rebuilds the whole Settings pane, so a message written straight into the DOM
+// would vanish instantly. Parking it here lets the re-render paint it back.
+let stgMsg="";
 // Live-board context for the proximity engine — the published sequence marquee, the
 // per-court remark column (authoritative OVER / PASS OVER), passovers observed live on
 // the board, and each court's highest-seen item. Same sources the SD display board uses.
@@ -1497,12 +1538,87 @@ function renderThread(id){
   $("cl_ta").onkeydown=e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); sendLinkMsg(id); } };
   const t=$("cl_thread"); if(t) t.scrollTop=t.scrollHeight;
 }
+/* ===== SETTINGS — profile, subscription, notification permissions (owner: "settings
+   button... which will list profile, subscription details, notification permissions and
+   any other matter which is important and required"). Reuses the admin-card/am-fld/
+   sh-btn styling and the entLabel()/access-code logic already built for the paywall +
+   admin panel, so subscription status and code redemption behave identically here. ===== */
+function renderSettings(){
+  const admin=isAdminUser();
+  const ent=admin?{ok:true,reason:"admin"}:entitlementOf(me);
+  const el=admin?{text:"Admin — unrestricted access",cls:"comp"}:entLabel(me);
+  const showRedeem=!admin && ent.reason!=="comp";
+  let h=`<div class="sec-h">Profile</div>
+    <div class="admin-card">
+      <label class="am-fld">Name<input id="st_name" value="${esc(me.name||"")}"></label>
+      <label class="am-fld">Phone<input id="st_phone" value="${esc(me.phone||"")}" inputmode="tel"></label>
+      <label class="am-fld">Designation<select id="st_desig">${DESIGNATIONS.map(d=>`<option${d===me.designation?" selected":""}>${esc(d)}</option>`).join("")}</select></label>
+      <div class="case-meta" style="margin:2px 0 10px">Signed in as <b>${esc(me.email||"")}</b> — this is your sign-in ID and can't be changed here.</div>
+      <button class="sh-btn" id="st_saveProfile">Save profile</button>
+      <div class="am-err" id="st_profMsg" style="${stgMsg==="Saved."?"color:var(--later)":""}">${esc(stgMsg)}</div>
+    </div>
+
+    <div class="sec-h">Subscription</div>
+    <div class="admin-card">
+      <div class="admin-user-top"><span class="admin-user-name">${esc(el.text)}</span><span class="admin-ent ${el.cls}">${esc(ent.reason)}</span></div>
+      ${showRedeem?`<div class="admin-code-row" style="margin-top:10px">
+        <input id="st_code" placeholder="Have an access code?" autocapitalize="characters">
+        <button id="st_redeem">Redeem</button>
+      </div><div class="am-err" id="st_codeMsg"></div>`:""}
+    </div>
+
+    <div class="sec-h">Notifications</div>
+    <div class="admin-card">
+      <div class="stg-row">
+        <div><div class="stg-label">Matter-reaching alerts</div>
+          <div class="stg-sub">Browser notification when a tracked matter is about to reach, while the app is open</div></div>
+        <button class="stg-switch" id="st_notifToggle" type="button" aria-label="Toggle matter-reaching alerts"></button>
+      </div>
+    </div>
+
+    <div class="sec-h">Account</div>
+    <button class="big-btn" id="st_signout"><i class="ti ti-logout"></i> Sign out</button>`;
+  $("main").innerHTML=h;
+
+  $("st_saveProfile").onclick=async()=>{
+    const name=($("st_name").value||"").trim(), phone=($("st_phone").value||"").trim(), designation=$("st_desig").value;
+    const msg=$("st_profMsg"), btn=$("st_saveProfile");
+    if(name.length<2){ msg.textContent="Enter your full name."; return; }
+    btn.disabled=true; msg.textContent="Saving…";
+    // stgMsg (not the DOM node) carries the result — the users/{uid} watcher re-renders
+    // this pane the moment the write lands, which would otherwise wipe the message.
+    try{ await db.set("users/"+me.uid,{name,phone,designation},true); stgMsg="Saved."; }
+    catch(e){ stgMsg="Couldn't save — try again."; }
+    btn.disabled=false;
+    if($("st_profMsg")) $("st_profMsg").textContent=stgMsg;
+    setTimeout(()=>{ stgMsg=""; if(curTab==="settings" && $("st_profMsg")) $("st_profMsg").textContent=""; }, 2500);
+  };
+  const rd=$("st_redeem");
+  if(rd) rd.onclick=async()=>{
+    const val=($("st_code").value||"").trim(), msg=$("st_codeMsg"); msg.textContent="";
+    if(!val){ msg.textContent="Enter a code."; return; }
+    rd.disabled=true;
+    try{
+      const cfg=await db.get("config/accessCode");
+      if(cfg && cfg.active && String(cfg.code||"").trim().toLowerCase()===val.toLowerCase()){
+        await db.set("users/"+me.uid,{entitlementOverride:{type:"comp", code:cfg.code, grantedAt:db.now(), grantedVia:"code"}}, true);
+        renderSettings();                      // re-render to show the new status; skip the disabled reset below
+        return;
+      } else { msg.textContent="Invalid or inactive code."; }
+    }catch(e){ msg.textContent="Couldn't verify that code — check your connection."; }
+    rd.disabled=false;
+  };
+  paintNotify();
+  const nt=$("st_notifToggle"); if(nt) nt.onclick=toggleNotify;
+  $("st_signout").onclick=()=>auth.signOut();
+}
 function closeModal(){ $("modalRoot").innerHTML=""; }
 $("modalRoot").addEventListener("click",e=>{ if(e.target.classList.contains("ovl")||e.target.closest("button[data-close]")) closeModal(); });
 $("routeRail").addEventListener("click",ev=>{ const c=ev.target.closest("[data-court]"); if(c) openCourtModal(c.dataset.court); });
 
 function render(){ if(curTab==="board"){ if(boardDate===todayISO()) renderBoard(); else renderDateBoard(boardDate); }
-  else if(curTab==="mine") renderMine(); else if(curTab==="admin") renderAdmin(); else renderCollab(); }
+  else if(curTab==="mine") renderMine(); else if(curTab==="admin") renderAdmin();
+  else if(curTab==="settings") renderSettings(); else renderCollab(); }
 function setTab(t){ curTab=t; document.querySelectorAll("nav.botnav button").forEach(b=>b.classList.toggle("on",b.dataset.tab===t));
   if(t!=="board"){ const r=$("routeRail"); if(r) r.innerHTML=""; } render(); }
 document.querySelectorAll("nav.botnav button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
@@ -1595,16 +1711,23 @@ $("rgGo").onclick=async()=>{ $("rgErr").textContent="";
   catch(e){ $("rgGo").disabled=false; $("rgErr").textContent=(e.code||"").includes("email-already-in-use")?"That email already has an account — sign in.":(e.message||"Could not create account."); } };
 $("btnRefresh").onclick=()=>{ if(!DEMO) location.reload(); else fetchBoard(); };
 $("btnOut").onclick=()=>auth.signOut();
-// Calendar button — shows the picked (default: today's) date-of-month on the icon glyph;
-// tapping it opens a native date picker via the visually-hidden #calInput. Picking a date
-// jumps to Board tab showing that day (live if today, a static preview otherwise — see
-// renderDateBoard). Replaces the old header "+"; "Track a case" now lives in My cases only.
-function paintCalBtn(){ const el=$("calDayNum"); if(!el) return; try{ el.textContent=new Date(boardDate+"T00:00:00").getDate(); }catch(e){} }
-$("btnCal").onclick=()=>{
-  const inp=$("calInput"); inp.value=boardDate;
-  if(inp.showPicker){ try{ inp.showPicker(); return; }catch(e){} }
-  inp.focus(); inp.click();
-};
+// Calendar field — shows the picked (default: today's) date on the header pill; the real
+// <input type=date> UNDER it (see .cal-native-overlay) is what actually receives the tap
+// and opens the OS picker, so there's no synthetic-click path left to silently fail.
+// Picking a date jumps to Board tab showing that day (live if today, a static preview
+// otherwise — see renderDateBoard). Replaces the old header "+" AND the bell (moved to
+// Settings); "Track a case" lives in My cases, matter-reaching alerts live in Settings.
+function paintCalBtn(){
+  const inp=$("calInput"); if(inp) inp.value=boardDate;
+  const el=$("calDateLabel"); if(!el) return;
+  try{
+    const isToday=boardDate===todayISO();
+    // date only — "Today · 11 Aug" doesn't fit beside the wordmark on a phone. Off-today
+    // is signalled by the pill turning gold (.off-today), not by extra words.
+    el.textContent=new Date(boardDate+"T00:00:00").toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    const f=$("calField"); if(f) f.classList.toggle("off-today", !isToday);
+  }catch(e){}
+}
 $("calInput").onchange=async e=>{
   boardDate=e.target.value||todayISO();
   paintCalBtn();
@@ -1612,12 +1735,11 @@ $("calInput").onchange=async e=>{
   setTab("board");
 };
 paintCalBtn();
-// Matter-reaching alerts: tap the bell to enable browser notifications for when one of
+// Matter-reaching alerts: toggled from Settings — browser notifications for when one of
 // your tracked matters is approaching on the board (fires while the app is open).
 let notifOn=(()=>{ try{ return localStorage.getItem("crNotify")==="1"; }catch(e){ return false; } })();
 let _notified={};
-function paintNotify(){ const b=$("btnNotify"); if(!b) return; const i=b.querySelector("i");
-  if(i) i.className = notifOn ? "ti ti-bell-filled" : "ti ti-bell"; b.classList.toggle("on", notifOn); }
+function paintNotify(){ const b=$("st_notifToggle"); if(!b) return; b.classList.toggle("on", notifOn); }
 async function toggleNotify(){
   if(!notifOn){
     if(typeof Notification!=="undefined" && Notification.permission!=="granted"){
@@ -1638,8 +1760,6 @@ function notifyReaching(items){
     try{ new Notification("CourtReach", {body, tag:"cr-"+r.court, renotify:true}); }catch(e){}
   }
 }
-const _btnNotify=$("btnNotify"); if(_btnNotify) _btnNotify.onclick=toggleNotify;
-paintNotify();
 
 /* demo seed (only DEMO) */
 function seedDemo(db){
