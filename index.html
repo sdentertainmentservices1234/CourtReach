@@ -124,25 +124,31 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px calc(66px + env(s
   border-radius:13px;padding:10px 8px;text-align:center;min-width:0;cursor:pointer}
 .cell:active{transform:scale(.985)}
 .cell.mini{flex:1 1 calc(20% - 6.5px);max-width:calc(20% - 6.5px);padding:8px 5px}
-/* full island head: LEFT half is a solid dark block (court no.), RIGHT half is light
-   (item now on). No line — the dark/light contrast is the division. */
+/* full island head (split variant, ISLAND_STACKED=false): LEFT half carries the court no.,
+   RIGHT half the item now on. Same rule as the stacked head — the band stays light and the
+   NUMBER carries the sitting/not-sitting colour. */
 .cell-head{display:flex;align-items:stretch;width:100%}
-.ct-side{flex:1;display:flex;align-items:center;justify-content:center;background:var(--navy);border-radius:9px 0 0 9px;min-width:0;padding:7px 4px}
+.ct-side{flex:1;display:flex;align-items:center;justify-content:center;background:var(--panel2);border-radius:9px 0 0 9px;min-width:0;padding:7px 4px}
 .on-side{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;min-width:0;padding:2px}
 .on-lab{font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--mut)}
-.ct-num{font-family:var(--mono);font-size:24px;font-weight:800;color:#fff;line-height:1;letter-spacing:.5px}
-.ct-num .cd{color:var(--gold)}
+.ct-num{font-family:var(--mono);font-size:24px;font-weight:800;color:var(--mut);line-height:1;letter-spacing:.5px}
+.ct-num .cd{color:var(--navy)}
 .on-num{font-family:var(--mono);font-size:21px;font-weight:700;color:var(--ink);line-height:.95;margin-top:2px}
-/* mini tiles: stacked, small navy chip (no split) */
+/* mini tiles: stacked, small chip (no split) */
 .cell.mini .cell-head{flex-direction:column;align-items:center;gap:2px}
 .cell.mini .ct-side{flex:none;background:none;border-radius:0;padding:0}
 .cell.mini .on-side{flex:none;padding:0}
 .cell.mini .on-lab{display:none}
-.cell.mini .ct-num{background:var(--navy);border-radius:7px;padding:2px 8px;font-size:16px}
+.cell.mini .ct-num{background:var(--panel2);border-radius:7px;padding:2px 8px;font-size:16px}
 /* STACKED island: big full-width court header on top, ongoing below (ISLAND_STACKED) */
 .cell.stk{padding:0;overflow:hidden;text-align:center}
-.cell.stk .cell-topbar{background:var(--navy);color:#fff;font-family:var(--mono);font-weight:800;font-size:27px;letter-spacing:1px;padding:10px 4px;line-height:1}
-.cell.stk .cell-topbar .cd{color:var(--gold)}
+/* Header band is ALWAYS the light grey panel — sitting vs not-sitting is carried by the
+   court NUMBER's colour, not by flooding the band with navy (owner: "instead of darkening
+   the header when the court is sitting... just darken the court number with appropriate
+   colour and keep the header as greyed out"). Sitting = "C" muted, number deep navy.
+   Idle overrides further down fade the number to --passed. */
+.cell.stk .cell-topbar{background:var(--panel2);color:var(--mut);font-family:var(--mono);font-weight:800;font-size:27px;letter-spacing:1px;padding:10px 4px;line-height:1;border-bottom:1px solid var(--line)}
+.cell.stk .cell-topbar .cd{color:var(--navy)}
 .cell.stk .cell-on{padding:8px 4px 7px}
 .cell.stk .cell-on-lab{font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--mut);margin-right:5px}
 .cell.stk .cell-on-num{font-family:var(--mono);font-size:28px;font-weight:800;color:var(--ink);line-height:1}
@@ -158,13 +164,11 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px calc(66px + env(s
 .cell.stk.mini .cell-ours{height:30px;padding:2px 4px}
 .cell.mini .on-num{font-size:17px;margin-top:1px}
 .cell.idle .on-num,.cell.idle .on-lab{color:var(--passed)}
-/* idle court island HEADER — the navy/gold court-number block fades too, matching the
-   rest of a not-sitting court's tile (owner: "the court island header also go faint") */
-.cell.stk.idle .cell-topbar{background:var(--panel2);color:var(--passed)}
+/* idle court island HEADER — band is already grey for every court, so "not sitting" just
+   fades the number itself away (owner: "the court island header also go faint") */
+.cell.stk.idle .cell-topbar{color:var(--passed)}
 .cell.stk.idle .cell-topbar .cd{color:var(--passed)}
-.cell.idle .ct-side{background:var(--panel2)}
 .cell.idle .ct-num,.cell.idle .ct-num .cd{color:var(--passed)}
-.cell.mini.idle .ct-num{background:var(--panel2);color:var(--passed)}
 .cell-ours{margin-top:7px;border-radius:8px;padding:5px 4px;font-size:11px;font-weight:700;color:#fff;line-height:1.15;text-align:center}
 .cell.ours{border-width:2px}
 .cell.ours.now{border-color:var(--now)}.cell.ours.now .cell-ours{background:linear-gradient(180deg,#d1453a,#a5231a)}
@@ -400,6 +404,75 @@ nav.botnav button.on{color:var(--accent)}
 .pv-v{flex:1;font-weight:500}
 .pv-miss{color:#8a6410;font-size:12.5px;line-height:1.5}
 .mm-x{display:block;font-size:11px;color:var(--mut);margin-top:1px}
+/* ===== CHAMBER / OFFICE ACCOUNTS ===== */
+/* segmented account-type picker on the register card */
+.seg{display:flex;gap:5px;background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:4px}
+.seg button{flex:1;padding:9px 4px;border:none;border-radius:8px;background:transparent;color:var(--mut);
+  font-size:12.5px;font-weight:600;line-height:1.2}
+.seg button.on{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgba(20,26,34,.12)}
+.reg-hint{font-size:11.5px;color:var(--mut);line-height:1.45;margin-top:7px}
+/* chamber badge in the header + member rows in Settings */
+.org-chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--gold);
+  background:rgba(194,168,106,.14);border-radius:20px;padding:3px 9px;margin-left:2px}
+.mem-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.mem-row:last-child{border-bottom:none}
+.mem-av{width:32px;height:32px;border-radius:50%;background:var(--navy);color:var(--gold);flex:none;
+  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.mem-meta{flex:1;min-width:0}
+.mem-nm{font-size:14px;font-weight:600;color:var(--ink)}
+.mem-de{font-size:11.5px;color:var(--mut);margin-top:1px}
+.mem-tag{flex:none;font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;
+  border-radius:20px;padding:3px 8px;background:var(--panel2);color:var(--mut)}
+.mem-tag.owner{background:#f8efd8;color:#7a4f0d}
+.mem-x{background:none;border:none;color:var(--mut);font-size:16px;padding:4px;flex:none}
+.code-box{display:flex;align-items:center;gap:9px;background:var(--panel2);border:1px dashed var(--line);
+  border-radius:11px;padding:11px 13px;margin-top:8px}
+.code-val{flex:1;font-family:var(--mono);font-size:19px;font-weight:800;letter-spacing:2px;color:var(--ink)}
+.code-box button{flex:none;background:none;border:none;color:var(--accent);font-size:12.5px;font-weight:700;padding:4px}
+/* who's appearing, on a chamber board island */
+.cell .whose{font-size:9px;font-weight:700;color:var(--mut);letter-spacing:.2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 3px 5px}
+.cell.stk .whose{padding:0 4px 6px;margin-top:-3px}
+/* ===== CHAT =====
+   The chat pane owns the viewport instead of growing it: <main> stops scrolling and the
+   message log scrolls inside, so the composer stays pinned above the nav. */
+main#main.chatmode{overflow:hidden;display:flex;flex-direction:column}
+.chat-wrap{display:flex;flex-direction:column;flex:1;min-height:0}
+.chat-threads{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;flex:none;-webkit-overflow-scrolling:touch}
+.thr{flex:none;display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);
+  border-radius:20px;padding:7px 13px;font-size:12.5px;font-weight:600;color:var(--mut);white-space:nowrap}
+.thr.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.thr .dot{width:7px;height:7px;border-radius:50%;background:var(--now);flex:none}
+.chat-log{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:4px 0 10px}
+.msg{max-width:78%;border-radius:14px;padding:8px 12px;font-size:14px;line-height:1.4;word-wrap:break-word}
+.msg.them{align-self:flex-start;background:var(--panel);border:1px solid var(--line);border-bottom-left-radius:5px}
+.msg.me{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:5px}
+.msg-who{font-size:10.5px;font-weight:800;color:var(--gold);margin-bottom:2px;letter-spacing:.2px}
+.msg.them .msg-who{color:var(--accent)}
+.msg-at{font-size:9.5px;opacity:.6;margin-top:3px;text-align:right}
+.chat-send{display:flex;gap:8px;align-items:flex-end;flex:none;padding:8px 0 2px;border-top:1px solid var(--line)}
+.chat-send textarea{flex:1;resize:none;min-height:42px;max-height:110px;padding:11px 13px;border-radius:12px;
+  border:1px solid var(--line);background:var(--panel);font-family:inherit;font-size:14.5px;color:var(--ink)}
+.chat-send button{flex:none;width:42px;height:42px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:17px}
+.chat-empty{text-align:center;color:var(--mut);font-size:13px;padding:26px 16px;line-height:1.5}
+/* ===== PIN LOCK ===== */
+#pinlock{position:fixed;inset:0;z-index:120;display:flex;align-items:center;justify-content:center;padding:22px;
+  background:radial-gradient(120% 90% at 50% 0,#1b2430,#0f141b)}
+.pin-card{width:100%;max-width:330px;text-align:center;color:#fff}
+.pin-hi{font-family:Fraunces,serif;font-size:23px;font-weight:600;margin-bottom:3px}
+.pin-sub{font-size:13px;color:#9fb0c0;margin-bottom:22px}
+.pin-dots{display:flex;justify-content:center;gap:14px;margin-bottom:8px}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:1.5px solid rgba(255,255,255,.4)}
+.pin-dot.on{background:var(--gold);border-color:var(--gold)}
+.pin-err{color:#ff9d94;font-size:12.5px;min-height:18px;margin-bottom:6px}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-top:12px}
+.pin-pad button{padding:16px 0;border-radius:14px;border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.07);color:#fff;font-size:21px;font-weight:600;font-family:var(--mono)}
+.pin-pad button:active{background:rgba(255,255,255,.16)}
+.pin-pad button.fn{font-size:13px;font-family:inherit;font-weight:600;background:transparent;border-color:transparent;color:#9fb0c0}
+.pin-alt{margin-top:18px;background:none;border:none;color:#9fb0c0;font-size:13px;font-weight:600}
+@keyframes pinshake{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+.pin-card.shake{animation:pinshake .3s}
 </style>
 </head>
 <body>
@@ -431,7 +504,26 @@ nav.botnav button.on{color:var(--accent)}
       <div class="err" id="lgErr"></div>
       <div class="lg-alt">New to CourtReach? <button type="button" id="lgToReg">Create an account</button></div>
     </div>
+    <!-- Register. Three account types: an individual advocate, a chamber/office owner
+         (one subscription covering everyone they invite), or someone joining an existing
+         chamber with its invite code. Chamber fields appear only for the relevant type —
+         we ask for nothing we don't actually use. -->
     <div id="regForm" class="hidden">
+      <label>Account type</label>
+      <div class="seg" id="rgType">
+        <button type="button" data-t="solo" class="on">Just me</button>
+        <button type="button" data-t="create">New chamber</button>
+        <button type="button" data-t="join">Join chamber</button>
+      </div>
+      <div class="reg-hint" id="rgHint">Track your own matters. You can create or join a chamber later.</div>
+      <div id="rgChamberWrap" class="hidden">
+        <label>Chamber / office name</label>
+        <input id="rgChamber" placeholder="e.g. Chambers of R. Mehta">
+      </div>
+      <div id="rgCodeWrap" class="hidden">
+        <label>Chamber invite code</label>
+        <input id="rgCode" placeholder="6-character code" autocapitalize="characters" maxlength="8">
+      </div>
       <label>Full name</label><input id="rgName" autocomplete="name" placeholder="e.g. Rohan Mehta">
       <label>Mobile number</label><input id="rgPhone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="10-digit mobile">
       <label>Email</label><input id="rgEmail" type="email" autocomplete="email" placeholder="you@example.com">
@@ -448,6 +540,29 @@ nav.botnav button.on{color:var(--accent)}
       <button class="btn ghost" id="lgToSignin">Back to sign in</button>
       <div class="err" id="rgErr"></div>
     </div>
+  </div>
+</div>
+
+<!-- PIN LOCK — a device-local unlock over an already-signed-in session, so a returning
+     user taps 4 digits instead of retyping their password. It is NOT a second way to
+     authenticate: the PIN only ever unlocks a Firebase session this device already holds,
+     and only its salted SHA-256 hash is stored (never the PIN, never the password). On a
+     new device, or after signing out, the password is still required. -->
+<div id="pinlock" class="hidden">
+  <div class="pin-card" id="pinCard">
+    <div class="pin-hi" id="pinHi">Welcome back</div>
+    <div class="pin-sub" id="pinSub">Enter your PIN</div>
+    <div class="pin-dots" id="pinDots"></div>
+    <div class="pin-err" id="pinErr"></div>
+    <div class="pin-pad" id="pinPad">
+      <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
+      <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
+      <button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>
+      <button type="button" class="fn" data-k="cancel">Cancel</button>
+      <button type="button" data-k="0">0</button>
+      <button type="button" class="fn" data-k="del">Delete</button>
+    </div>
+    <button class="pin-alt" id="pinUsePass">Use password instead</button>
   </div>
 </div>
 
@@ -516,6 +631,7 @@ nav.botnav button.on{color:var(--accent)}
   <nav class="botnav">
     <button data-tab="board" class="on"><i class="ti ti-layout-grid"></i>Board</button>
     <button data-tab="mine"><i class="ti ti-gavel"></i>My cases</button>
+    <button data-tab="chat" class="hidden" id="navChat"><i class="ti ti-message-circle"></i>Chat<span class="badge hidden" id="chatBadge">0</span></button>
     <button data-tab="collab"><i class="ti ti-users-group"></i>Collaborate<span class="badge hidden" id="collabBadge">0</span></button>
     <button data-tab="settings"><i class="ti ti-settings"></i>Settings</button>
     <button data-tab="admin" class="hidden" id="navAdmin"><i class="ti ti-shield-lock"></i>Admin</button>
@@ -633,6 +749,87 @@ function entitlementOf(u){
   if(Date.now() < until) return {ok:true, reason:"trial", until};
   return {ok:false, reason:"expired", until};
 }
+// A chamber member's access comes from the CHAMBER, not from their own signup date —
+// that's what "one subscription for the whole office" means. The owner's 30-day trial (or
+// an admin-granted comp/extend on the org) covers every colleague and clerk they invite,
+// so staff added on day 29 don't each start a fresh clock of their own.
+function myEntitlement(){
+  if(isAdminUser()) return {ok:true, reason:"admin"};
+  if(me && me.orgId){
+    if(!myOrg) return {ok:true, reason:"trial", until:Date.now()+864e5};   // org doc still loading — don't flash the paywall
+    return entitlementOf(myOrg);
+  }
+  return entitlementOf(me);
+}
+
+/* ===== ACCOUNT PROVISIONING (individual / chamber owner / chamber member) =====
+   Join lookups deliberately go through two tiny GET-ONLY collections rather than querying
+   orgs directly, so nobody can list every chamber on CourtReach:
+     orgcodes/{CODE}       -> {orgId}   you can only read it if you already know the code
+     orginvites/{email}    -> {orgId}   you can only read the doc named after your own email
+   The rules enforce exactly that (see firestore.rules). */
+const JOIN_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";     // no O/0/I/1 — these get read aloud
+function randomCode(n){ const a=new Uint32Array(n); (crypto||{}).getRandomValues?crypto.getRandomValues(a):a.forEach((_,i)=>a[i]=i);
+  return [...a].map(x=>JOIN_ALPHABET[x % JOIN_ALPHABET.length]).join(""); }
+async function freshJoinCode(){
+  for(let i=0;i<6;i++){ const c=randomCode(6);
+    try{ if(!await db.get("orgcodes/"+c)) return c; }catch(e){ return c; } }
+  return randomCode(8);
+}
+// Resolve which chamber (if any) a brand-new account belongs to. Returns {orgId, orgRole,
+// orgErr} — orgErr is surfaced to the user rather than silently swallowed, and a bad code
+// still lets the account through as an individual (they can join later from Settings).
+async function resolveOrgFor(uid, email, reg){
+  if(reg && reg.mode==="create" && reg.chamber){
+    const code=await freshJoinCode();
+    await db.set("orgs/"+uid,{ name:reg.chamber, ownerUid:uid, ownerName:reg.name||"",
+      joinCode:code, joinCodeActive:true, createdAt:db.now() });
+    await db.set("orgcodes/"+code,{ orgId:uid, active:true });
+    return {orgId:uid, orgRole:"owner"};
+  }
+  if(reg && reg.mode==="join" && reg.code){
+    const code=String(reg.code).trim().toUpperCase();
+    const rec=await db.get("orgcodes/"+code).catch(()=>null);
+    // joinedVia is stamped so the RULES can re-verify the code — the client's check alone
+    // would let anyone write themselves into a chamber and take its subscription.
+    if(rec && rec.active && rec.orgId) return {orgId:rec.orgId, orgRole:"member", joinedVia:code};
+    return {orgId:null, orgRole:null, orgErr:"That invite code didn't match a chamber — you're set up as an individual for now. You can enter a code any time from Settings."};
+  }
+  // no code given: were they pre-approved by a chamber owner who added their email?
+  if(email){
+    const inv=await db.get("orginvites/"+String(email).trim().toLowerCase()).catch(()=>null);
+    if(inv && inv.orgId) return {orgId:inv.orgId, orgRole:"member"};
+  }
+  return {orgId:null, orgRole:null};
+}
+let joinNotice="";       // shown once on the Settings tab if a join didn't work out
+// Create users/{uid} on first sign-in (both demo and prod funnel through here).
+async function ensureUserDoc(uid, email, reg){
+  const existing=await db.get("users/"+uid).catch(()=>null);
+  if(existing){
+    // Already have a profile. Only thing to do is honour a pre-approval added after signup.
+    if(!existing.orgId && email){
+      const inv=await db.get("orginvites/"+String(email).trim().toLowerCase()).catch(()=>null);
+      if(inv && inv.orgId) await db.set("users/"+uid,{orgId:inv.orgId, orgRole:"member"},true);
+    }
+    return;
+  }
+  const org=await resolveOrgFor(uid, email, reg);
+  if(org.orgErr) joinNotice=org.orgErr;
+  const base = reg
+    ? { name:reg.name, email, phone:reg.phone||"", designation:reg.designation||"", role:"user",
+        office:reg.chamber||reg.name, active:true, createdAt:db.now() }
+    : { name:(email||"").split("@")[0], email, role:"user", active:true, createdAt:db.now() };
+  if(org.orgId){ base.orgId=org.orgId; base.orgRole=org.orgRole; if(org.joinedVia) base.joinedVia=org.joinedVia; }
+  await db.set("users/"+uid, base);
+}
+// Join an existing chamber after the fact (Settings → "Join a chamber").
+async function joinChamberByCode(code){
+  const c=String(code).trim().toUpperCase();
+  const rec=await db.get("orgcodes/"+c);
+  if(!(rec && rec.active && rec.orgId)) throw new Error("That code didn't match an active chamber.");
+  await db.set("users/"+me.uid,{orgId:rec.orgId, orgRole:"member", joinedVia:c},true);
+}
 
 /* ---- SC board parse (generic; same shape board-engine expects) ---- */
 function parseBoard(html){
@@ -678,14 +875,18 @@ if(DEMO){
     async update(path,data){const[cp,id]=split(path);const m=C(cp);m.set(id,{...(m.get(id)||{}),...data});emitC(cp);emitD(path);},
     async remove(path){const[cp,id]=split(path);C(cp).delete(id);emitC(cp);}, now };
   let authCb=null,cur=null;
-  auth={ onChange(cb){authCb=cb;setTimeout(()=>cb(cur),0);},
-    signIn(){ cur={uid:"u_demo"}; setTimeout(()=>authCb&&authCb(cur),0); return Promise.resolve(); },
-    signUp(email,pass,reg){ const uid="u_"+(idc++); db.set("users/"+uid,{name:reg.name,phone:reg.phone||"",email,designation:reg.designation||"",role:"user",office:reg.name,active:true,createdAt:now()}); cur={uid}; setTimeout(()=>authCb&&authCb(cur),0); return Promise.resolve(); },
+  // Mirrors the prod wrapper below: whoever signs in, make sure their users/{uid} doc
+  // (and any chamber they're creating or joining) exists before the app boots.
+  const wrap = cb => async user => { if(user){ try{ await ensureUserDoc(user.uid, user.email||"", pendingReg); pendingReg=null; }catch(e){} } cb(user); };
+  auth={ onChange(cb){ authCb=wrap(cb); setTimeout(()=>authCb(cur),0); },
+    signIn(){ cur={uid:"u_demo",email:"rohan@example.in"}; setTimeout(()=>authCb&&authCb(cur),0); return Promise.resolve(); },
+    signUp(email,pass,reg){ pendingReg=reg; cur={uid:"u_"+(idc++),email}; setTimeout(()=>authCb&&authCb(cur),0); return Promise.resolve(); },
+    changePassword(){ return Promise.resolve(); },
     resetPassword(){return Promise.resolve();}, signOut(){cur=null;authCb&&authCb(null);} };
-  window.__demoSetUser=uid=>{ cur={uid}; authCb&&authCb(cur); };
+  window.__demoSetUser=uid=>{ const u=C("users").get(uid)||{}; cur={uid,email:u.email||""}; authCb&&authCb(cur); };
   seedDemo(db);
 } else {
-  const [{initializeApp},{getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,onAuthStateChanged,signOut,sendPasswordResetEmail},
+  const [{initializeApp},{getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,onAuthStateChanged,signOut,sendPasswordResetEmail,updatePassword,EmailAuthProvider,reauthenticateWithCredential},
     {getFirestore,collection,doc,getDoc,setDoc,addDoc,updateDoc,deleteDoc,onSnapshot,query,where,getDocs}] = await Promise.all([
       import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
       import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"),
@@ -702,20 +903,19 @@ if(DEMO){
     async update(path,data){await updateDoc(doc(fs,...path.split("/")),data);},
     async remove(path){await deleteDoc(doc(fs,...path.split("/")));}, now:()=>new Date() };
   auth={ onChange(cb){ onAuthStateChanged(fa,async user=>{
-      if(user){ try{
-        const uref=doc(fs,"users",user.uid); const snap=await getDoc(uref);
-        if(!snap.exists()){
-          let base = pendingReg
-            ? {name:pendingReg.name,email:user.email,phone:pendingReg.phone||"",designation:pendingReg.designation||"",role:"user",office:pendingReg.name,active:true,createdAt:new Date()}
-            : {name:(user.email||"").split("@")[0],email:user.email,role:"user",active:true,createdAt:new Date()};
-          pendingReg=null;
-          await setDoc(uref,base);
-        }
-      }catch(e){ /* transient: app still boots; boot() watchDoc picks up the profile */ } }
+      if(user){ try{ await ensureUserDoc(user.uid, user.email||"", pendingReg); pendingReg=null; }
+        catch(e){ /* transient: app still boots; boot() watchDoc picks up the profile */ } }
       cb(user); }); },
     signIn(email,pass){return signInWithEmailAndPassword(fa,email,pass);},
     signUp(email,pass,reg){ pendingReg=reg; return createUserWithEmailAndPassword(fa,email,pass); },
     resetPassword(email){return sendPasswordResetEmail(fa,email);},
+    // Firebase requires a recent login before a password change, so re-auth with the
+    // current password first — that also proves the person at the keyboard knows it.
+    async changePassword(currentPass,newPass){
+      const u=fa.currentUser; if(!u) throw new Error("Not signed in.");
+      await reauthenticateWithCredential(u, EmailAuthProvider.credential(u.email, currentPass));
+      await updatePassword(u, newPass);
+    },
     signOut(){return signOut(fa);} };
 }
 
@@ -743,6 +943,22 @@ let unsub=[], userDocUnsub=null, pollId=null, tickId=null, pollOn=false, booted=
 let links=[], linksOut=[], linksIn=[], collabOpen=null, threadUnsub=null, linkMsgs=[];
 let peerBoardUid=null, peerBoardName="", peerMatters=[], peerUnsub=null, peerLinkMatters=[];
 let linkFound=null;   // last user found by phone/email in the Find box
+/* ===== CHAMBER / OFFICE state =====
+   A chamber is one subscription covering everyone in it. orgs/{orgId} holds the chamber
+   (orgId IS the owner's uid — unique for free, and it makes "who owns this" unambiguous).
+   Each member's users/{uid} carries orgId + orgRole. Matters still live in the member's own
+   usermatters/{uid}; the chamber board simply watches every member's doc and pools them, so
+   My cases, Collaborate and individual accounts all keep working untouched. */
+let myOrg=null, orgMembers=[], orgMatters={},                  // orgMatters: uid -> matters[]
+    orgDocUnsub=null, orgMembersUnsub=null, orgMatterUnsubs={};
+const inOrg = () => !!(me && me.orgId);
+const isOrgOwner = () => !!(me && me.orgId && me.orgRole==="owner");
+const orgOwnerUid = () => myOrg ? (myOrg.ownerUid||myOrg.id) : null;
+const memberName = uid => (orgMembers.find(m=>m.id===uid)||{}).name || (uid===me?.uid ? (me.name||"You") : "Colleague");
+// CHAT state — "team" (colleagues + staff, the default), "all" (whole chamber incl. the
+// senior — deliberately chosen, so the owner isn't dragged into every thread), or a DM.
+let chatChannel="team", chatMsgs=[], chatUnsub=null, chatReadAt={}, chatChannelPicked=false;
+const dmChannel = (a,b) => "dm:"+[a,b].sort().join("_");
 const linkKey=(a,b)=>a+"_"+b;
 const otherUid = l => (l.fromUid===me?.uid ? l.toUid : l.fromUid);
 const otherName = l => (l.fromUid===me?.uid ? (l.toName||"") : (l.fromName||""));
@@ -762,7 +978,17 @@ function linkWindow(dates){ const ds=[...new Set((dates||[]).filter(Boolean))].s
 
 const boardByCourt = () => { const m={}; board.forEach(c=>{ if(c.court && !m[c.court]) m[c.court]=c; }); return m; };
 const myMatters = () => (myOwn||[]).filter(m=>m.court&&m.item&&isCourtroom(m.court))
-  .map(m=>({courtNo:String(m.court), itemNo:String(m.item), caseTitle:m.title||"", listType:m.listType||"", _id:m.id}));
+  .map(m=>({courtNo:String(m.court), itemNo:String(m.item), caseTitle:m.title||"", listType:m.listType||"", _id:m.id, by:me?.uid, byName:me?.name||""}));
+// Everything the chamber is doing today, pooled from every member's own list and tagged
+// with who's appearing — one board for the whole office.
+const chamberMatters = () => {
+  const out=[], take=(arr,uid)=>(arr||[]).forEach(m=>{ if(m.court&&m.item&&isCourtroom(m.court))
+    out.push({courtNo:String(m.court), itemNo:String(m.item), caseTitle:m.title||"",
+      listType:m.listType||"", _id:m.id, by:uid, byName:memberName(uid)}); });
+  take(myOwn, me?.uid);
+  for(const uid in orgMatters) if(uid!==me?.uid) take(orgMatters[uid], uid);
+  return out;
+};
 // Misc totals per court (main + supp) from the fetched cause list — lets the engine
 // place a Regular-list matter behind the whole Misc list, and a passover at board's end.
 function miscTotalByCourt(){
@@ -948,7 +1174,7 @@ function paintMasthead(){ /* header is brand-only now */ }
 const activeMatters = () => {
   if(peerBoardUid) return (peerMatters||[]).filter(m=>m.court&&m.item&&isCourtroom(m.court))
     .map(m=>({courtNo:String(m.court), itemNo:String(m.item), caseTitle:m.title||"", listType:m.listType||""}));
-  return myMatters();
+  return inOrg() ? chamberMatters() : myMatters();
 };
 function renderBoard(){
   paintFresh(); renderRail();
@@ -970,6 +1196,7 @@ function renderBoard(){
   const full=shown.filter(inFull).sort((a,b)=>((isMyCaseCourt(b.court)?1:0)-(isMyCaseCourt(a.court)?1:0))||byNo(a,b));
   const mini=shown.filter(c=>!inFull(c)).sort(byNo);
   if(!set.length) h+= peerBoardUid ? `<div class="notice">${esc(peerBoardName)} isn't tracking any matter right now.</div>`
+    : inOrg() ? `<div class="notice">No one in ${esc(myOrg?.name||"the chamber")} is tracking a matter yet. Add one from <b>My cases</b> — it shows here for the whole chamber.</div>`
     : `<div class="notice">You're not tracking any matter yet. Add one from <b>My cases</b> and it lights up here as it reaches.</div>`;
   h+=`<div class="grid">`+full.map(c=>boardCell(c,false)).join("")+`</div>`;
   if(mini.length) h+=`<div class="grid" style="margin-top:7px">`+mini.map(c=>boardCell(c,true)).join("")+`</div>`;
@@ -1020,9 +1247,16 @@ function boardCell(c, mini){
     const struck=over&&!off, shown=over&&off;
     return `<span class="oi-it${struck?" struck":""}${shown?" overridden":""}" data-strike-court="${esc(c.court)}" data-strike-item="${esc(x.e.itemNo)}">${esc(x.e.itemNo)}</span>`;
   }).join(`<span class="oi-sep">·</span>`);
+  // On a chamber board the same court can hold several colleagues' matters — name who's
+  // appearing, so the island answers "whose is this?" without opening it.
+  let whose="";
+  if(inOrg() && !mine){
+    const names=[...new Set(ordered.map(x=>x.e.by===me?.uid?"You":(x.e.byName||"")).filter(Boolean))];
+    if(names.length) whose=`<div class="whose">${esc(names.length>2?names.slice(0,2).join(", ")+" +"+(names.length-2):names.join(", "))}</div>`;
+  }
   return `<div class="cell${stk} ours ${tier} ${idle?"idle":""}${mine?" mycase":""}" ${dc}>
     ${mine?`<div class="mycase-rib"><i class="ti ti-star-filled"></i> Your case</div>`:""}
-    ${head}
+    ${head}${whose}
     <div class="cell-ours${cnt}"><span class="oi">${items}</span><span class="ourlab">${esc(best?.k.short||best?.k.label||"—")}</span></div></div>`;
 }
 
@@ -1081,8 +1315,10 @@ function openCourtModal(court,_refetched){
   $("modalRoot").innerHTML=`<div class="ovl" data-close><div class="sheet" data-court="${esc(court)}"><button class="sh-x" data-close>&times;</button>
     <div class="cm-top"><div class="cm-court">Court <b>${esc(court)}</b></div>
       <span class="cm-status ${idle?"idle":""}">${idle?"–":"On item "+esc(bc?.item||"·")}</span></div>
-    ${mineHere.length?`<div class="cm-h"><i class="ti ti-star-filled"></i> Your case${mineHere.length>1?"s":""} here</div>${mineHere.map(e=>{ const k=classify(e);
-      return `<div class="cm-mine"><span class="cm-mine-it">${esc(e.itemNo)}</span><span class="cm-mine-t">${esc(e.caseTitle||("item "+e.itemNo))}</span><span class="cm-mine-s ${proxBandOf(k)}">${esc(k.short||"—")}</span></div>`; }).join("")}`:""}
+    ${mineHere.length?`<div class="cm-h"><i class="ti ti-star-filled"></i> ${inOrg()?"Chamber case":"Your case"}${mineHere.length>1?"s":""} here</div>${mineHere.map(e=>{ const k=classify(e);
+      // on a chamber board, say whose matter each item is
+      const who = inOrg() ? (e.by===me?.uid ? "You" : (e.byName||"")) : "";
+      return `<div class="cm-mine"><span class="cm-mine-it">${esc(e.itemNo)}</span><span class="cm-mine-t">${esc(e.caseTitle||("item "+e.itemNo))}${who?` <span style="color:var(--mut)">· ${esc(who)}</span>`:""}</span><span class="cm-mine-s ${proxBandOf(k)}">${esc(k.short||"—")}</span></div>`; }).join("")}`:""}
     ${coram?`<div class="cm-card"><div class="cm-h"><i class="ti ti-gavel"></i> Coram</div><div class="cm-body">${esc(coramJJ(coram))}</div></div>`:""}
     <div class="cm-card"><div class="cm-h"><i class="ti ti-list-numbers"></i> Declared sequence</div>${seq.length
       ?`<div class="cm-body">${esc(seqRanges(seq))}, then the rest of the matters</div>`
@@ -1538,6 +1774,92 @@ function renderThread(id){
   $("cl_ta").onkeydown=e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); sendLinkMsg(id); } };
   const t=$("cl_thread"); if(t) t.scrollTop=t.scrollHeight;
 }
+/* ===== CHAT — chamber messaging =====
+   Three kinds of thread, and which one you land on is the whole point:
+     "team"   colleagues + staff. THE DEFAULT for everyone. The owner/senior can open it,
+              but it is never their landing thread and never badges for them — they asked
+              not to be dragged into every message.
+     "all"    the whole chamber including the senior. Deliberately chosen, for announcements.
+     "dm:…"   one-to-one, so reaching the senior is an explicit act.
+   Messages live in one orgmsgs collection keyed by {orgId, channel}; the rules scope reads
+   to the org (and, for a DM, to its two participants). */
+function watchChat(){
+  if(chatUnsub){chatUnsub();chatUnsub=null;}
+  if(!inOrg()) return;
+  chatUnsub=db.watchQuery("orgmsgs","orgId",me.orgId, rows=>{
+    chatMsgs=(rows||[]).slice().sort((a,b)=>tsMs(a.at)-tsMs(b.at));
+    if(curTab==="chat") renderChat(); else paintChatBadge();
+  });
+}
+const chatIn = ch => chatMsgs.filter(m=>m.channel===ch);
+function loadChatRead(){ try{ chatReadAt=JSON.parse(localStorage.getItem("crChatRead")||"{}"); }catch(e){ chatReadAt={}; } }
+function markChatRead(ch){ const last=chatIn(ch).slice(-1)[0]; if(!last) return;
+  chatReadAt[ch]=tsMs(last.at); try{ localStorage.setItem("crChatRead",JSON.stringify(chatReadAt)); }catch(e){} }
+function chatUnread(ch){
+  const last=chatIn(ch).filter(m=>m.by!==me?.uid).slice(-1)[0];
+  return !!last && tsMs(last.at) > (chatReadAt[ch]||0);
+}
+// Threads, in the order this particular person should see them.
+function chatThreads(){
+  const owner=isOrgOwner();
+  const list=[];
+  if(!owner) list.push({id:"team", label:"Team", sub:"Colleagues & staff"});
+  list.push({id:"all", label:"Everyone", sub:"Whole chamber"});
+  if(owner) list.push({id:"team", label:"Team", sub:"Colleagues & staff"});
+  orgMembers.filter(m=>m.id!==me?.uid).sort((a,b)=>String(a.name||"").localeCompare(String(b.name||"")))
+    .forEach(m=>list.push({id:dmChannel(me.uid,m.id), label:(m.name||"Colleague").split(" ")[0],
+      sub:m.designation||"", dm:true, uid:m.id, full:m.name||"Colleague"}));
+  return list;
+}
+function paintChatBadge(){
+  const b=$("chatBadge"); if(!b) return;
+  if(!inOrg()){ b.classList.add("hidden"); return; }
+  // the owner/senior is never badged for the team thread — that's the whole point of it
+  const n=chatThreads().filter(t=>!(isOrgOwner()&&t.id==="team") && chatUnread(t.id)).length;
+  b.textContent=n; b.classList.toggle("hidden", n===0);
+}
+function renderChat(){
+  if(!inOrg()){ $("main").innerHTML=`<div class="empty">Chat is for chamber and office accounts. Create or join a chamber from <b>Settings</b>.</div>`; return; }
+  const threads=chatThreads();
+  // land everyone on their own default: staff and colleagues in Team, the senior in
+  // Everyone — until they pick a thread themselves, after which we respect that.
+  if(!chatChannelPicked) chatChannel = isOrgOwner() ? "all" : "team";
+  if(!threads.some(t=>t.id===chatChannel)) chatChannel=threads[0].id;
+  const cur=threads.find(t=>t.id===chatChannel)||threads[0];
+  const msgs=chatIn(chatChannel);
+  const rows=msgs.map(m=>{
+    const mine=m.by===me.uid;
+    return `<div class="msg ${mine?"me":"them"}">${mine?"":`<div class="msg-who">${esc(m.byName||"Colleague")}</div>`}
+      <div>${esc(m.text||"")}</div><div class="msg-at">${esc(clockIST(tsMs(m.at)))}</div></div>`;
+  }).join("");
+  const blurb = cur.dm ? `Private message to ${esc(cur.full)}`
+    : chatChannel==="all" ? (isOrgOwner() ? `Everyone in ${esc(myOrg?.name||"the chamber")} — use this to announce.`
+        : `Everyone in ${esc(myOrg?.name||"the chamber")}, including ${esc(myOrg?.ownerName||"the senior")}`)
+    : (isOrgOwner() ? `Your colleagues' and staff's thread — you can read and post, but you're not notified here.`
+        : `Colleagues and staff — ${esc(myOrg?.ownerName||"the senior")} isn't notified here. Message them directly to reach them.`);
+  $("main").innerHTML=`<div class="chat-wrap">
+    <div class="chat-threads">${threads.map(t=>`<button class="thr${t.id===chatChannel?" on":""}" data-ch="${esc(t.id)}">${esc(t.label)}${chatUnread(t.id)&&t.id!==chatChannel?`<span class="dot"></span>`:""}</button>`).join("")}</div>
+    <div class="reg-hint" style="margin:0 0 8px">${blurb}</div>
+    <div class="chat-log" id="chatLog">${rows||`<div class="chat-empty">No messages yet.<br>Say something to get the thread started.</div>`}</div>
+    <div class="chat-send">
+      <textarea id="chatText" rows="1" placeholder="Message${cur.dm?" "+esc(cur.full):""}…"></textarea>
+      <button id="chatSend" aria-label="Send"><i class="ti ti-send"></i></button>
+    </div></div>`;
+  $("main").querySelectorAll("[data-ch]").forEach(b=>b.onclick=()=>{ chatChannel=b.dataset.ch; chatChannelPicked=true; markChatRead(chatChannel); renderChat(); });
+  const log=$("chatLog"); if(log) log.scrollTop=log.scrollHeight;
+  $("chatSend").onclick=sendChat;
+  $("chatText").onkeydown=e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); sendChat(); } };
+  markChatRead(chatChannel); paintChatBadge();
+}
+async function sendChat(){
+  const ta=$("chatText"); if(!ta) return;
+  const text=(ta.value||"").trim(); if(!text || !inOrg()) return;
+  ta.value="";
+  const msg={ orgId:me.orgId, channel:chatChannel, by:me.uid, byName:me.name||"", text, at:db.now() };
+  if(chatChannel.startsWith("dm:")) msg.members=chatChannel.slice(3).split("_");   // rules read this
+  try{ await db.add("orgmsgs", msg); }catch(e){ ta.value=text; }
+}
+
 /* ===== SETTINGS — profile, subscription, notification permissions (owner: "settings
    button... which will list profile, subscription details, notification permissions and
    any other matter which is important and required"). Reuses the admin-card/am-fld/
@@ -1545,22 +1867,61 @@ function renderThread(id){
    admin panel, so subscription status and code redemption behave identically here. ===== */
 function renderSettings(){
   const admin=isAdminUser();
-  const ent=admin?{ok:true,reason:"admin"}:entitlementOf(me);
-  const el=admin?{text:"Admin — unrestricted access",cls:"comp"}:entLabel(me);
-  const showRedeem=!admin && ent.reason!=="comp";
-  let h=`<div class="sec-h">Profile</div>
+  const ent=myEntitlement();
+  const el=admin?{text:"Admin — unrestricted access",cls:"comp"}:entLabel(inOrg()&&myOrg?myOrg:me);
+  const showRedeem=!admin && ent.reason!=="comp" && (!inOrg() || isOrgOwner());
+  const owner=isOrgOwner(), pinOn=hasPinFor(me.uid);
+  let h="";
+  if(joinNotice){ h+=`<div class="notice">${esc(joinNotice)}</div>`; }
+  h+=`<div class="sec-h">Profile</div>
     <div class="admin-card">
       <label class="am-fld">Name<input id="st_name" value="${esc(me.name||"")}"></label>
       <label class="am-fld">Phone<input id="st_phone" value="${esc(me.phone||"")}" inputmode="tel"></label>
       <label class="am-fld">Designation<select id="st_desig">${DESIGNATIONS.map(d=>`<option${d===me.designation?" selected":""}>${esc(d)}</option>`).join("")}</select></label>
       <div class="case-meta" style="margin:2px 0 10px">Signed in as <b>${esc(me.email||"")}</b> — this is your sign-in ID and can't be changed here.</div>
       <button class="sh-btn" id="st_saveProfile">Save profile</button>
-      <div class="am-err" id="st_profMsg" style="${stgMsg==="Saved."?"color:var(--later)":""}">${esc(stgMsg)}</div>
-    </div>
+      <div class="am-err" id="st_profMsg" style="${/^(Saved|PIN|Password)/.test(stgMsg)?"color:var(--later)":""}">${esc(stgMsg)}</div>
+    </div>`;
 
-    <div class="sec-h">Subscription</div>
+  /* ---- Chamber / office ---- */
+  h+=`<div class="sec-h">Chamber / office</div>`;
+  if(inOrg()){
+    h+=`<div class="admin-card">
+      <div class="admin-user-top">
+        <span class="admin-user-name">${esc(myOrg?.name||"Your chamber")}</span>
+        <span class="mem-tag ${owner?"owner":""}">${owner?"Owner":"Member"}</span>
+      </div>
+      <div class="case-meta" style="margin-top:3px">${esc(orgMembers.length)} member${orgMembers.length===1?"":"s"} on one subscription.</div>
+      ${owner?`
+        <div class="stg-sub" style="margin-top:12px"><b>Invite code</b> — anyone entering this when they register joins your chamber.</div>
+        <div class="code-box"><span class="code-val" id="st_joinCode">${esc(myOrg?.joinCode||"—")}</span>
+          <button id="st_copyCode">Copy</button><button id="st_rotateCode">New code</button></div>
+        <div class="stg-sub" style="margin-top:14px"><b>Pre-approve a colleague</b> — they join automatically when they register with that email, no code needed.</div>
+        <div class="admin-code-row"><input id="st_invEmail" type="email" placeholder="colleague@example.com"><button id="st_invAdd">Add</button></div>
+        <div class="am-err" id="st_orgMsg"></div>`:""}
+      <div class="sec-h" style="margin:14px 2px 2px">Members</div>
+      ${orgMembers.slice().sort((a,b)=>((b.orgRole==="owner")-(a.orgRole==="owner"))||String(a.name||"").localeCompare(String(b.name||"")))
+        .map(m=>`<div class="mem-row">
+          <span class="mem-av">${esc(initials(m.name))}</span>
+          <span class="mem-meta"><span class="mem-nm">${esc(m.name||"—")}${m.id===me.uid?" (you)":""}</span>
+            <span class="mem-de">${esc(m.designation||"")}${m.email?" · "+esc(m.email):""}</span></span>
+          ${m.orgRole==="owner"?`<span class="mem-tag owner">Owner</span>`
+            :(owner?`<button class="mem-x" data-rm="${esc(m.id)}" title="Remove from chamber"><i class="ti ti-user-minus"></i></button>`:"")}
+        </div>`).join("")}
+      ${!owner?`<button class="case-del" id="st_leaveOrg" style="margin-top:12px"><i class="ti ti-logout"></i> Leave this chamber</button>`:""}
+    </div>`;
+  } else {
+    h+=`<div class="admin-card">
+      <div class="stg-sub">Working with colleagues or staff? Join your chamber with its invite code and you'll share one subscription, one board and in-app chat.</div>
+      <div class="admin-code-row"><input id="st_joinInput" placeholder="Invite code" autocapitalize="characters" maxlength="8"><button id="st_joinGo">Join</button></div>
+      <div class="am-err" id="st_joinMsg"></div>
+    </div>`;
+  }
+
+  h+=`<div class="sec-h">Subscription</div>
     <div class="admin-card">
       <div class="admin-user-top"><span class="admin-user-name">${esc(el.text)}</span><span class="admin-ent ${el.cls}">${esc(ent.reason)}</span></div>
+      ${inOrg()?`<div class="case-meta" style="margin-top:3px">${owner?"Covers everyone in your chamber.":"Covered by "+esc(myOrg?.name||"your chamber")+" — the owner manages this."}</div>`:""}
       ${showRedeem?`<div class="admin-code-row" style="margin-top:10px">
         <input id="st_code" placeholder="Have an access code?" autocapitalize="characters">
         <button id="st_redeem">Redeem</button>
@@ -1576,9 +1937,27 @@ function renderSettings(){
       </div>
     </div>
 
+    <div class="sec-h">Security</div>
+    <div class="admin-card">
+      <div class="stg-row" style="margin-bottom:${pinOn?"12px":"0"}">
+        <div><div class="stg-label">Unlock with a PIN</div>
+          <div class="stg-sub">${pinOn?"On for this device — 4 digits instead of your password.":"Skip typing your password on this device. Your password is still needed on a new one."}</div></div>
+        <button class="stg-switch${pinOn?" on":""}" id="st_pinToggle" type="button" aria-label="Toggle PIN unlock"></button>
+      </div>
+      ${pinOn?`<button class="sh-btn ghost2" id="st_changePin" style="margin-top:0">Change PIN</button>`:""}
+      <div class="sec-h" style="margin:16px 2px 6px">Change password</div>
+      <label class="am-fld">Current password<input id="st_curPass" type="password" autocomplete="current-password"></label>
+      <label class="am-fld">New password<input id="st_newPass" type="password" autocomplete="new-password" placeholder="at least 6 characters"></label>
+      <button class="sh-btn" id="st_savePass">Update password</button>
+      <div class="am-err" id="st_passMsg"></div>
+    </div>
+
     <div class="sec-h">Account</div>
     <button class="big-btn" id="st_signout"><i class="ti ti-logout"></i> Sign out</button>`;
   $("main").innerHTML=h;
+  joinNotice="";
+  wireOrgSettings();
+  wireSecuritySettings();
 
   $("st_saveProfile").onclick=async()=>{
     const name=($("st_name").value||"").trim(), phone=($("st_phone").value||"").trim(), designation=$("st_desig").value;
@@ -1601,7 +1980,9 @@ function renderSettings(){
     try{
       const cfg=await db.get("config/accessCode");
       if(cfg && cfg.active && String(cfg.code||"").trim().toLowerCase()===val.toLowerCase()){
-        await db.set("users/"+me.uid,{entitlementOverride:{type:"comp", code:cfg.code, grantedAt:db.now(), grantedVia:"code"}}, true);
+        // a chamber owner redeems ON BEHALF OF the chamber, so every member is covered
+        const path = isOrgOwner() ? "orgs/"+me.orgId : "users/"+me.uid;
+        await db.set(path,{entitlementOverride:{type:"comp", code:cfg.code, grantedAt:db.now(), grantedVia:"code"}}, true);
         renderSettings();                      // re-render to show the new status; skip the disabled reset below
         return;
       } else { msg.textContent="Invalid or inactive code."; }
@@ -1612,13 +1993,101 @@ function renderSettings(){
   const nt=$("st_notifToggle"); if(nt) nt.onclick=toggleNotify;
   $("st_signout").onclick=()=>auth.signOut();
 }
+// Settings → chamber block: invite code, pre-approvals, member list, join/leave.
+function wireOrgSettings(){
+  const msg=t=>{ const e=$("st_orgMsg"); if(e) e.textContent=t; };
+  const cp=$("st_copyCode");
+  if(cp) cp.onclick=async()=>{
+    try{ await navigator.clipboard.writeText(myOrg?.joinCode||""); cp.textContent="Copied"; setTimeout(()=>{ if($("st_copyCode")) $("st_copyCode").textContent="Copy"; },1500); }
+    catch(e){ msg("Couldn't copy — the code is "+(myOrg?.joinCode||"")); }
+  };
+  const rot=$("st_rotateCode");
+  if(rot) rot.onclick=async()=>{
+    rot.disabled=true; msg("Generating…");
+    try{
+      const code=await freshJoinCode();
+      await db.set("orgcodes/"+code,{orgId:me.orgId, active:true});
+      if(myOrg?.joinCode) await db.remove("orgcodes/"+myOrg.joinCode).catch(()=>{});   // old code stops working
+      await db.set("orgs/"+me.orgId,{joinCode:code, joinCodeActive:true},true);
+      msg("New code issued — the old one no longer works.");
+    }catch(e){ msg("Couldn't issue a new code."); }
+    rot.disabled=false;
+  };
+  const add=$("st_invAdd");
+  if(add) add.onclick=async()=>{
+    const em=($("st_invEmail").value||"").trim().toLowerCase();
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){ msg("Enter a valid email."); return; }
+    add.disabled=true; msg("Adding…");
+    try{
+      await db.set("orginvites/"+em,{orgId:me.orgId, orgName:myOrg?.name||"", addedBy:me.uid, at:db.now()});
+      // already has an account? link them now rather than making them re-register
+      const found=(await db.getUserBy("email",em))||[];
+      for(const u of found) if(!u.orgId) await db.set("users/"+u.id,{orgId:me.orgId, orgRole:"member"},true);
+      $("st_invEmail").value="";
+      msg(found.length?"Added — they're in your chamber now.":"Added — they'll join automatically when they register.");
+    }catch(e){ msg("Couldn't add that email."); }
+    add.disabled=false;
+  };
+  $("main").querySelectorAll("[data-rm]").forEach(b=>b.onclick=async()=>{
+    const uid=b.dataset.rm, who=memberName(uid);
+    if(!confirm(`Remove ${who} from ${myOrg?.name||"the chamber"}? Their own cases stay with them, but they lose the shared board, chat and subscription.`)) return;
+    try{
+      await db.set("users/"+uid,{orgId:null, orgRole:null},true);
+      const u=orgMembers.find(m=>m.id===uid);
+      if(u&&u.email) await db.remove("orginvites/"+String(u.email).toLowerCase()).catch(()=>{});
+    }catch(e){ msg("Couldn't remove that member."); }
+  });
+  const leave=$("st_leaveOrg");
+  if(leave) leave.onclick=async()=>{
+    if(!confirm(`Leave ${myOrg?.name||"this chamber"}? You'll keep your own cases but lose the shared board, chat and subscription.`)) return;
+    try{ await db.set("users/"+me.uid,{orgId:null, orgRole:null},true); }catch(e){}
+  };
+  const jg=$("st_joinGo");
+  if(jg) jg.onclick=async()=>{
+    const code=($("st_joinInput").value||"").trim(), m=$("st_joinMsg"); m.textContent="";
+    if(code.length<4){ m.textContent="Enter the code your chamber gave you."; return; }
+    jg.disabled=true; m.textContent="Checking…";
+    try{ await joinChamberByCode(code); }
+    catch(e){ m.textContent=e.message||"That code didn't work."; jg.disabled=false; }
+  };
+}
+// Settings → security block: PIN on/off, change PIN, change password.
+function wireSecuritySettings(){
+  const pt=$("st_pinToggle");
+  if(pt) pt.onclick=()=>{
+    if(hasPinFor(me.uid)){ clearPin(); renderSettings(); }
+    else startPinSetup();
+  };
+  const cpn=$("st_changePin"); if(cpn) cpn.onclick=startPinSetup;
+  const sp=$("st_savePass");
+  if(sp) sp.onclick=async()=>{
+    const cur=$("st_curPass").value, next=$("st_newPass").value, m=$("st_passMsg");
+    m.style.color=""; m.textContent="";
+    if(!cur){ m.textContent="Enter your current password."; return; }
+    if((next||"").length<6){ m.textContent="New password must be at least 6 characters."; return; }
+    sp.disabled=true; m.textContent="Updating…";
+    try{
+      await auth.changePassword(cur,next);
+      $("st_curPass").value=""; $("st_newPass").value="";
+      m.style.color="var(--later)"; m.textContent="Password updated.";
+    }catch(e){
+      const c=(e&&e.code)||"";
+      m.textContent = /wrong-password|invalid-credential/.test(c) ? "That current password isn't right."
+        : /weak-password/.test(c) ? "Pick a stronger password."
+        : /requires-recent-login/.test(c) ? "For security, sign out and sign in again, then retry."
+        : (e.message||"Couldn't update the password.");
+    }
+    sp.disabled=false;
+  };
+}
 function closeModal(){ $("modalRoot").innerHTML=""; }
 $("modalRoot").addEventListener("click",e=>{ if(e.target.classList.contains("ovl")||e.target.closest("button[data-close]")) closeModal(); });
 $("routeRail").addEventListener("click",ev=>{ const c=ev.target.closest("[data-court]"); if(c) openCourtModal(c.dataset.court); });
 
-function render(){ if(curTab==="board"){ if(boardDate===todayISO()) renderBoard(); else renderDateBoard(boardDate); }
+function render(){ $("main").classList.toggle("chatmode", curTab==="chat");
+  if(curTab==="board"){ if(boardDate===todayISO()) renderBoard(); else renderDateBoard(boardDate); }
   else if(curTab==="mine") renderMine(); else if(curTab==="admin") renderAdmin();
-  else if(curTab==="settings") renderSettings(); else renderCollab(); }
+  else if(curTab==="settings") renderSettings(); else if(curTab==="chat") renderChat(); else renderCollab(); }
 function setTab(t){ curTab=t; document.querySelectorAll("nav.botnav button").forEach(b=>b.classList.toggle("on",b.dataset.tab===t));
   if(t!=="board"){ const r=$("routeRail"); if(r) r.innerHTML=""; } render(); }
 document.querySelectorAll("nav.botnav button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
@@ -1626,43 +2095,94 @@ document.querySelectorAll("nav.botnav button").forEach(b=>b.onclick=()=>setTab(b
 /* ============================================================
    AUTH / BOOT
    ============================================================ */
+// Chamber subscriptions. Re-run only when the user's orgId actually changes — the profile
+// watcher fires on every edit, and tearing these down on each one would thrash.
+let _watchedOrgId=undefined;
+function watchOrg(orgId){
+  if(_watchedOrgId===orgId) return;
+  _watchedOrgId=orgId;
+  if(orgDocUnsub){orgDocUnsub();orgDocUnsub=null;}
+  if(orgMembersUnsub){orgMembersUnsub();orgMembersUnsub=null;}
+  Object.values(orgMatterUnsubs).forEach(u=>u&&u()); orgMatterUnsubs={};
+  myOrg=null; orgMembers=[]; orgMatters={};
+  if(!orgId){ applyGate(); return; }
+  orgDocUnsub=db.watchDoc("orgs/"+orgId, d=>{ myOrg=d; applyGate(); });
+  orgMembersUnsub=db.watchQuery("users","orgId",orgId, rows=>{
+    orgMembers=rows||[];
+    // follow every colleague's matters so the chamber board can pool them. My own come
+    // from myOwn (already watched), so skip myself here rather than double-counting.
+    const ids=new Set(orgMembers.map(m=>m.id));
+    for(const uid in orgMatterUnsubs){
+      if(!ids.has(uid)){ orgMatterUnsubs[uid](); delete orgMatterUnsubs[uid]; delete orgMatters[uid]; }
+    }
+    orgMembers.forEach(m=>{
+      if(m.id===me?.uid || orgMatterUnsubs[m.id]) return;
+      orgMatterUnsubs[m.id]=db.watchDoc("usermatters/"+m.id, d=>{
+        orgMatters[m.id]=(d&&d.matters)||[];
+        if(curTab==="board"&&!peerBoardUid) render();
+      });
+    });
+    if(curTab==="chat"||curTab==="settings") render();
+  });
+}
+// The entitlement gate + first-run subscriptions. Called from the profile watcher AND the
+// org watcher, because for a chamber member the answer depends on the org doc arriving.
+function applyGate(){
+  if(!me) return;
+  const admin=isAdminUser(), ent=myEntitlement();
+  $("navAdmin").classList.toggle("hidden", !admin);
+  $("navChat").classList.toggle("hidden", !inOrg());
+  if(!ent.ok){
+    $("login").classList.add("hidden"); $("app").classList.add("hidden");
+    $("paywall").classList.remove("hidden"); $("pwErr").textContent="";
+    stopPolling();
+    return;                                   // don't boot the rest of the app while locked out
+  }
+  if(pinLocked) return;                       // session is real but the device is PIN-locked
+  $("login").classList.add("hidden"); $("paywall").classList.add("hidden"); $("app").classList.remove("hidden");
+  paintMasthead();
+  paintTrialBanner(ent);
+  if(!booted){ booted=true;
+    const uid=me.uid;
+    unsub.push(db.watchDoc("usermatters/"+uid, d=>{ myOwn=(d&&d.matters)||[]; if(curTab!=="collab"&&!peerBoardUid) render(); }));
+    unsub.push(db.watchQuery("links","fromUid",uid, rows=>{ linksOut=rows||[]; recomputeLinks(); }));
+    unsub.push(db.watchQuery("links","toUid",uid, rows=>{ linksIn=rows||[]; recomputeLinks(); }));
+    if(admin){
+      adminUsersUnsub=db.watchCollection("users", rows=>{ adminUsers=rows||[]; if(curTab==="admin") renderAdmin(); });
+      adminCodeUnsub=db.watchDoc("config/accessCode", d=>{ adminAccessCode=d; if(curTab==="admin") renderAdmin(); });
+    }
+    loadCourtUpdates();
+    startPolling();
+  }
+  if(inOrg()) watchChat();
+  render();
+}
 function boot(user){
   unsub.forEach(u=>u&&u()); unsub=[]; if(userDocUnsub){userDocUnsub();userDocUnsub=null;}
   if(threadUnsub){threadUnsub();threadUnsub=null;} if(peerUnsub){peerUnsub();peerUnsub=null;}
   if(adminUsersUnsub){adminUsersUnsub();adminUsersUnsub=null;} if(adminCodeUnsub){adminCodeUnsub();adminCodeUnsub=null;}
+  if(chatUnsub){chatUnsub();chatUnsub=null;}
   links=[];linksOut=[];linksIn=[];collabOpen=null;linkMsgs=[];peerBoardUid=null;peerBoardName="";peerMatters=[];linkFound=null;
+  chatMsgs=[]; chatChannel="team"; chatChannelPicked=false;
   booted=false;
-  if(!user){ me=null; $("app").classList.add("hidden"); $("paywall").classList.add("hidden"); $("login").classList.remove("hidden"); stopPolling(); return; }
+  if(!user){
+    me=null; watchOrg(null); _watchedOrgId=undefined;
+    hidePinLock();
+    $("app").classList.add("hidden"); $("paywall").classList.add("hidden"); $("login").classList.remove("hidden");
+    stopPolling(); return;
+  }
   const uid=user.uid;
+  // A returning user with a PIN on this device unlocks with 4 digits instead of the
+  // password. Skip straight through when they just typed their password anyway.
+  if(!justAuthed && hasPinFor(uid)) showPinLock(uid); else pinLocked=false;
+  justAuthed=false;
   userDocUnsub=db.watchDoc("users/"+uid, u=>{
     me = u ? {uid,email:user.email,...u} : {uid, email:user.email, name:(user.email||"").split("@")[0], role:"user"};
-    const admin = isAdminUser();
-    const ent = admin ? {ok:true, reason:"admin"} : entitlementOf(me);
-    $("navAdmin").classList.toggle("hidden", !admin);
-    if(!ent.ok){
-      $("login").classList.add("hidden"); $("app").classList.add("hidden");
-      $("paywall").classList.remove("hidden");
-      $("pwErr").textContent="";
-      stopPolling();
-      return;                                 // don't boot the rest of the app while locked out
-    }
-    $("login").classList.add("hidden"); $("paywall").classList.add("hidden"); $("app").classList.remove("hidden");
-    paintMasthead();
-    paintTrialBanner(ent);
-    if(!booted){ booted=true;
-      unsub.push(db.watchDoc("usermatters/"+uid, d=>{ myOwn=(d&&d.matters)||[]; if(curTab!=="collab"&&!peerBoardUid) render(); }));
-      unsub.push(db.watchQuery("links","fromUid",uid, rows=>{ linksOut=rows||[]; recomputeLinks(); }));
-      unsub.push(db.watchQuery("links","toUid",uid, rows=>{ linksIn=rows||[]; recomputeLinks(); }));
-      if(admin){
-        adminUsersUnsub=db.watchCollection("users", rows=>{ adminUsers=rows||[]; if(curTab==="admin") renderAdmin(); });
-        adminCodeUnsub=db.watchDoc("config/accessCode", d=>{ adminAccessCode=d; if(curTab==="admin") renderAdmin(); });
-      }
-      loadCourtUpdates();
-      startPolling();
-    }
-    render();
+    watchOrg(me.orgId||null);
+    applyGate();
   });
 }
+loadChatRead();
 auth.onChange(boot);
 $("pwSignOut").onclick=()=>auth.signOut();
 $("pwGo").onclick=async()=>{
@@ -1692,23 +2212,42 @@ function paintTrialBanner(ent){
 }
 
 $("lgGo").onclick=async()=>{ $("lgErr").textContent="";
+  justAuthed=true;                       // typed the password just now — don't then ask for the PIN
   try{ await auth.signIn($("lgEmail").value.trim(), $("lgPass").value); }
-  catch(e){ $("lgErr").textContent=(e.code||"").match(/password|credential/)?"Wrong email or password.":(e.message||"Sign-in failed."); } };
+  catch(e){ justAuthed=false; $("lgErr").textContent=(e.code||"").match(/password|credential/)?"Wrong email or password.":(e.message||"Sign-in failed."); } };
 $("lgPass").addEventListener("keydown",e=>{ if(e.key==="Enter") $("lgGo").click(); });
 $("lgReset").onclick=async()=>{ const em=$("lgEmail").value.trim(); if(!em){ $("lgErr").textContent="Enter your email first."; return; }
   try{ await auth.resetPassword(em); $("lgErr").textContent="Reset link sent to "+em; }catch(e){ $("lgErr").textContent=e.message||"Could not send."; } };
 $("lgToReg").onclick=()=>{ $("signinForm").classList.add("hidden"); $("regForm").classList.remove("hidden"); $("lgSub").textContent="Create your account"; };
 $("lgToSignin").onclick=()=>{ $("regForm").classList.add("hidden"); $("signinForm").classList.remove("hidden"); $("lgSub").textContent="Track your cases in real time with a customised display board"; };
+// Account type picker — only the fields the chosen type actually needs are shown.
+let regMode="solo";
+const REG_HINTS={
+  solo:"Track your own matters. You can create or join a chamber later.",
+  create:"One subscription covers your whole office. You'll get an invite code to share with your colleagues and staff.",
+  join:"Use the code from your chamber — you'll share their subscription, board and chat."
+};
+document.querySelectorAll("#rgType button").forEach(b=>b.onclick=()=>{
+  regMode=b.dataset.t;
+  document.querySelectorAll("#rgType button").forEach(x=>x.classList.toggle("on",x===b));
+  $("rgChamberWrap").classList.toggle("hidden", regMode!=="create");
+  $("rgCodeWrap").classList.toggle("hidden", regMode!=="join");
+  $("rgHint").textContent=REG_HINTS[regMode]||"";
+  $("rgGo").textContent = regMode==="create" ? "Create chamber account" : "Create account";
+});
 $("rgGo").onclick=async()=>{ $("rgErr").textContent="";
   const name=$("rgName").value.trim(), phone=$("rgPhone").value.replace(/\D/g,""), email=$("rgEmail").value.trim(),
-        designation=$("rgDesig").value, pass=$("rgPass").value;
+        designation=$("rgDesig").value, pass=$("rgPass").value,
+        chamber=($("rgChamber").value||"").trim(), code=($("rgCode").value||"").trim();
+  if(regMode==="create" && chamber.length<3){ $("rgErr").textContent="Enter your chamber or office name."; return; }
+  if(regMode==="join" && code.length<4){ $("rgErr").textContent="Enter the invite code your chamber gave you."; return; }
   if(name.length<2){ $("rgErr").textContent="Enter your full name."; return; }
   if(phone.length<10){ $("rgErr").textContent="Enter a valid mobile number."; return; }
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ $("rgErr").textContent="Enter a valid email."; return; }
   if(pass.length<6){ $("rgErr").textContent="Password must be at least 6 characters."; return; }
-  $("rgGo").disabled=true; $("rgErr").textContent="Creating your account…";
-  try{ await auth.signUp(email,pass,{name,phone,designation}); }
-  catch(e){ $("rgGo").disabled=false; $("rgErr").textContent=(e.code||"").includes("email-already-in-use")?"That email already has an account — sign in.":(e.message||"Could not create account."); } };
+  $("rgGo").disabled=true; $("rgErr").textContent="Creating your account…"; justAuthed=true;
+  try{ await auth.signUp(email,pass,{name,phone,designation,mode:regMode,chamber,code}); }
+  catch(e){ justAuthed=false; $("rgGo").disabled=false; $("rgErr").textContent=(e.code||"").includes("email-already-in-use")?"That email already has an account — sign in.":(e.message||"Could not create account."); } };
 $("btnRefresh").onclick=()=>{ if(!DEMO) location.reload(); else fetchBoard(); };
 $("btnOut").onclick=()=>auth.signOut();
 // Calendar field — shows the picked (default: today's) date on the header pill; the real
@@ -1735,6 +2274,98 @@ $("calInput").onchange=async e=>{
   setTab("board");
 };
 paintCalBtn();
+/* ===== PIN UNLOCK =====
+   A convenience lock over a session this device ALREADY holds — not a second credential.
+   Firebase keeps the signed-in session in local storage; the PIN just decides whether we
+   reveal the app or ask for 4 digits first, so a returning user skips retyping a password.
+   What is stored is a salted SHA-256 of the PIN, per uid, on this device only — never the
+   PIN itself, never the password, never anything server-side. Consequences, deliberately:
+   a new device or a sign-out still needs the real password, and clearing site data just
+   means falling back to the password. Five wrong tries signs out rather than letting
+   someone sit there guessing 10,000 combinations. */
+let pinLocked=false, pinEntry="", pinUid=null, pinSetupMode=false, pinSetupFirst="", justAuthed=false;
+const PIN_KEY="crPin";
+function pinStore(){ try{ return JSON.parse(localStorage.getItem(PIN_KEY)||"{}"); }catch(e){ return {}; } }
+function hasPinFor(uid){ const s=pinStore(); return !!(s && s.uid===uid && s.hash); }
+async function pinHash(pin,salt){
+  const buf=new TextEncoder().encode(salt+":"+pin);
+  const d=await crypto.subtle.digest("SHA-256",buf);
+  return [...new Uint8Array(d)].map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+async function setPin(uid,pin){
+  const salt=randomCode(16);
+  localStorage.setItem(PIN_KEY, JSON.stringify({uid, salt, hash:await pinHash(pin,salt), tries:0}));
+}
+function clearPin(){ try{ localStorage.removeItem(PIN_KEY); }catch(e){} }
+async function pinMatches(pin){
+  const s=pinStore(); if(!s || !s.hash) return false;
+  return (await pinHash(pin, s.salt)) === s.hash;
+}
+function paintPinDots(){
+  const n = pinSetupMode ? 4 : 4;
+  $("pinDots").innerHTML=Array.from({length:n},(_,i)=>`<span class="pin-dot${i<pinEntry.length?" on":""}"></span>`).join("");
+}
+function showPinLock(uid){
+  pinLocked=true; pinUid=uid; pinEntry=""; pinSetupMode=false; pinSetupFirst="";
+  $("pinHi").textContent="Welcome back";
+  $("pinSub").textContent="Enter your PIN";
+  $("pinErr").textContent="";
+  $("pinUsePass").classList.remove("hidden");
+  $("pinUsePass").textContent="Use password instead";
+  document.querySelector('#pinPad [data-k="cancel"]').classList.add("hidden");
+  $("login").classList.add("hidden"); $("app").classList.add("hidden"); $("paywall").classList.add("hidden");
+  $("pinlock").classList.remove("hidden");
+  paintPinDots();
+}
+function hidePinLock(){ pinLocked=false; pinEntry=""; pinSetupMode=false; $("pinlock").classList.add("hidden"); }
+// Settings → "Set a PIN" / "Change PIN": ask twice, confirm they match.
+function startPinSetup(){
+  pinSetupMode=true; pinEntry=""; pinSetupFirst="";
+  $("pinHi").textContent="Choose a PIN";
+  $("pinSub").textContent="4 digits, for this device";
+  $("pinErr").textContent="";
+  $("pinUsePass").classList.add("hidden");
+  document.querySelector('#pinPad [data-k="cancel"]').classList.remove("hidden");
+  $("pinlock").classList.remove("hidden");
+  paintPinDots();
+}
+function pinShake(msg){
+  $("pinErr").textContent=msg; pinEntry=""; paintPinDots();
+  const c=$("pinCard"); c.classList.remove("shake"); void c.offsetWidth; c.classList.add("shake");
+}
+async function pinDigit(d){
+  if(pinEntry.length>=4) return;
+  pinEntry+=d; paintPinDots();
+  if(pinEntry.length<4) return;
+  const entered=pinEntry;
+  if(pinSetupMode){
+    if(!pinSetupFirst){
+      pinSetupFirst=entered; pinEntry="";
+      $("pinSub").textContent="Enter it again to confirm"; $("pinErr").textContent=""; paintPinDots();
+      return;
+    }
+    if(entered!==pinSetupFirst){ pinSetupFirst=""; $("pinSub").textContent="4 digits, for this device"; pinShake("Those didn't match — try again."); return; }
+    await setPin(me.uid, entered);
+    hidePinLock(); stgMsg="PIN set."; if(curTab==="settings") render();
+    setTimeout(()=>{ stgMsg=""; if(curTab==="settings" && $("st_profMsg")) render(); },2500);
+    return;
+  }
+  if(await pinMatches(entered)){
+    const s=pinStore(); s.tries=0; localStorage.setItem(PIN_KEY,JSON.stringify(s));
+    hidePinLock(); applyGate();
+    return;
+  }
+  const s=pinStore(); s.tries=(s.tries||0)+1; localStorage.setItem(PIN_KEY,JSON.stringify(s));
+  if(s.tries>=5){ clearPin(); hidePinLock(); auth.signOut(); return; }
+  pinShake(`Wrong PIN — ${5-s.tries} ${5-s.tries===1?"try":"tries"} left.`);
+}
+document.querySelectorAll("#pinPad button").forEach(b=>b.onclick=()=>{
+  const k=b.dataset.k;
+  if(k==="del"){ pinEntry=pinEntry.slice(0,-1); paintPinDots(); return; }
+  if(k==="cancel"){ hidePinLock(); return; }
+  pinDigit(k);
+});
+$("pinUsePass").onclick=()=>{ hidePinLock(); auth.signOut(); };
 // Matter-reaching alerts: toggled from Settings — browser notifications for when one of
 // your tracked matters is approaching on the board (fires while the app is open).
 let notifOn=(()=>{ try{ return localStorage.getItem("crNotify")==="1"; }catch(e){ return false; } })();
@@ -1790,6 +2421,31 @@ function seedDemo(db){
   // u_comp: admin-granted comp access, well past 30 days -> still gets in.
   db.set("users/u_comp",{name:"Sana Iyer",email:"sana@example.in",phone:"9820033445",designation:"Advocate",role:"user",office:"Sana Iyer",active:true,createdAt:{_t:Date.now()-60*86400000},
     entitlementOverride:{type:"comp",grantedAt:{_t:Date.now()-50*86400000},grantedBy:"sdentertainmentservices@gmail.com"}});
+
+  /* ---- A whole chamber on ONE subscription, to exercise the office features ----
+     window.__demoSetUser("u_ch_owner" | "u_ch_jr" | "u_ch_clerk") to switch seats.
+     Note the org's createdAt is what gates ALL THREE — the clerk below signed up today
+     but inherits the chamber's day-22 trial, which is the point of a shared subscription. */
+  db.set("orgs/o_chamber",{ name:"Chambers of S. Deshmukh", ownerUid:"u_ch_owner", ownerName:"Sameer Deshmukh",
+    joinCode:"K7M2QP", joinCodeActive:true, createdAt:{_t:Date.now()-22*86400000} });
+  db.set("orgcodes/K7M2QP",{orgId:"o_chamber", active:true});
+  db.set("users/u_ch_owner",{name:"Sameer Deshmukh",email:"sameer@chambers.in",phone:"9810012345",designation:"Senior Advocate",
+    role:"user",office:"Chambers of S. Deshmukh",active:true,createdAt:{_t:Date.now()-22*86400000},orgId:"o_chamber",orgRole:"owner"});
+  db.set("users/u_ch_jr",{name:"Nikhil Rao",email:"nikhil@chambers.in",phone:"9810098765",designation:"Advocate-on-Record",
+    role:"user",office:"Chambers of S. Deshmukh",active:true,createdAt:{_t:Date.now()-12*86400000},orgId:"o_chamber",orgRole:"member"});
+  db.set("users/u_ch_clerk",{name:"Vikas Sharma",email:"vikas@chambers.in",phone:"9810055555",designation:"Office Staff",
+    role:"user",office:"Chambers of S. Deshmukh",active:true,createdAt:{_t:Date.now()},orgId:"o_chamber",orgRole:"member"});
+  db.set("usermatters/u_ch_owner",{matters:[{id:"c1",court:"1",item:"14",title:"Deshmukh v. Union of India",listType:"Miscellaneous"}]});
+  db.set("usermatters/u_ch_jr",{matters:[{id:"c2",court:"5",item:"32",title:"Rao v. State of Maharashtra",listType:"Miscellaneous"},
+    {id:"c3",court:"1",item:"41",title:"Kapoor v. SEBI",listType:"Miscellaneous"}]});
+  db.set("usermatters/u_ch_clerk",{matters:[{id:"c4",court:"9",item:"3",title:"Filing — Sharma v. MCD",listType:"Miscellaneous"}]});
+  // a pre-approved colleague who hasn't registered yet (email allow-list path)
+  db.set("orginvites/anita@chambers.in",{orgId:"o_chamber",orgName:"Chambers of S. Deshmukh",addedBy:"u_ch_owner",at:db.now()});
+  // some chat history across all three thread kinds
+  db.set("orgmsgs/g1",{orgId:"o_chamber",channel:"team",by:"u_ch_jr",byName:"Nikhil Rao",text:"Court 5 is running fast today — item 28 already.",at:{_t:Date.now()-3600000}});
+  db.set("orgmsgs/g2",{orgId:"o_chamber",channel:"team",by:"u_ch_clerk",byName:"Vikas Sharma",text:"Noted. I'll keep the papers ready for 32.",at:{_t:Date.now()-3400000}});
+  db.set("orgmsgs/g3",{orgId:"o_chamber",channel:"all",by:"u_ch_owner",byName:"Sameer Deshmukh",text:"Conference at 4pm today for tomorrow's Regular board.",at:{_t:Date.now()-1800000}});
+  db.set("orgmsgs/g4",{orgId:"o_chamber",channel:"dm:u_ch_clerk_u_ch_jr",members:["u_ch_clerk","u_ch_jr"],by:"u_ch_clerk",byName:"Vikas Sharma",text:"Sir, the AoR signature is pending on the Kapoor matter.",at:{_t:Date.now()-900000}});
 }
 </script>
 </body>
