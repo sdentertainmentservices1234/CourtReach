@@ -19,8 +19,19 @@
   --navy:#141a22;--gold:#c2a86a;--accent:#33507e;--now:#c1362b;--soon:#c68a24;--later:#3a7d50;
   --now-bg:#fbeeec;--soon-bg:#f8efd8;--later-bg:#eef5f0;--passed:#8a94a0;--mono:'IBM Plex Mono',monospace}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+/* The app is a fixed shell — #app is pinned to the viewport and ONLY main#main scrolls
+   inside it. html/body must never scroll themselves, or two things break together on
+   iOS: the header stops sitting flush against the top (owner: "make it touch the top"),
+   and position:fixed elements like the bottom nav visibly detach during the page's own
+   scroll (owner: "the bottom is not fixed now"). A stray `html,body{height:100%}` here
+   previously let that page-level scroll happen — percentage heights on html/body resolve
+   against the LARGE viewport while #app's 100dvh tracks the SMALL one, so whenever
+   Safari's toolbar was showing, body ended up taller than #app and the whole page could
+   scroll. overflow:hidden makes that structurally impossible instead of coincidentally
+   avoided. The login/PIN overlays don't need body's height at all — they're
+   position:fixed;inset:0 with their own internal scroll. */
+html,body{height:100%;overflow:hidden}
 body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
-html,body{height:100%}
 body.signed-out{background:#0f141b}
 .hidden{display:none!important}
 /* ---- login / register ---- */
