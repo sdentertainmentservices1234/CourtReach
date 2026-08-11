@@ -20,12 +20,15 @@
   --now-bg:#fbeeec;--soon-bg:#f8efd8;--later-bg:#eef5f0;--passed:#8a94a0;--mono:'IBM Plex Mono',monospace}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+html,body{height:100%}
+body.signed-out{background:#0f141b}
 .hidden{display:none!important}
 /* ---- login / register ---- */
-#login,#paywall{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:22px;
-  background:radial-gradient(120% 90% at 50% 0,#1b2430,#0f141b)}
+#login,#paywall{position:fixed;inset:0;display:flex;justify-content:center;overflow-y:auto;
+  -webkit-overflow-scrolling:touch;background:radial-gradient(120% 90% at 50% 0,#1b2430,#0f141b);
+  padding:calc(env(safe-area-inset-top,0px) + 22px) 22px calc(env(safe-area-inset-bottom,0px) + 22px)}
 #login .card,#paywall .card{width:100%;max-width:400px;background:var(--panel);border-radius:20px;padding:28px 24px 26px;
-  box-shadow:0 24px 60px rgba(0,0,0,.35)}
+  box-shadow:0 24px 60px rgba(0,0,0,.35);margin:auto;flex:none}
 .seal{width:60px;height:60px;border-radius:50%;background:var(--navy);border:2px solid var(--gold);
   display:flex;align-items:center;justify-content:center;margin:0 auto 14px;
   font-family:Fraunces,serif;color:var(--gold);font-weight:600;font-size:22px}
@@ -75,16 +78,20 @@ body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink
   color:var(--mut);line-height:1.45}
 .rg-check input{width:auto;flex:none;margin-top:1px;accent-color:var(--accent)}
 /* ---- app shell ---- */
-#app{display:flex;flex-direction:column;height:100vh;max-width:760px;width:100%;margin-inline:auto;background:var(--bg);overflow:hidden}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh;max-width:760px;width:100%;margin-inline:auto;background:var(--bg);overflow:hidden}
 @media(min-width:761px){body{background:#d3d8dd}#app{border-inline:1px solid var(--line)}}
-header.top{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:calc(env(safe-area-inset-top,0px) + 14px) 10px 14px;
+header.top{display:flex;flex-direction:column;padding:calc(env(safe-area-inset-top,0px) + 10px) 10px 14px;
   background:linear-gradient(180deg,#1a222c,#12171e);color:#fff;flex:none;border-bottom:1px solid rgba(176,148,86,.4)}
-.top-actions{display:flex;align-items:center;gap:2px;flex:1 1 0;min-width:0}
-.top-actions.right{justify-content:flex-end}
-.brand{display:flex;align-items:center;gap:9px;flex:none}
-.brand-logo{display:flex;align-items:center;justify-content:center;width:40px;height:40px;flex:none}
+.top-bar{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%}
+.top-actions{display:flex;align-items:center;gap:2px;min-width:0}
+.top-actions.right{justify-content:flex-end;gap:18px}   /* deliberate space before the exit control */
+/* brand: mark above the wordmark, both centred, with the name given real presence */
+.brand{display:flex;flex-direction:column;align-items:center;gap:2px;margin-top:8px}
+.brand-logo{display:flex;align-items:center;justify-content:center;width:46px;height:46px;flex:none}
 .brand-logo svg{display:block;width:100%;height:100%}
-.brand-name{font-family:Fraunces,serif;font-weight:600;font-size:clamp(24px,6.4vw,31px);color:#fff;letter-spacing:.2px;line-height:1;white-space:nowrap}
+.brand-name{font-family:Fraunces,serif;font-weight:600;font-size:clamp(30px,9vw,40px);color:#fff;letter-spacing:.3px;line-height:1.05;white-space:nowrap}
+.iconbtn.danger{color:#e8a49c}
+.iconbtn.danger:active{background:rgba(209,69,58,.22)}
 .iconbtn{position:relative;background:transparent;border:none;color:#cdd6df;font-size:21px;padding:7px;line-height:1;border-radius:9px}
 .iconbtn:active{background:rgba(255,255,255,.1)}
 .iconbtn.on{color:var(--gold)}
@@ -106,16 +113,13 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:6px
    not just the banner in the board below */
 .cal-field.off-today{background:rgba(194,168,106,.2);border-color:var(--gold)}
 .cal-field.off-today span{color:var(--gold)}
-/* phone widths: header is date-pill + wordmark + 2 buttons on ~375px. Tighten the pill
-   AND ease the wordmark/logo down a step — at their desktop sizes the three groups total
-   more than the bar, and since .brand is flex:none the pill ends up overlapping it. */
+/* phone widths: only the date pill needs tightening now. The wordmark used to be shrunk
+   here too, because it shared one row with the pill and both buttons and they overlapped —
+   the brand has its own row now, so it keeps its full size on a phone. */
 @media(max-width:420px){
   .cal-field{padding:8px 10px;gap:6px}
   .cal-field i{font-size:17px}
   .cal-field span{font-size:13px}
-  .brand-name{font-size:21px}
-  .brand-logo{width:34px;height:34px}
-  .brand{gap:6px}
 }
 .cal-native-overlay{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:none;
   padding:0;margin:0;-webkit-appearance:none;appearance:none;color-scheme:dark}
@@ -580,9 +584,10 @@ main#main.chatmode{overflow:hidden;display:flex;flex-direction:column}
    colour, and a proper corner close control in setup mode instead of a 9th grid cell
    labelled "Cancel" (owner: "the presentation of numbers for pin is very crude. Be
    professional, make it more elegant"). */
-#pinlock{position:fixed;inset:0;z-index:120;display:flex;align-items:center;justify-content:center;padding:22px;
-  background:radial-gradient(120% 90% at 50% 0,#1b2430,#0f141b)}
-.pin-card{position:relative;width:100%;max-width:320px;text-align:center;color:#fff}
+#pinlock{position:fixed;inset:0;z-index:120;display:flex;justify-content:center;overflow-y:auto;
+  -webkit-overflow-scrolling:touch;background:radial-gradient(120% 90% at 50% 0,#1b2430,#0f141b);
+  padding:calc(env(safe-area-inset-top,0px) + 22px) 22px calc(env(safe-area-inset-bottom,0px) + 22px)}
+.pin-card{position:relative;width:100%;max-width:320px;text-align:center;color:#fff;margin:auto;flex:none}
 .pin-close{position:absolute;top:-6px;right:-6px;width:34px;height:34px;border-radius:50%;
   border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#cdd6df;font-size:16px}
 .pin-close:active{background:rgba(255,255,255,.14)}
@@ -788,11 +793,20 @@ main#main.chatmode{overflow:hidden;display:flex;flex-direction:column}
 <!-- APP -->
 <div id="app" class="hidden">
   <header class="top">
-    <div class="top-actions left">
-      <div class="cal-field" id="calField">
-        <i class="ti ti-calendar" aria-hidden="true"></i>
-        <span id="calDateLabel">Today</span>
-        <input type="date" id="calInput" class="cal-native-overlay" aria-label="Pick a date to view that day's board">
+    <!-- Controls on their own row so the brand below can be centred and given real size,
+         and so Refresh and the exit control aren't neighbours (owner: "I don't want people
+         accidentally pressing the logout button while pressing refresh"). -->
+    <div class="top-bar">
+      <div class="top-actions left">
+        <div class="cal-field" id="calField">
+          <i class="ti ti-calendar" aria-hidden="true"></i>
+          <span id="calDateLabel">Today</span>
+          <input type="date" id="calInput" class="cal-native-overlay" aria-label="Pick a date to view that day's board">
+        </div>
+      </div>
+      <div class="top-actions right">
+        <button class="iconbtn" id="btnRefresh" title="Refresh"><i class="ti ti-refresh"></i></button>
+        <button class="iconbtn danger" id="btnOut" title="Lock or sign out"><i class="ti ti-logout"></i></button>
       </div>
     </div>
     <div class="brand">
@@ -806,10 +820,6 @@ main#main.chatmode{overflow:hidden;display:flex;flex-direction:column}
         </svg>
       </span>
       <span class="brand-name">CourtReach</span>
-    </div>
-    <div class="top-actions right">
-      <button class="iconbtn" id="btnRefresh" title="Refresh"><i class="ti ti-refresh"></i></button>
-      <button class="iconbtn" id="btnOut" title="Sign out"><i class="ti ti-logout"></i></button>
     </div>
   </header>
   <div id="paneTop">
@@ -2873,11 +2883,13 @@ function applyGate(){
   if(!ent.ok){
     $("login").classList.add("hidden"); $("app").classList.add("hidden");
     $("paywall").classList.remove("hidden"); $("pwErr").textContent="";
+    document.body.classList.add("signed-out");
     stopPolling();
     return;                                   // don't boot the rest of the app while locked out
   }
   if(pinLocked) return;                       // session is real but the device is PIN-locked
   $("login").classList.add("hidden"); $("paywall").classList.add("hidden"); $("app").classList.remove("hidden");
+  document.body.classList.remove("signed-out");
   paintMasthead();
   paintTrialBanner(ent);
   paintJoinBanner();
@@ -2911,6 +2923,7 @@ function boot(user){
     me=null; watchOrg(null); _watchedOrgId=undefined;
     hidePinLock();
     $("app").classList.add("hidden"); $("paywall").classList.add("hidden"); $("login").classList.remove("hidden");
+    document.body.classList.add("signed-out");
     paintLoginPin();
     stopPolling(); return;
   }
@@ -3014,7 +3027,20 @@ $("rgGo").onclick=async()=>{ $("rgErr").textContent="";
   try{ await auth.signUp(email,pass,{name,phone,designation,mode:regMode,chamber,code,orgType}); }
   catch(e){ justAuthed=false; $("rgGo").disabled=false; $("rgErr").textContent=(e.code||"").includes("email-already-in-use")?"That email already has an account — sign in.":(e.message||"Could not create account."); } };
 $("btnRefresh").onclick=()=>{ if(!DEMO) location.reload(); else fetchBoard(); };
-$("btnOut").onclick=()=>auth.signOut();
+// Leaving is now a deliberate choice rather than a one-tap logout sitting next to Refresh.
+// Lock keeps the session (PIN gets you back in); signing out needs the password again.
+$("btnOut").onclick=()=>{
+  const pinOn=hasPinFor(me?.uid);
+  $("modalRoot").innerHTML=`<div class="ovl" data-close><div class="sheet"><button class="sh-x" data-close>&times;</button>
+    <h2>Leaving?</h2>
+    <div class="sh-sub">Lock if you're stepping away — your board stays loaded and a PIN brings you straight back.</div>
+    <button class="sh-btn" id="lo_lock"><i class="ti ti-lock"></i> ${pinOn?"Lock":"Set a PIN and lock"}</button>
+    <button class="sh-btn ghost2" id="lo_out"><i class="ti ti-logout"></i> Sign out</button>
+    <div class="stg-gh" style="margin:10px 0 0">Signing out needs your password to get back in${pinOn?" — your PIN keeps working after that":""}.</div>
+  </div></div>`;
+  $("lo_lock").onclick=()=>{ closeModal(); if(pinOn) showPinLock(me.uid); else startPinSetup(); };
+  $("lo_out").onclick=()=>{ closeModal(); auth.signOut(); };
+};
 // Calendar field — shows the picked (default: today's) date on the header pill; the real
 // <input type=date> UNDER it (see .cal-native-overlay) is what actually receives the tap
 // and opens the OS picker, so there's no synthetic-click path left to silently fail.
@@ -3083,6 +3109,7 @@ function paintPinDots(){
 // login is an actually-reachable, on-demand action rather than something that only
 // appears if the browser happens to still be holding a persisted session on its own.
 function showPinLock(uid){
+  document.body.classList.add("signed-out");
   pinLocked=true; pinUid=uid; pinEntry=""; pinSetupMode=false; pinSetupFirst="";
   $("pinHi").textContent="Welcome back";
   $("pinSub").textContent="Enter your PIN";
@@ -3094,7 +3121,12 @@ function showPinLock(uid){
   $("pinlock").classList.remove("hidden");
   paintPinDots();
 }
-function hidePinLock(){ pinLocked=false; pinEntry=""; pinSetupMode=false; $("pinlock").classList.add("hidden"); }
+function hidePinLock(){
+  pinLocked=false; pinEntry=""; pinSetupMode=false; $("pinlock").classList.add("hidden");
+  // only drop the dark page background if no other full-screen layer is still up
+  const stillDark = !$("login").classList.contains("hidden") || !$("paywall").classList.contains("hidden");
+  document.body.classList.toggle("signed-out", stillDark);
+}
 // Settings → "Set a PIN" / "Change PIN": ask twice, confirm they match.
 function startPinSetup(){
   pinSetupMode=true; pinEntry=""; pinSetupFirst="";
