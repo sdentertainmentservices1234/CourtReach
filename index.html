@@ -57,6 +57,15 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:6px
 .iconbtn{position:relative;background:transparent;border:none;color:#cdd6df;font-size:21px;padding:7px;line-height:1;border-radius:9px}
 .iconbtn:active{background:rgba(255,255,255,.1)}
 .iconbtn.on{color:var(--gold)}
+/* calendar button — shows today's (or the picked) date-of-month right on the icon glyph,
+   like a desk-calendar page (owner: replace the header + button with a calendar that
+   "shows today's date"; native <input type=date> underneath does the actual picking).
+   .cal-glyph wraps ONLY the <i> icon (inline-flex hugs its natural box) so the day-number
+   can be pinned to the icon's own bottom edge, not guessed as a % of the padded button. */
+.cal-glyph{position:relative;display:inline-flex}
+.cal-daynum{position:absolute;left:0;right:0;bottom:3px;text-align:center;font-family:var(--mono);
+  font-size:8.5px;font-weight:800;color:#cdd6df;line-height:1;pointer-events:none}
+.cal-hidden-input{position:absolute;width:1px;height:1px;opacity:0;left:-9999px;pointer-events:none}
 #paneTop{flex:none;padding:9px 12px 2px}
 .statusrow{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--mut)}
 .freshdot{width:7px;height:7px;border-radius:50%;background:#4bbd6b}
@@ -127,6 +136,13 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px calc(66px + env(s
 .cell.stk.mini .cell-ours{height:30px;padding:2px 4px}
 .cell.mini .on-num{font-size:17px;margin-top:1px}
 .cell.idle .on-num,.cell.idle .on-lab{color:var(--passed)}
+/* idle court island HEADER — the navy/gold court-number block fades too, matching the
+   rest of a not-sitting court's tile (owner: "the court island header also go faint") */
+.cell.stk.idle .cell-topbar{background:var(--panel2);color:var(--passed)}
+.cell.stk.idle .cell-topbar .cd{color:var(--passed)}
+.cell.idle .ct-side{background:var(--panel2)}
+.cell.idle .ct-num,.cell.idle .ct-num .cd{color:var(--passed)}
+.cell.mini.idle .ct-num{background:var(--panel2);color:var(--passed)}
 .cell-ours{margin-top:7px;border-radius:8px;padding:5px 4px;font-size:11px;font-weight:700;color:#fff;line-height:1.15;text-align:center}
 .cell.ours{border-width:2px}
 .cell.ours.now{border-color:var(--now)}.cell.ours.now .cell-ours{background:linear-gradient(180deg,#d1453a,#a5231a)}
@@ -193,15 +209,20 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px calc(66px + env(s
 .mm-meta{flex:1;min-width:0;display:flex;flex-direction:column}.mm-t{font-size:14px;font-weight:600}.mm-s{font-size:12px;color:var(--mut);margin-top:2px}
 .mm-del{background:none;border:none;color:var(--now);font-size:12px;font-weight:600}
 .sec-h{font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--mut);margin:6px 2px 9px}
-/* My cases — refined case cards */
-.case-card{background:var(--panel);border:1px solid var(--line);border-radius:15px;margin-bottom:11px;box-shadow:0 1px 3px rgba(20,26,34,.05);overflow:hidden}
-/* prominent top band: Court + Item, big; details sit in the body below, smaller */
-.case-hd{display:flex;align-items:center;gap:13px;background:linear-gradient(180deg,#1c242e,#12171e);padding:11px 15px}
-.chd-grp{display:flex;align-items:baseline;gap:7px}
-.chd-lab{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--gold)}
-.chd-num{font-family:var(--mono);font-size:25px;font-weight:800;color:#fff;line-height:1}
-.chd-sep{width:1px;align-self:stretch;background:rgba(255,255,255,.16);margin:3px 0}
-.case-body{padding:12px 15px 13px}
+/* My cases — compact serial list; tap a row to drop down its detail panel (owner:
+   "just have the list of cases with court number and item number listed serially with
+   a serial number and with a drop down information panel upon clicking the entry") */
+.case-row{background:var(--panel);border:1px solid var(--line);border-radius:13px;margin-bottom:8px;overflow:hidden}
+.case-row-head{display:flex;align-items:center;gap:9px;padding:11px 13px;cursor:pointer}
+.case-row-head:active{background:var(--panel2)}
+.cr-sn{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--mut);flex:none;width:16px;text-align:right}
+.cr-grp{display:flex;align-items:baseline;gap:4px;flex:none}
+.cr-lab{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--mut)}
+.cr-num{font-family:var(--mono);font-size:16px;font-weight:800;color:var(--ink)}
+.cr-chev{flex:none;font-size:15px;color:var(--mut);transition:transform .15s}
+.case-row.open .cr-chev{transform:rotate(180deg)}
+.case-row-body{display:none;padding:0 13px 13px;border-top:1px solid var(--line)}
+.case-row.open .case-row-body{display:block;padding-top:11px}
 .case-prox{margin-left:auto;flex:none;font-size:11px;font-weight:800;letter-spacing:.3px;border-radius:20px;padding:4px 11px;text-transform:uppercase;white-space:nowrap}
 .case-prox.now{color:#fff;background:var(--now)}
 .case-prox.soon{color:#7a4f0d;background:#f8efd8}
@@ -429,7 +450,8 @@ nav.botnav button.on{color:var(--accent)}
 <div id="app" class="hidden">
   <header class="top">
     <div class="top-actions left">
-      <button class="iconbtn" id="btnAdd" title="Track a matter"><i class="ti ti-plus"></i></button>
+      <button class="iconbtn calbtn" id="btnCal" title="Pick a date"><span class="cal-glyph"><i class="ti ti-calendar"></i><span class="cal-daynum" id="calDayNum"></span></span></button>
+      <input type="date" id="calInput" class="cal-hidden-input" tabindex="-1" aria-hidden="true">
       <button class="iconbtn" id="btnNotify" title="Matter-reaching alerts"><i class="ti ti-bell"></i></button>
     </div>
     <div class="brand">
@@ -664,6 +686,10 @@ if(DEMO){
    STATE + BOARD FETCH
    ============================================================ */
 let me=null, myOwn=[], board=[], boardAt=0, boardErr=null, curTab="board";
+// The calendar button's picked date. todayISO() → the normal LIVE board. Any other date →
+// a read-only static preview of that day's published cause list (no live "on now" status
+// exists outside today — see renderDateBoard).
+let boardDate=todayISO();
 let adminUsers=[], adminAccessCode=null, adminUsersUnsub=null, adminCodeUnsub=null, adminSearch="";
 // Live-board context for the proximity engine — the published sequence marquee, the
 // per-court remark column (authoritative OVER / PASS OVER), passovers observed live on
@@ -844,7 +870,7 @@ async function fetchBoard(){
   loadCourtUpdates();       // Misc totals (throttled) — for Regular + end-of-board passover
   fetchSeqLine();           // published sequence order (throttled)
   refreshRemarks();         // OVER / PASS OVER per tracked court (throttled)
-  paintFresh(); if(curTab==="board") renderBoard();
+  paintFresh(); if(curTab==="board" && boardDate===todayISO()) renderBoard();
   try{ runFlash(); }catch(e){}
 }
 function startPolling(){ stopPolling(); pollOn=true; tickId=setInterval(paintFresh,1000); (async function loop(){ if(!pollOn) return; await fetchBoard(); if(!pollOn) return; pollId=setTimeout(loop, 12000); })(); }
@@ -1028,6 +1054,58 @@ function openCourtModal(court,_refetched){
   </div></div>`;
 }
 
+/* ===== DATE BOARD — the calendar button's picked-date view. There is no live "on now"
+   status for any day but today (that only exists on the SC's real-time board relay), so
+   this reuses the SAME island-tile grid language but as a read-only preview built purely
+   from court-updates.json's per-date cause list: tile = court + how many items are listed;
+   tap it for the full item-by-item detail (cause title, coram — pulled via lookupItem-style
+   fields already parsed into courtUpdates). ===== */
+function dateCourtsFor(date){
+  const day=courtUpdates?.by_date?.[date]; const byCourt={};
+  if(!day) return byCourt;
+  for(const t of CAUSELIST_TYPES){ const list=day.lists?.[t]; if(!list) continue;
+    for(const c in list){ if(!isCourtroom(c)) continue; (byCourt[c]=byCourt[c]||[]).push({type:t,rec:list[c]}); } }
+  return byCourt;
+}
+function dateCourtCell(court,entries){
+  const total=entries.reduce((s,e)=>s+Object.keys(e.rec.items||{}).length,0);
+  return `<div class="cell stk datecell" data-datecourt="${esc(court)}">
+    <div class="cell-topbar">C<span class="cd">${esc(court)}</span></div>
+    <div class="cell-on"><span class="cell-on-lab" style="display:inline">listed</span><span class="cell-on-num">${total}</span></div>
+  </div>`;
+}
+function wireDateBack(){ const b=$("dateBackToday"); if(b) b.onclick=()=>{ boardDate=todayISO(); paintCalBtn(); render(); }; }
+function fmtDateLong(date){ try{ return new Date(date+"T00:00:00").toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}); }catch(e){ return date; } }
+function renderDateBoard(date){
+  const r=$("routeRail"); if(r) r.innerHTML="";              // "which court to walk next" is a live-board concept only
+  const byCourt=dateCourtsFor(date);
+  const courts=Object.keys(byCourt).sort((a,b)=>parseInt(a)-parseInt(b));
+  let h=`<div class="notice">Read-only cause list for <b>${esc(fmtDateLong(date))}</b> — not live tracking.<br>
+    <button id="dateBackToday" class="case-del" style="margin-top:6px"><i class="ti ti-arrow-back-up"></i> Back to today's live board</button></div>`;
+  if(!courts.length){ h+=`<div class="empty">No cause list published for this date yet.</div>`; $("main").innerHTML=h; wireDateBack(); return; }
+  h+=`<div class="grid">`+courts.map(c=>dateCourtCell(c,byCourt[c])).join("")+`</div>`;
+  $("main").innerHTML=h;
+  wireDateBack();
+  $("main").querySelectorAll("[data-datecourt]").forEach(el=>el.onclick=()=>openDateCourtModal(el.dataset.datecourt,date));
+}
+function openDateCourtModal(court,date){
+  court=String(court);
+  const entries=dateCourtsFor(date)[court]||[];
+  $("modalRoot").innerHTML=`<div class="ovl" data-close><div class="sheet"><button class="sh-x" data-close>&times;</button>
+    <div class="cm-top"><div class="cm-court">Court <b>${esc(court)}</b></div>
+      <span class="cm-status idle">${esc(fmtDateLong(date))}</span></div>
+    ${entries.map(({type,rec})=>{
+      const coram=cleanCoram(rec.coram);
+      const items=Object.keys(rec.items||{}).sort((a,b)=>parseFloat(a)-parseFloat(b));
+      return `<div class="cm-card">
+        <div class="cm-h"><i class="ti ti-list-numbers"></i> ${esc(type)}${items.length?` <span class="cm-count">· ${items.length}</span>`:""}</div>
+        ${coram?`<div class="cm-body" style="margin-bottom:8px">${esc(coramJJ(coram))}</div>`:""}
+        ${items.length?items.map(n=>`<div class="cm-mine"><span class="cm-mine-it">${esc(n)}</span><span class="cm-mine-t">${esc(titleFromCauseLine(rec.items[n])||rec.items[n]||"—")}</span></div>`).join(""):`<div class="cm-none">No items.</div>`}
+      </div>`;
+    }).join("") || `<div class="cm-empty">No cause list published for Court ${esc(court)} on ${esc(fmtDateLong(date))} yet.</div>`}
+  </div></div>`;
+}
+
 /* ===== APPROACH FLASH — full-screen overlay when our matters are reaching (ported from the display board) ===== */
 const flashBand = g => g<=2 ? "red" : g<=4 ? "amber" : "green";   // 0-2 red · 3-4 amber · 5-7 green
 const _distLabel = g => g<=0 ? "ON NOW" : g===1 ? "NEXT" : g+" AWAY";
@@ -1083,18 +1161,19 @@ function renderMine(){
   let h=`<button class="big-btn" id="mmAdd"><i class="ti ti-plus"></i> Track a case</button>`;
   h+=`<div class="sec-h">My cases${list.length?` · ${list.length}`:""}</div>`;
   if(!list.length) h+=`<div class="empty">No cases yet. Add your court &amp; item number and CourtReach tracks it live on the board.</div>`;
-  else h+=list.map(m=>{
+  else h+=list.map((m,i)=>{
     const k=classify({courtNo:m.court,itemNo:m.item,listType:m.listType||""});
     const band=proxBandOf(k);
     const bits=[m.listType, m.appearingFor?("for "+m.appearingFor):""].filter(Boolean).join(" · ");
-    return `<div class="case-card">
-      <div class="case-hd">
-        <span class="chd-grp"><span class="chd-lab">Court</span><span class="chd-num">${esc(m.court)}</span></span>
-        <span class="chd-sep"></span>
-        <span class="chd-grp"><span class="chd-lab">Item</span><span class="chd-num">${esc(m.item)}</span></span>
+    return `<div class="case-row">
+      <div class="case-row-head" data-toggle="1">
+        <span class="cr-sn">${i+1}</span>
+        <span class="cr-grp"><span class="cr-lab">Ct</span><span class="cr-num">${esc(m.court)}</span></span>
+        <span class="cr-grp"><span class="cr-lab">Item</span><span class="cr-num">${esc(m.item)}</span></span>
         <span class="case-prox ${band}">${esc(k.short||"—")}</span>
+        <i class="ti ti-chevron-down cr-chev"></i>
       </div>
-      <div class="case-body">
+      <div class="case-row-body">
         <div class="case-title">${esc(m.title||("Court "+m.court+" · item "+m.item))}</div>
         ${bits?`<div class="case-meta">${esc(bits)}</div>`:""}
         ${m.bench?`<div class="case-meta"><span class="cm-k">Bench</span>${esc(m.bench)}</div>`:""}
@@ -1105,7 +1184,9 @@ function renderMine(){
   }).join("");
   $("main").innerHTML=h;
   const a=$("mmAdd"); if(a) a.onclick=addMatterForm;
-  $("main").querySelectorAll("[data-del]").forEach(x=>x.onclick=async()=>{
+  $("main").querySelectorAll("[data-toggle]").forEach(x=>x.onclick=()=>x.closest(".case-row").classList.toggle("open"));
+  $("main").querySelectorAll("[data-del]").forEach(x=>x.onclick=async(ev)=>{
+    ev.stopPropagation();
     const matters=(myOwn||[]).filter(m=>m.id!==x.dataset.del);
     try{ await db.set("usermatters/"+me.uid,{matters,updatedAt:db.now()},true); }catch(e){}
   });
@@ -1247,10 +1328,11 @@ function viewPeerBoard(link){ if(!linkActive(link)) return;   // permission is s
   // MY case(s) with this person for TODAY — flagged on their board so I find mine fast
   peerLinkMatters=(link.matters||[]).filter(m=>m&&m.court&&m.item&&(!m.date||m.date===todayISO()));
   if(peerUnsub){peerUnsub();}
-  peerUnsub=db.watchDoc("usermatters/"+peerBoardUid, d=>{ peerMatters=(d&&d.matters)||[]; if(curTab==="board") renderBoard(); });
+  peerUnsub=db.watchDoc("usermatters/"+peerBoardUid, d=>{ peerMatters=(d&&d.matters)||[]; if(curTab==="board"&&boardDate===todayISO()) renderBoard(); });
+  boardDate=todayISO(); paintCalBtn();   // a colleague's board is a LIVE-only view — drop any picked date
   setTab("board");
 }
-function exitPeerBoard(){ if(peerUnsub){peerUnsub();peerUnsub=null;} peerBoardUid=null; peerBoardName=""; peerMatters=[]; peerLinkMatters=[]; renderBoard(); }
+function exitPeerBoard(){ if(peerUnsub){peerUnsub();peerUnsub=null;} peerBoardUid=null; peerBoardName=""; peerMatters=[]; peerLinkMatters=[]; render(); }
 const isMyCaseCourt = court => peerBoardUid && peerLinkMatters.some(m=>String(m.court)===String(court));
 const myCaseItemsIn = court => peerLinkMatters.filter(m=>String(m.court)===String(court)).map(m=>String(m.item));
 
@@ -1419,7 +1501,8 @@ function closeModal(){ $("modalRoot").innerHTML=""; }
 $("modalRoot").addEventListener("click",e=>{ if(e.target.classList.contains("ovl")||e.target.closest("button[data-close]")) closeModal(); });
 $("routeRail").addEventListener("click",ev=>{ const c=ev.target.closest("[data-court]"); if(c) openCourtModal(c.dataset.court); });
 
-function render(){ if(curTab==="board") renderBoard(); else if(curTab==="mine") renderMine(); else if(curTab==="admin") renderAdmin(); else renderCollab(); }
+function render(){ if(curTab==="board"){ if(boardDate===todayISO()) renderBoard(); else renderDateBoard(boardDate); }
+  else if(curTab==="mine") renderMine(); else if(curTab==="admin") renderAdmin(); else renderCollab(); }
 function setTab(t){ curTab=t; document.querySelectorAll("nav.botnav button").forEach(b=>b.classList.toggle("on",b.dataset.tab===t));
   if(t!=="board"){ const r=$("routeRail"); if(r) r.innerHTML=""; } render(); }
 document.querySelectorAll("nav.botnav button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
@@ -1512,7 +1595,23 @@ $("rgGo").onclick=async()=>{ $("rgErr").textContent="";
   catch(e){ $("rgGo").disabled=false; $("rgErr").textContent=(e.code||"").includes("email-already-in-use")?"That email already has an account — sign in.":(e.message||"Could not create account."); } };
 $("btnRefresh").onclick=()=>{ if(!DEMO) location.reload(); else fetchBoard(); };
 $("btnOut").onclick=()=>auth.signOut();
-$("btnAdd").onclick=()=>addMatterForm();
+// Calendar button — shows the picked (default: today's) date-of-month on the icon glyph;
+// tapping it opens a native date picker via the visually-hidden #calInput. Picking a date
+// jumps to Board tab showing that day (live if today, a static preview otherwise — see
+// renderDateBoard). Replaces the old header "+"; "Track a case" now lives in My cases only.
+function paintCalBtn(){ const el=$("calDayNum"); if(!el) return; try{ el.textContent=new Date(boardDate+"T00:00:00").getDate(); }catch(e){} }
+$("btnCal").onclick=()=>{
+  const inp=$("calInput"); inp.value=boardDate;
+  if(inp.showPicker){ try{ inp.showPicker(); return; }catch(e){} }
+  inp.focus(); inp.click();
+};
+$("calInput").onchange=async e=>{
+  boardDate=e.target.value||todayISO();
+  paintCalBtn();
+  if(boardDate!==todayISO()){ $("main").innerHTML=`<div class="empty">Loading cause list…</div>`; await loadCourtUpdates(); }
+  setTab("board");
+};
+paintCalBtn();
 // Matter-reaching alerts: tap the bell to enable browser notifications for when one of
 // your tracked matters is approaching on the board (fires while the app is open).
 let notifOn=(()=>{ try{ return localStorage.getItem("crNotify")==="1"; }catch(e){ return false; } })();
