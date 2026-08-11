@@ -287,6 +287,11 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px calc(66px + env(s
   color:var(--mut);background:var(--panel2);border-radius:20px;padding:3px 8px}
 .case-acts{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
 .viewstrip{padding-top:0}
+/* which day My cases is showing — it follows the header calendar, so say so plainly */
+.mine-day{display:flex;align-items:baseline;gap:9px;margin:2px 2px 10px}
+.mine-day .md-d{font-size:15px;font-weight:600;color:var(--ink)}
+.mine-day .md-n{flex:1;font-size:12px;color:var(--mut)}
+.mine-day button{background:none;border:none;color:var(--accent);font-size:12.5px;font-weight:700;padding:2px 4px}
 .cr-chev{flex:none;font-size:15px;color:var(--mut);transition:transform .15s}
 .case-row.open .cr-chev{transform:rotate(180deg)}
 .case-row-body{display:none;padding:0 13px 13px;border-top:1px solid var(--line)}
@@ -354,6 +359,18 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px calc(66px + env(s
 .stg-sec.open .stg-chev{transform:rotate(180deg)}
 .stg-body{display:none;padding:2px 15px 15px;border-top:1px solid var(--line)}
 .stg-sec.open .stg-body{display:block;padding-top:13px}
+/* Inside an open section: a stack of titled groups rather than a run of loose paragraphs,
+   so each setting reads as its own thing (owner: "right now it looks like free text
+   without any proper presentation"). */
+.stg-group+.stg-group{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.stg-gt{font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--mut);margin-bottom:3px}
+.stg-gh{font-size:12.5px;color:var(--mut);line-height:1.5;margin-bottom:10px}
+/* read-only facts, as an aligned key/value table */
+.stg-kv{display:flex;align-items:baseline;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}
+.stg-kv:last-child{border-bottom:none}
+.stg-kv .k{flex:none;width:104px;font-size:12px;color:var(--mut)}
+.stg-kv .v{flex:1;min-width:0;font-size:13.5px;font-weight:600;color:var(--ink);word-break:break-word}
+.stg-kv .v.mono{font-family:var(--mono);font-weight:700;letter-spacing:.3px;font-size:13px}
 .stg-row{display:flex;align-items:center;justify-content:space-between;gap:14px}
 .stg-label{font-size:14px;font-weight:600;color:var(--ink)}
 .stg-sub{font-size:12px;color:var(--mut);margin-top:2px;line-height:1.4}
@@ -944,6 +961,7 @@ async function resolveOrgFor(uid, email, reg){
   if(reg && reg.mode==="create" && reg.chamber){
     const code=await freshJoinCode();
     await db.set("orgs/"+uid,{ name:reg.chamber, orgType:reg.orgType||"chamber", ownerUid:uid, ownerName:reg.name||"",
+      leaderUid:uid,                       // assume the registrant until they say otherwise
       joinCode:code, joinCodeActive:true, createdAt:db.now() });
     await db.set("orgcodes/"+code,{ orgId:uid, active:true });
     return {orgId:uid, orgRole:"owner"};
@@ -964,6 +982,7 @@ async function resolveOrgFor(uid, email, reg){
   return {orgId:null, orgRole:null};
 }
 let joinNotice="", _joinNoticeTimer=null;   // shown on the Settings tab after a join attempt
+let leaderMsg="", _leaderMsgTimer=null;    // ditto, for "X is now the senior"
 // Create users/{uid} on first sign-in (both demo and prod funnel through here).
 async function ensureUserDoc(uid, email, reg){
   const existing=await db.get("users/"+uid).catch(()=>null);
@@ -1140,6 +1159,18 @@ let myOrg=null, orgMembers=[], orgMatters={},                  // orgMatters: ui
 const inOrg = () => !!(me && me.orgId);
 const isOrgOwner = () => !!(me && me.orgId && me.orgRole==="owner");
 const orgOwnerUid = () => myOrg ? (myOrg.ownerUid||myOrg.id) : null;
+/* Two DIFFERENT people, and conflating them was a bug: the account OWNER is whoever set
+   the organisation up and pays/administers it — very often the clerk. The LEADER is the
+   senior advocate the office revolves around, and the one the Team thread deliberately
+   leaves out. Defaults to the owner (right for a senior who registered themselves), and
+   the owner can point it at anyone once the real members exist. */
+const orgLeaderUid = () => myOrg ? (myOrg.leaderUid || myOrg.ownerUid || myOrg.id) : null;
+const isOrgLeader = () => !!(me && myOrg && orgLeaderUid()===me.uid);
+const orgLeaderName = () => {
+  const uid=orgLeaderUid(); if(!uid) return "the senior";
+  const m=orgMembers.find(x=>x.id===uid);
+  return (m&&m.name) || myOrg?.ownerName || "the senior";
+};
 const ORG_TYPE_LABELS={chamber:"Chambers", firm:"Law firm", office:"Law office", inhouse:"In-house legal team"};
 const orgTypeLabel = () => ORG_TYPE_LABELS[myOrg?.orgType||"chamber"]||"Organisation";
 const memberName = uid => (orgMembers.find(m=>m.id===uid)||{}).name || (uid===me?.uid ? (me.name||"You") : "Colleague");
@@ -1518,18 +1549,12 @@ function boardCell(c, mini){
     const struck=over&&!off, shown=over&&off;
     return `<span class="oi-it${struck?" struck":""}${shown?" overridden":""}" data-strike-court="${esc(c.court)}" data-strike-item="${esc(x.e.itemNo)}">${esc(x.e.itemNo)}</span>`;
   }).join(`<span class="oi-sep">·</span>`);
-  // On a chamber board the same court can hold several colleagues' matters — name who's
-  // appearing, so the island answers "whose is this?" without opening it.
-  let whose="";
-  if(inOrg() && !mine){
-    // shape() already resolved the right label — byLabel (e.g. a synced day-sheet name)
-    // takes priority over the account-based "You"/colleague name; don't recompute it here.
-    const names=[...new Set(ordered.map(x=>x.e.byName||"").filter(Boolean))];
-    if(names.length) whose=`<div class="whose">${esc(names.length>2?names.slice(0,2).join(", ")+" +"+(names.length-2):names.join(", "))}</div>`;
-  }
+  // The island stays a pure court/item/proximity readout — no names. Who's appearing is
+  // in My cases and in the court sheet (owner: "I don't want juniors' names coming on the
+  // court islands. They are being shown in my cases").
   return `<div class="cell${stk} ours ${tier} ${idle?"idle":""}${mine?" mycase":""}" ${dc}>
     ${mine?`<div class="mycase-rib"><i class="ti ti-star-filled"></i> Your case</div>`:""}
-    ${head}${whose}
+    ${head}
     <div class="cell-ours${cnt}"><span class="oi">${items}</span><span class="ourlab">${esc(best?.k.short||best?.k.label||"—")}</span></div></div>`;
 }
 
@@ -1620,20 +1645,19 @@ function dateCourtsFor(date){
 }
 function wireDateBack(){ const b=$("dateBackToday"); if(b) b.onclick=()=>{ boardDate=todayISO(); paintCalBtn(); render(); }; }
 function fmtDateLong(date){ try{ return new Date(date+"T00:00:00").toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}); }catch(e){ return date; } }
-// One island per court we're listed in that day: court number, our item(s), whose they are.
+// One island per court we're listed in that day — court number and OUR item numbers, and
+// nothing else. No names, no size-of-the-board total (owner: "should just show our case
+// numbers and not any other information like total cases"). The court sheet behind a tap
+// still carries the coram and the day's board size for anyone who wants it.
 function dateCourtCell(court, entries){
   const ordered=entries.slice().sort((a,b)=>(parseFloat(a.itemNo)||0)-(parseFloat(b.itemNo)||0));
-  const names=[...new Set(ordered.map(e=>e.by===me?.uid?"You":(e.byName||"")).filter(Boolean))];
   const cnt = ordered.length>=4?" cnt4p":ordered.length===3?" cnt3":"";
-  const totals=courtTotalsFor(court, boardDate);
   return `<div class="cell stk ours later datecell" data-datecourt="${esc(court)}">
     <div class="cell-topbar">C<span class="cd">${esc(court)}</span></div>
-    <div class="cell-on"><span class="cell-on-lab" style="display:inline">${totals?"of":"items"}</span><span class="cell-on-num">${totals?esc(totals):ordered.length}</span></div>
-    ${names.length?`<div class="whose">${esc(names.length>2?names.slice(0,2).join(", ")+" +"+(names.length-2):names.join(", "))}</div>`:""}
-    <div class="cell-ours${cnt}"><span class="oi">${ordered.map(e=>`<span class="oi-it">${esc(e.itemNo)}</span>`).join(`<span class="oi-sep">·</span>`)}</span>
-      <span class="ourlab">listed</span></div></div>`;
+    <div class="cell-ours${cnt}"><span class="oi">${ordered.map(e=>`<span class="oi-it">${esc(e.itemNo)}</span>`).join(`<span class="oi-sep">·</span>`)}</span></div></div>`;
 }
 // That court's total listed items for the date, from the fetched cause list (may be absent).
+// Used only in the court sheet now, not on the island itself.
 function courtTotalsFor(court, date){
   const lists=courtUpdates?.by_date?.[date]?.lists||{};
   for(const t of CAUSELIST_TYPES){ const rec=lists[t]?.[String(court)]; if(rec&&rec.total) return String(rec.total); }
@@ -1741,7 +1765,10 @@ const courtStyle = c => { const h=courtHue(c);
 /* My cases — three lists behind one tab (owner: "for your own cases, for chamber cases,
    for collaborating cases"). "Mine" is everything I entered (the only ones I can edit);
    "Chamber" is the whole office's; "Collaborating" is what I've shared with, or been
-   shared by, a senior. Each list is grouped by DATE so a day's board reads as a unit. */
+   shared by, a senior.
+   The list shows ONE day at a time — whichever the header calendar is on — so it always
+   agrees with the board beside it (owner: "should refresh its information and display
+   only as per date selected in the header calendar button"). */
 function mineViews(){
   const v=[{id:"mine", label:"My cases", icon:"ti-gavel"}];
   if(inOrg()) v.push({id:"chamber", label:myOrg?.name||"Organisation", icon:"ti-building-bank"});
@@ -1768,22 +1795,22 @@ function mineRows(){
 function renderMine(){
   const views=mineViews();
   if(!views.some(v=>v.id===mineView)) mineView="mine";
-  const rows=mineRows();
-  // group by date, soonest first, with today up top
-  const byDate={}; rows.forEach(m=>{ (byDate[matterDate(m)]=byDate[matterDate(m)]||[]).push(m); });
-  const t=todayISO();
-  const dates=Object.keys(byDate).sort((a,b)=>(a<t)-(b<t) || a.localeCompare(b));
+  const t=todayISO(), d=boardDate;
+  const list=mineRows().filter(m=>onDate(m,d))
+    .sort((a,b)=>(parseInt(a.court)||99)-(parseInt(b.court)||99)||(parseFloat(a.item)||0)-(parseFloat(b.item)||0));
   let h=viewStrip(views, mineView, "data-mv");
+  // the day this list is for, and a way back to today when it isn't
+  h+=`<div class="mine-day"><span class="md-d">${esc(d===t?"Today":fmtDateLong(d))}</span>
+    <span class="md-n">${list.length} matter${list.length===1?"":"s"}</span>
+    ${d!==t?`<button id="mineToday">Today</button>`:""}</div>`;
   if(mineView==="mine") h+=`<button class="big-btn" id="mmAdd"><i class="ti ti-plus"></i> Track a case</button>`;
-  if(!rows.length){
-    h+=`<div class="empty">${mineView==="chamber"?"No organisation matters yet."
-      :mineView==="collab"?"No matters shared with a collaborating colleague yet."
-      :"No cases yet. Add your court &amp; item number and CourtReach tracks it live on the board."}</div>`;
+  if(!list.length){
+    h+=`<div class="empty">${mineView==="chamber"?"Nothing listed for the organisation on this date."
+      :mineView==="collab"?"No collaborating matters on this date."
+      :"Nothing listed on this date.<br>Add a case, or pick another date from the calendar in the header."}</div>`;
     $("main").innerHTML=h; wireMine(); return;
   }
-  for(const d of dates){
-    const list=byDate[d].slice().sort((a,b)=>(parseInt(a.court)||99)-(parseInt(b.court)||99)||(parseFloat(a.item)||0)-(parseFloat(b.item)||0));
-    h+=`<div class="sec-h">${esc(d===t?"Today":fmtDateLong(d))} · ${list.length}</div>`;
+  {
     h+=list.map((m,i)=>{
       // proximity is only meaningful for today's board
       const k = d===t ? classify({courtNo:m.court,itemNo:m.item,listType:m.listType||""}) : null;
@@ -1819,6 +1846,7 @@ function renderMine(){
 }
 function wireMine(){
   $("main").querySelectorAll("[data-mv]").forEach(b=>b.onclick=()=>{ mineView=b.dataset.mv; render(); });
+  const bt=$("mineToday"); if(bt) bt.onclick=()=>{ boardDate=todayISO(); paintCalBtn(); render(); };
   const a=$("mmAdd"); if(a) a.onclick=addMatterForm;
   $("main").querySelectorAll("[data-toggle]").forEach(x=>x.onclick=()=>x.closest(".case-row").classList.toggle("open"));
   $("main").querySelectorAll("[data-del]").forEach(x=>x.onclick=async(ev)=>{
@@ -2224,11 +2252,11 @@ async function markChatRead(ch){
 }
 // Threads, in the order this particular person should see them.
 function chatThreads(){
-  const owner=isOrgOwner();
+  const leader=isOrgLeader();
   const list=[];
-  if(!owner) list.push({id:"team", label:"Team", sub:"Colleagues & staff"});
-  list.push({id:"all", label:"Everyone", sub:"Whole chamber"});
-  if(owner) list.push({id:"team", label:"Team", sub:"Colleagues & staff"});
+  if(!leader) list.push({id:"team", label:"Team", sub:"Colleagues & staff"});
+  list.push({id:"all", label:"Everyone", sub:"Whole organisation"});
+  if(leader) list.push({id:"team", label:"Team", sub:"Colleagues & staff"});
   orgMembers.filter(m=>m.id!==me?.uid).sort((a,b)=>String(a.name||"").localeCompare(String(b.name||"")))
     .forEach(m=>list.push({id:dmChannel(me.uid,m.id), label:(m.name||"Colleague").split(" ")[0],
       sub:m.designation||"", dm:true, uid:m.id, full:m.name||"Colleague"}));
@@ -2243,7 +2271,7 @@ function paintChatBadge(){
   const b=$("chatBadge"); if(!b) return;
   if(!inOrg()){ b.classList.add("hidden"); return; }
   // the owner/senior is never badged for the team thread — that's the whole point of it
-  const n=chatThreads().filter(t=>!(isOrgOwner()&&t.id==="team")).reduce((s,t)=>s+unreadCount(t.id),0);
+  const n=chatThreads().filter(t=>!(isOrgLeader()&&t.id==="team")).reduce((s,t)=>s+unreadCount(t.id),0);
   b.textContent=n>99?"99+":n; b.classList.toggle("hidden", n===0);
 }
 
@@ -2277,7 +2305,7 @@ function renderChat(){
   const threads=chatThreads();
   // land everyone on their own default: staff and colleagues in Team, the senior in
   // Everyone — until they pick a thread themselves, after which we respect that.
-  if(!chatChannelPicked) chatChannel = isOrgOwner() ? "all" : "team";
+  if(!chatChannelPicked) chatChannel = isOrgLeader() ? "all" : "team";
   if(!threads.some(t=>t.id===chatChannel)) chatChannel=threads[0].id;
   const cur=threads.find(t=>t.id===chatChannel)||threads[0];
   const msgs=chatIn(chatChannel);
@@ -2303,13 +2331,13 @@ function renderChat(){
 
   const blurb = cur.ext ? `${esc(cur.full)} is briefing this chamber from outside — everyone here can read and reply.`
     : cur.dm ? `Private message to ${esc(cur.full)}`
-    : chatChannel==="all" ? (isOrgOwner() ? `Everyone in ${esc(myOrg?.name||"the chamber")} — use this to announce.`
-        : `Everyone in ${esc(myOrg?.name||"the chamber")}, including ${esc(myOrg?.ownerName||"the senior")}`)
-    : (isOrgOwner() ? `Your colleagues' and staff's thread — you can read and post, but you're not notified here.`
-        : `Colleagues and staff — ${esc(myOrg?.ownerName||"the senior")} isn't notified here. Message them directly to reach them.`);
+    : chatChannel==="all" ? (isOrgLeader() ? `Everyone in ${esc(myOrg?.name||"the organisation")} — use this to announce.`
+        : `Everyone in ${esc(myOrg?.name||"the organisation")}, including ${esc(orgLeaderName())}`)
+    : (isOrgLeader() ? `Your colleagues' and staff's thread — you can read and post, but you're not notified here.`
+        : `Colleagues and staff — ${esc(orgLeaderName())} isn't notified here. Message them directly to reach them.`);
   $("main").innerHTML=`<div class="chat-wrap">
     <div class="chat-threads">${threads.map(t=>{ const n=unreadCount(t.id);
-      const mute=isOrgOwner()&&t.id==="team";
+      const mute=isOrgLeader()&&t.id==="team";
       return `<button class="thr${t.id===chatChannel?" on":""}" data-ch="${esc(t.id)}">${esc(t.label)}${(n&&!mute&&t.id!==chatChannel)?`<span class="thr-n">${n>9?"9+":n}</span>`:""}</button>`;}).join("")}</div>
     <div class="reg-hint" style="margin:0 0 6px">${blurb}</div>
     <div class="chat-log" id="chatLog">${body||`<div class="chat-empty"><i class="ti ti-message-2"></i><div>No messages yet.</div><div style="opacity:.7">Say something to get the thread started.</div></div>`}</div>
@@ -2371,91 +2399,144 @@ function renderSettings(){
       <div class="stg-body">${inner}</div></div>`;
   let h="";
   if(joinNotice){ h+=`<div class="notice">${esc(joinNotice)}</div>`; }
-  h+=sec("profile","ti-user","Profile","Name, phone, designation",`
-    <div>
+
+  /* ---- Profile ---- */
+  h+=sec("profile","ti-user","Profile", esc(me.name||"Your details"), `
+    <div class="stg-group">
+      <div class="stg-gt">Your details</div>
       <label class="am-fld">Name<input id="st_name" value="${esc(me.name||"")}"></label>
       <label class="am-fld">Phone<input id="st_phone" value="${esc(me.phone||"")}" inputmode="tel"></label>
       <label class="am-fld">Designation<select id="st_desig">${DESIGNATIONS.map(d=>`<option${d===me.designation?" selected":""}>${esc(d)}</option>`).join("")}</select></label>
-      <div class="case-meta" style="margin:2px 0 10px">Signed in as <b>${esc(me.email||"")}</b> — this is your sign-in ID and can't be changed here.</div>
       <button class="sh-btn" id="st_saveProfile">Save profile</button>
       <div class="am-err" id="st_profMsg" style="${/^(Saved|PIN|Password)/.test(stgMsg)?"color:var(--later)":""}">${esc(stgMsg)}</div>
+    </div>
+    <div class="stg-group">
+      <div class="stg-gt">Sign-in</div>
+      <div class="stg-kv"><span class="k">Email</span><span class="v">${esc(me.email||"")}</span></div>
+      <div class="stg-gh" style="margin:8px 0 0">This is your sign-in ID and can't be changed here.</div>
     </div>`);
 
   /* ---- Organisation ---- */
   {
   let inner="";
   if(inOrg()){
-    inner+=`<div>
-      <div class="admin-user-top">
-        <span class="admin-user-name">${esc(myOrg?.name||"Your organisation")}</span>
-        <span class="mem-tag ${owner?"owner":""}">${owner?"Owner":"Member"}</span>
+    const leaderUid=orgLeaderUid();
+    const sorted=orgMembers.slice().sort((a,b)=>
+      ((b.id===leaderUid)-(a.id===leaderUid)) || ((b.orgRole==="owner")-(a.orgRole==="owner"))
+      || String(a.name||"").localeCompare(String(b.name||"")));
+    inner+=`<div class="stg-group">
+      <div class="stg-gt">Organisation</div>
+      <div class="stg-kv"><span class="k">Name</span><span class="v">${esc(myOrg?.name||"—")}</span></div>
+      <div class="stg-kv"><span class="k">Type</span><span class="v">${esc(orgTypeLabel())}</span></div>
+      <div class="stg-kv"><span class="k">Senior / leader</span><span class="v">${esc(orgLeaderName())}</span></div>
+      <div class="stg-kv"><span class="k">You are</span><span class="v">${owner?"Owner — you administer this organisation":"Member"}${isOrgLeader()?" · Senior":""}</span></div>
+      <div class="stg-kv"><span class="k">Members</span><span class="v">${orgMembers.length} on one subscription</span></div>
+    </div>`;
+    if(owner){
+      inner+=`<div class="stg-group">
+        <div class="stg-gt">Senior / leader of the organisation</div>
+        <div class="stg-gh">Whoever the office revolves around — often not the person who set the account up. The Team chat deliberately leaves them out and never badges them, so they aren't pulled into every message; colleagues reach them by messaging them directly.</div>
+        <label class="am-fld"><select id="st_leader">${sorted.map(m=>`<option value="${esc(m.id)}"${m.id===leaderUid?" selected":""}>${esc(m.name||"—")}${m.designation?" · "+esc(m.designation):""}</option>`).join("")}</select></label>
+        <button class="sh-btn ghost2" id="st_saveLeader" style="margin-top:0">Set as senior</button>
+        <div class="am-err" id="st_leaderMsg" style="${/is now the senior/.test(leaderMsg)?"color:var(--later)":""}">${esc(leaderMsg)}</div>
       </div>
-      <div class="case-meta" style="margin-top:3px">${esc(orgTypeLabel())} · ${esc(orgMembers.length)} member${orgMembers.length===1?"":"s"} on one subscription.</div>
-      ${owner?`
-        <div class="stg-sub" style="margin-top:12px"><b>Invite code</b> — share this with your colleagues and staff. Entering it, at signup or from their Settings, puts them on your subscription.</div>
+      <div class="stg-group">
+        <div class="stg-gt">Invite code</div>
+        <div class="stg-gh">Share this with colleagues and staff. Entering it — at signup or from their Settings — puts them on your subscription, board and chat.</div>
         <div class="code-box"><span class="code-val" id="st_joinCode">${esc(myOrg?.joinCode||"—")}</span>
           <button id="st_copyCode">Copy</button><button id="st_rotateCode">New code</button></div>
-        <div class="stg-sub" style="margin-top:14px"><b>Pre-approve a colleague</b> — they join automatically when they register with that email, no code needed.</div>
+      </div>
+      <div class="stg-group">
+        <div class="stg-gt">Pre-approve by email</div>
+        <div class="stg-gh">They join automatically when they register with that address — no code needed.</div>
         <div class="admin-code-row"><input id="st_invEmail" type="email" placeholder="colleague@example.com"><button id="st_invAdd">Add</button></div>
         <div class="am-err" id="st_orgMsg"></div>
-        <div class="stg-sub" style="margin-top:14px"><b>Organisation ID</b> — only needed if you're wiring in an outside integration (e.g. syncing a day sheet). Nobody needs this to join; use the invite code above for that.</div>
-        <div class="code-box"><span class="code-val" id="st_orgId" style="font-size:13px;letter-spacing:.3px">${esc(me.uid)}</span>
-          <button id="st_copyOrgId">Copy</button></div>`:""}
-      <div class="sec-h" style="margin:14px 2px 2px">Members</div>
-      ${orgMembers.slice().sort((a,b)=>((b.orgRole==="owner")-(a.orgRole==="owner"))||String(a.name||"").localeCompare(String(b.name||"")))
-        .map(m=>`<div class="mem-row">
-          <span class="mem-av">${esc(initials(m.name))}</span>
-          <span class="mem-meta"><span class="mem-nm">${esc(m.name||"—")}${m.id===me.uid?" (you)":""}</span>
-            <span class="mem-de">${esc(m.designation||"")}${m.email?" · "+esc(m.email):""}</span></span>
-          ${m.orgRole==="owner"?`<span class="mem-tag owner">Owner</span>`
-            :(owner?`<button class="mem-x" data-rm="${esc(m.id)}" title="Remove from chamber"><i class="ti ti-user-minus"></i></button>`:"")}
-        </div>`).join("")}
-      ${!owner?`<button class="case-del" id="st_leaveOrg" style="margin-top:12px"><i class="ti ti-logout"></i> Leave this organisation</button>`:""}
+      </div>`;
+    }
+    inner+=`<div class="stg-group">
+      <div class="stg-gt">Members · ${orgMembers.length}</div>
+      ${sorted.map(m=>`<div class="mem-row">
+        <span class="mem-av">${esc(initials(m.name))}</span>
+        <span class="mem-meta"><span class="mem-nm">${esc(m.name||"—")}${m.id===me.uid?" (you)":""}</span>
+          <span class="mem-de">${esc(m.designation||"")}${m.email?" · "+esc(m.email):""}</span></span>
+        ${m.id===leaderUid?`<span class="mem-tag owner">Senior</span>`:""}
+        ${m.orgRole==="owner"?`<span class="mem-tag">Owner</span>`
+          :(owner?`<button class="mem-x" data-rm="${esc(m.id)}" title="Remove from organisation"><i class="ti ti-user-minus"></i></button>`:"")}
+      </div>`).join("")}
     </div>`;
+    if(owner){
+      inner+=`<div class="stg-group">
+        <div class="stg-gt">Organisation ID</div>
+        <div class="stg-gh">Only for wiring in an outside integration, such as syncing a day sheet. Nobody needs this to join — use the invite code above.</div>
+        <div class="code-box"><span class="code-val" id="st_orgId" style="font-size:13px;letter-spacing:.3px">${esc(me.uid)}</span>
+          <button id="st_copyOrgId">Copy</button></div>
+      </div>`;
+    } else {
+      inner+=`<div class="stg-group">
+        <div class="stg-gt">Leave</div>
+        <div class="stg-gh">You keep your own cases, but lose the shared board, chat and subscription.</div>
+        <button class="case-del" id="st_leaveOrg"><i class="ti ti-logout"></i> Leave this organisation</button>
+      </div>`;
+    }
   } else {
-    inner+=`<div>
-      <div class="stg-sub">Working with colleagues or staff? Enter your organisation's invite code and you'll share their subscription, board and office chat. Your existing cases stay private to you.</div>
+    inner+=`<div class="stg-group">
+      <div class="stg-gt">Join your organisation</div>
+      <div class="stg-gh">Working with colleagues or staff? Enter your organisation's invite code and you'll share their subscription, board and office chat. Your existing cases stay private to you.</div>
       <div class="admin-code-row"><input id="st_joinInput" placeholder="Invite code" autocapitalize="characters" maxlength="8"><button id="st_joinGo">Join</button></div>
       <div class="am-err" id="st_joinMsg"></div>
     </div>`;
   }
   h+=sec("org","ti-building-bank","Organisation",
-    inOrg()?esc(myOrg?.name||"Your organisation")+" · "+orgTypeLabel()+" · "+orgMembers.length+" member"+(orgMembers.length===1?"":"s"):"Not in an organisation \u2014 tap to join", inner);
+    inOrg()?esc(myOrg?.name||"Your organisation")+" · "+orgMembers.length+" member"+(orgMembers.length===1?"":"s"):"Not in an organisation \u2014 tap to join", inner);
   }
 
+  /* ---- Subscription ---- */
   h+=sec("sub","ti-receipt","Subscription", esc(el.text), `
-    <div>
-      <div class="admin-user-top"><span class="admin-user-name">${esc(el.text)}</span><span class="admin-ent ${el.cls}">${esc(ent.reason)}</span></div>
-      ${inOrg()?`<div class="case-meta" style="margin-top:3px">${owner?"Covers everyone in your organisation.":"Covered by "+esc(myOrg?.name||"your organisation")+" — the owner manages this."}</div>`:""}
-      ${showRedeem?`<div class="admin-code-row" style="margin-top:10px">
-        <input id="st_code" placeholder="Have an access code?" autocapitalize="characters">
-        <button id="st_redeem">Redeem</button>
-      </div><div class="am-err" id="st_codeMsg"></div>`:""}
-    </div>`);
+    <div class="stg-group">
+      <div class="stg-gt">Current plan</div>
+      <div class="stg-kv"><span class="k">Status</span><span class="v">${esc(el.text)}</span></div>
+      ${ent.until&&ent.reason!=="comp"?`<div class="stg-kv"><span class="k">${ent.ok?"Runs until":"Ended"}</span><span class="v">${esc(msToDay(ent.until))}</span></div>`:""}
+      ${inOrg()?`<div class="stg-kv"><span class="k">Covers</span><span class="v">${owner?"Everyone in your organisation":esc(myOrg?.name||"your organisation")+" — the owner manages this"}</span></div>`:""}
+    </div>
+    ${showRedeem?`<div class="stg-group">
+      <div class="stg-gt">Access code</div>
+      <div class="stg-gh">${inOrg()?"Redeeming here applies to your whole organisation.":"If you've been given a code, enter it to unlock full access."}</div>
+      <div class="admin-code-row"><input id="st_code" placeholder="Enter access code" autocapitalize="characters"><button id="st_redeem">Redeem</button></div>
+      <div class="am-err" id="st_codeMsg"></div>
+    </div>`:""}`);
 
+  /* ---- Notifications ---- */
   h+=sec("notif","ti-bell","Notifications", notifOn?"Matter alerts on":"Matter alerts off", `
-    <div>
+    <div class="stg-group">
+      <div class="stg-gt">Alerts</div>
       <div class="stg-row">
         <div><div class="stg-label">Matter-reaching alerts</div>
-          <div class="stg-sub">Browser notification when a tracked matter is about to reach, while the app is open</div></div>
+          <div class="stg-sub">A browser notification when a tracked matter is about to reach, while the app is open.</div></div>
         <button class="stg-switch" id="st_notifToggle" type="button" aria-label="Toggle matter-reaching alerts"></button>
       </div>
     </div>`);
 
-  h+=sec("sec","ti-lock","Security", pinOn?"PIN on · password":"Password", `
-    <div>
-      <div class="stg-row" style="margin-bottom:${pinOn?"12px":"0"}">
+  /* ---- Security ---- */
+  h+=sec("sec","ti-lock","Security", pinOn?"PIN on":"Password only", `
+    <div class="stg-group">
+      <div class="stg-gt">Unlock</div>
+      <div class="stg-row">
         <div><div class="stg-label">Unlock with a PIN</div>
           <div class="stg-sub">${pinOn?"On for this device — 4 digits instead of your password.":"Skip typing your password on this device. Your password is still needed on a new one."}</div></div>
         <button class="stg-switch${pinOn?" on":""}" id="st_pinToggle" type="button" aria-label="Toggle PIN unlock"></button>
       </div>
-      ${pinOn?`<button class="sh-btn ghost2" id="st_changePin" style="margin-top:0">Change PIN</button>`:""}
-      <div class="sec-h" style="margin:16px 2px 6px">Change password</div>
+      ${pinOn?`<button class="sh-btn ghost2" id="st_changePin">Change PIN</button>`:""}
+    </div>
+    <div class="stg-group">
+      <div class="stg-gt">Change password</div>
       <label class="am-fld">Current password<input id="st_curPass" type="password" autocomplete="current-password"></label>
       <label class="am-fld">New password<input id="st_newPass" type="password" autocomplete="new-password" placeholder="at least 6 characters"></label>
       <button class="sh-btn" id="st_savePass">Update password</button>
       <div class="am-err" id="st_passMsg"></div>
-      <div class="stg-sub" style="margin-top:12px">Don't remember your current password? We'll email you a reset link instead.</div>
+    </div>
+    <div class="stg-group">
+      <div class="stg-gt">Forgotten it?</div>
+      <div class="stg-gh">We'll email a reset link to ${esc(me.email||"your address")}.</div>
       <button class="sh-btn ghost2" id="st_resetMail"><i class="ti ti-mail"></i> Email me a reset link</button>
       <div class="am-err" id="st_resetMsg"></div>
     </div>`);
@@ -2478,6 +2559,8 @@ function renderSettings(){
   // org doc, then members), then retire it — clearing it on first paint made it invisible.
   if(joinNotice && !_joinNoticeTimer) _joinNoticeTimer=setTimeout(()=>{ joinNotice=""; _joinNoticeTimer=null;
     if(curTab==="settings") renderSettings(); }, 9000);
+  if(leaderMsg && !_leaderMsgTimer) _leaderMsgTimer=setTimeout(()=>{ leaderMsg=""; _leaderMsgTimer=null;
+    if(curTab==="settings") renderSettings(); }, 6000);
   wireOrgSettings();
   wireSecuritySettings();
 
@@ -2530,6 +2613,19 @@ function wireOrgSettings(){
     try{ await navigator.clipboard.writeText(myOrg?.joinCode||""); cp.textContent="Copied"; setTimeout(()=>{ if($("st_copyCode")) $("st_copyCode").textContent="Copy"; },1500); }
     catch(e){ msg("Couldn't copy — the code is "+(myOrg?.joinCode||"")); }
   };
+  // Point the organisation at its actual senior — see orgLeaderUid(): the person who
+  // registered the account is frequently the clerk, not the person Team chat must exclude.
+  const sl=$("st_saveLeader");
+  if(sl) sl.onclick=async()=>{
+    const uid=$("st_leader").value, m=$("st_leaderMsg");
+    m.textContent="Saving…"; sl.disabled=true;
+    // set BEFORE the write — the org watcher repaints this pane as soon as it lands
+    leaderMsg=(memberName(uid)||"They")+" is now the senior — out of the Team thread from now on.";
+    try{ await db.set("orgs/"+me.orgId,{leaderUid:uid},true); }
+    catch(e){ leaderMsg="Couldn't save that."; }
+    sl.disabled=false;
+    if(curTab==="settings") renderSettings();
+  };
   const cpOrg=$("st_copyOrgId");
   if(cpOrg) cpOrg.onclick=async()=>{
     try{ await navigator.clipboard.writeText(me.uid); cpOrg.textContent="Copied"; setTimeout(()=>{ if($("st_copyOrgId")) $("st_copyOrgId").textContent="Copy"; },1500); }
@@ -2569,6 +2665,9 @@ function wireOrgSettings(){
       await db.set("users/"+uid,{orgId:null, orgRole:null},true);
       const u=orgMembers.find(m=>m.id===uid);
       if(u&&u.email) await db.remove("orginvites/"+String(u.email).toLowerCase()).catch(()=>{});
+      // never leave leaderUid pointing at someone who's no longer here — that would silently
+      // exclude nobody from Team chat and show a stale name as the senior
+      if(orgLeaderUid()===uid) await db.set("orgs/"+me.orgId,{leaderUid:orgOwnerUid()},true);
     }catch(e){ msg("Couldn't remove that member."); }
   });
   const leave=$("st_leaveOrg");
@@ -2836,7 +2935,9 @@ $("calInput").onchange=async e=>{
   boardDate=e.target.value||todayISO();
   paintCalBtn();
   if(boardDate!==todayISO()){ $("main").innerHTML=`<div class="empty">Loading cause list…</div>`; await loadCourtUpdates(); }
-  setTab("board");
+  // My cases is date-scoped too, so picking a date there should re-date THAT list rather
+  // than yanking the user over to the board.
+  if(curTab==="mine") render(); else setTab("board");
 };
 paintCalBtn();
 /* ===== PIN UNLOCK =====
@@ -2999,7 +3100,7 @@ function seedDemo(db){
      window.__demoSetUser("u_ch_owner" | "u_ch_jr" | "u_ch_clerk") to switch seats.
      Note the org's createdAt is what gates ALL THREE — the clerk below signed up today
      but inherits the chamber's day-22 trial, which is the point of a shared subscription. */
-  db.set("orgs/o_chamber",{ name:"Chambers of S. Deshmukh", ownerUid:"u_ch_owner", ownerName:"Sameer Deshmukh",
+  db.set("orgs/o_chamber",{ name:"Chambers of S. Deshmukh", ownerUid:"u_ch_owner", ownerName:"Sameer Deshmukh", leaderUid:"u_ch_owner",
     joinCode:"K7M2QP", joinCodeActive:true, createdAt:{_t:Date.now()-22*86400000} });
   db.set("orgcodes/K7M2QP",{orgId:"o_chamber", active:true});
   db.set("users/u_ch_owner",{name:"Sameer Deshmukh",email:"sameer@chambers.in",phone:"9810012345",designation:"Senior Advocate",
