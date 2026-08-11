@@ -57,29 +57,32 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:6px
 .statusrow{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--mut)}
 .freshdot{width:7px;height:7px;border-radius:50%;background:#4bbd6b}
 .freshdot.off{background:#7d8894}.freshdot.stale{background:var(--soon)}
-/* Route rail — ported from the display board: a "which court to reach, in what order"
-   strip along the top of the home screen. Restyled in CourtReach's own language —
-   rounded gold-on-navy pill chips instead of the board's plain rounded-rect stops.
-   Wraps into rows so every stop fits without side-scrolling. */
-.route-rail{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:9px 0 1px}
-.rail-arrow{display:inline-flex;align-items:center;color:var(--mut);flex:none}
-.rail-arrow i{font-size:13px;line-height:1}
-.rail-stop{appearance:none;flex:0 1 auto;display:inline-flex;align-items:center;gap:8px;
-  background:var(--panel);border:1.5px solid var(--line);border-radius:22px;padding:6px 12px 6px 13px;
-  cursor:pointer;transition:transform .1s;box-shadow:0 1px 2px rgba(20,26,34,.05)}
-.rail-stop:active{transform:scale(.96)}
-.rail-stop.now{border-color:var(--now);background:var(--now-bg)}
-.rail-stop.soon{border-color:#e2c07a;background:var(--soon-bg)}
-.rail-stop.later{border-color:#a9d0b7;background:var(--later-bg)}
-.rail-ct{font-family:Fraunces,serif;font-weight:600;font-size:13.5px;color:var(--ink);white-space:nowrap}
+/* Route rail — "which court to reach, in what order", as a horizontal SWIPE strip of
+   quiet cards (not wrapping pills with chevrons between rows — no arrow clutter). Each
+   card is labelled NEXT / THEN instead of a numbered arrow chain; a thin left accent bar
+   carries the now/soon/later colour instead of a solid-fill chip, for a calmer, more
+   editorial read. A fading right edge hints there's more to swipe. */
+.route-rail{display:flex;gap:9px;padding:9px 3px 6px;overflow-x:auto;overflow-y:hidden;
+  scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none;
+  -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 26px),transparent 100%);
+  mask-image:linear-gradient(to right,#000 calc(100% - 26px),transparent 100%)}
+.route-rail::-webkit-scrollbar{display:none}
+.rail-stop{appearance:none;scroll-snap-align:start;flex:0 0 auto;min-width:112px;text-align:left;
+  background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--line);
+  border-radius:11px;padding:8px 14px 9px 11px;cursor:pointer;transition:transform .1s;
+  box-shadow:0 1px 3px rgba(20,26,34,.05)}
+.rail-stop:active{transform:scale(.97)}
+.rail-stop.now{border-left-color:var(--now);background:var(--now-bg);animation:railglow 1.4s ease-in-out infinite}
+.rail-stop.soon{border-left-color:#e2c07a;background:var(--soon-bg)}
+.rail-stop.later{border-left-color:#a9d0b7;background:var(--later-bg)}
+.rail-idx{font-family:var(--mono);font-size:9px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--mut)}
+.rail-ct{font-family:Fraunces,serif;font-weight:600;font-size:15.5px;color:var(--ink);line-height:1.2;white-space:nowrap;margin-top:2px}
 .rail-ct b{font-family:var(--mono);font-weight:800;color:var(--navy)}
-.rail-dist{font-family:var(--mono);font-size:10.5px;font-weight:800;letter-spacing:.2px;color:var(--mut);
-  background:var(--panel2);border-radius:20px;padding:3px 9px;white-space:nowrap}
-.rail-stop.now .rail-ct b{color:var(--now)}
-.rail-stop.now .rail-dist{color:#fff;background:var(--now);animation:railpulse 1.25s ease-in-out infinite}
-.rail-stop.soon .rail-dist{color:#7a4f0d;background:#f0dfb0}
-.rail-stop.later .rail-dist{color:#1e6b3a;background:#dcefe1}
-@keyframes railpulse{0%,100%{opacity:1}50%{opacity:.55}}
+.rail-dist{font-family:var(--mono);font-size:10.5px;font-weight:800;letter-spacing:.2px;color:var(--mut);margin-top:3px}
+.rail-stop.now .rail-idx,.rail-stop.now .rail-ct b,.rail-stop.now .rail-dist{color:var(--now)}
+.rail-stop.soon .rail-dist{color:#7a4f0d}
+.rail-stop.later .rail-dist{color:#1e6b3a}
+@keyframes railglow{0%,100%{box-shadow:0 1px 3px rgba(20,26,34,.05)}50%{box-shadow:0 0 0 3px rgba(193,54,43,.18)}}
 .rail-empty{font-size:12px;color:var(--mut);padding:7px 1px 2px}
 main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px calc(66px + env(safe-area-inset-bottom,0px));-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 /* board grid */
@@ -714,13 +717,14 @@ function renderRail(){
   const band=g=> g==null?"later" : g<=2?"now" : g<=4?"soon" : "later";
   const distLab=k=> k.ment ? "WATCH" : (k.gap===0||k.short==="NOW") ? "NOW" : k.gap===1 ? "NEXT"
                  : (k.gap!=null ? k.gap+" away" : (k.short||"—"));
-  const chip=s=>{
+  const chip=(s,i)=>{
     const isNow=(s.k.gap===0||s.k.short==="NOW")&&!s.k.ment;
+    const idx=`STOP ${i+1}`;
     return isNow
-      ? `<button class="rail-stop now" data-court="${esc(s.court)}"><span class="rail-ct">our <b>${esc(s.e.itemNo)}</b> is on</span></button>`
-      : `<button class="rail-stop ${band(s.k.ment?null:s.k.gap)}" data-court="${esc(s.court)}"><span class="rail-ct">Ct <b>${esc(s.court)}</b></span><span class="rail-dist">${esc(distLab(s.k))}</span></button>`;
+      ? `<button class="rail-stop now" data-court="${esc(s.court)}"><div class="rail-idx">${idx}</div><div class="rail-ct">Our <b>${esc(s.e.itemNo)}</b> is on</div></button>`
+      : `<button class="rail-stop ${band(s.k.ment?null:s.k.gap)}" data-court="${esc(s.court)}"><div class="rail-idx">${idx}</div><div class="rail-ct">Court <b>${esc(s.court)}</b></div><div class="rail-dist">${esc(distLab(s.k))}</div></button>`;
   };
-  rail.innerHTML=stops.map((s,i)=>`${i?'<span class="rail-arrow"><i class="ti ti-chevron-right"></i></span>':''}${chip(s)}`).join("");
+  rail.innerHTML=stops.map((s,i)=>chip(s,i)).join("");
 }
 
 // The published SEQUENCE marquee (relay ?seq) — the court-wise call order. Throttled;
