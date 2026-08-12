@@ -8,6 +8,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>CourtReach</title>
 <link rel="manifest" href="manifest.json">
+<!-- Registered ASAP, not deferred to the module script below — closed-phone push (see
+     PUSH-SETUP.md) needs an active service worker before a push subscription can be created,
+     and this has to be plain script, not a module, so it runs even if the module below fails. -->
+<script>if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}</script>
 <!-- -v2 filenames are deliberate: Safari caches apple-touch-icon by URL essentially forever,
      surviving even a delete-and-reinstall of the Home Screen icon — the only reliable way to
      force a fetch of new icon bytes is a URL nobody's browser has ever seen before. Bump the
@@ -925,6 +929,11 @@ main#main.chatmode{overflow:hidden;display:flex;flex-direction:column}
    ============================================================ */
 const DEMO = false;
 const BOARD_PROXY = "https://sd-board.sdentertainmentservices.workers.dev";   // shared SC-board relay (public data)
+// Closed-phone push (Web Push, RFC 8291/8292) — same worker as BOARD_PROXY, CourtReach's own
+// /cr-push-* endpoints and VAPID keys (kept separate from SD-Chamber's own push feature, which
+// shares the worker but not the keys/subscriber list). Public key only — safe to ship, it's
+// how a browser verifies OUR server signed the push, not a secret. See PUSH-SETUP.md.
+const VAPID_PUBLIC_KEY = "BN9wPypVjBf04WZHnjoeNSBj885wrdi6w_gSX3SUr4jncPEfPB9xmdoCL7-HptWiaik9vnkIb8KtYyUsSZYWK-Q";
 // CourtReach Firebase project (courtreach-ee02b). Web config is public by design; security is in the Firestore rules.
 const firebaseConfig = {
   apiKey: "AIzaSyBUTfn0j88Nn1xHz32NT4dwHmn8l0Ijcqo",
@@ -2940,7 +2949,7 @@ function renderSettings(){
       <div class="stg-gt">Alerts</div>
       <div class="stg-row">
         <div><div class="stg-label">Case-reaching alerts</div>
-          <div class="stg-sub">A browser notification when a tracked case is about to reach, while the app is open.</div></div>
+          <div class="stg-sub">A notification when a tracked case is about to reach — works even with the app closed or your phone locked.</div></div>
         <button class="stg-switch" id="st_notifToggle" type="button" aria-label="Toggle case-reaching alerts"></button>
       </div>
     </div>`);
@@ -3557,8 +3566,14 @@ $("pinClose").onclick=()=>{
   if(pinSetupMode){ hidePinLock(); if(curTab==="settings") render(); }
 };
 $("pinUsePass").onclick=()=>{ hidePinLock(); auth.signOut(); };   // PIN kept — see setPin/paintLoginPin
-// Matter-reaching alerts: toggled from Settings — browser notifications for when one of
-// your tracked matters is approaching on the board (fires while the app is open).
+// Case-reaching alerts: toggled from Settings. Two layers, one switch —
+//   1. notifyReaching() below: an immediate in-page Notification while the app is open. Fast
+//      (rides the same 6s board poll) but, like any page JS, dies the instant the phone locks.
+//   2. syncPushSub()/dropPushSub(): a real Web Push subscription, so CourtReach's own
+//      Cloudflare worker can wake the phone with a system notification even fully closed or
+//      locked (owner: "I want notifications to come even when the phone is locked"). The
+//      worker runs its own scheduled check of the board — see PUSH-SETUP.md — independent of
+//      whether this device (or any device) has the app open, unlike a plain relay.
 let notifOn=(()=>{ try{ return localStorage.getItem("crNotify")==="1"; }catch(e){ return false; } })();
 let _notified={};
 function paintNotify(){ const b=$("st_notifToggle"); if(!b) return; b.classList.toggle("on", notifOn); }
@@ -3568,7 +3583,8 @@ async function toggleNotify(){
       try{ const p=await Notification.requestPermission(); if(p!=="granted") return; }catch(e){ return; }
     }
     notifOn=true;
-  } else notifOn=false;
+    syncPushSub();
+  } else { notifOn=false; dropPushSub(); }
   try{ localStorage.setItem("crNotify", notifOn?"1":"0"); }catch(e){}
   paintNotify();
 }
@@ -3581,6 +3597,31 @@ function notifyReaching(items){
       : `Court ${r.court} — your item ${r.item} is ~${r.gap} away`;
     try{ new Notification("CourtReach", {body, tag:"cr-"+r.court, renotify:true}); }catch(e){}
   }
+}
+/* ---- CLOSED-PHONE PUSH ----
+   Registers this device for Web Push and tells CourtReach's worker how to reach it, keyed by
+   uid — the worker's own scheduled check (not this page) decides when to actually send. No-ops
+   silently if push isn't supported (older Safari, desktop without permission, etc.) — the
+   in-page path above still covers the app-open case regardless. */
+function _b64ToU8(s){ s=s.replace(/-/g,"+").replace(/_/g,"/"); s+="=".repeat((4-s.length%4)%4);
+  const bin=atob(s), u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i); return u; }
+async function syncPushSub(){
+  try{
+    if(!VAPID_PUBLIC_KEY || !notifOn || !me?.uid) return;
+    if(!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    if(Notification.permission!=="granted") return;
+    const reg=await navigator.serviceWorker.ready;
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:_b64ToU8(VAPID_PUBLIC_KEY)});
+    await fetch(BOARD_PROXY+"/cr-push-subscribe",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({uid:me.uid, name:me.name||"", sub:sub.toJSON()})}).catch(()=>{});
+  }catch(e){}
+}
+async function dropPushSub(){
+  try{ const reg=await navigator.serviceWorker?.ready; const sub=await reg?.pushManager.getSubscription();
+    if(sub){ await fetch(BOARD_PROXY+"/cr-push-unsubscribe",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({uid:me?.uid, endpoint:sub.endpoint})}).catch(()=>{}); await sub.unsubscribe().catch(()=>{}); }
+  }catch(e){}
 }
 
 /* demo seed (only DEMO) */
