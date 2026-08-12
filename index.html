@@ -1232,7 +1232,7 @@ function parseBoard(html){
 function listenerDied(path, err){
   const code=(err&&err.code)||"error";
   console.error("[CourtReach] live updates stopped for "+path+" ("+code+")", err);
-  if(path==="orgmsgs"||path==="linkmsgs"||path==="chatreads"){
+  if(path==="orgmsgs"||path==="orgdms"||path==="linkmsgs"||path==="chatreads"){
     chatErr="Live chat updates stopped — "+path+": "+code+". Close and reopen the app to reconnect — anything you sent since may not have gone through.";
     if(curTab==="chat") renderChat();
   }
@@ -1244,10 +1244,16 @@ if(DEMO){
   const subs=[]; const split=p=>{const a=p.split("/");const id=a.pop();return[a.join("/"),id];};
   const exists=(cp,id)=>C(cp).has(id);
   const rows=p=>[...C(p).entries()].map(([id,d])=>({id,...d}));
-  const emitC=p=>subs.filter(s=>!s.doc&&s.path===p).forEach(s=>s.cb(s.ff?rows(p).filter(r=>String(r[s.ff.f]??"")===String(s.ff.v)):rows(p)));
+  // One matcher for all three collection watchers: ff = field equality, af = array-contains,
+  // neither = the whole collection. Kept in one place so a query and its re-emit can't drift.
+  const qrows=(p,s)=> s.ff ? rows(p).filter(r=>String(r[s.ff.f]??"")===String(s.ff.v))
+                    : s.af ? rows(p).filter(r=>Array.isArray(r[s.af.f]) && r[s.af.f].includes(s.af.v))
+                    : rows(p);
+  const emitC=p=>subs.filter(s=>!s.doc&&s.path===p).forEach(s=>s.cb(qrows(p,s)));
   const emitD=p=>subs.filter(s=>s.doc&&s.path===p).forEach(s=>{const[cp,id]=split(p);s.cb(exists(cp,id)?{id,...C(cp).get(id)}:null);});
-  db={ watchCollection(path,cb){const s={path,cb,doc:false};subs.push(s);cb(rows(path));return()=>subs.splice(subs.indexOf(s),1);},
-    watchQuery(path,field,value,cb){const s={path,cb,doc:false,ff:{f:field,v:value}};subs.push(s);cb(rows(path).filter(r=>String(r[field]??"")===String(value)));return()=>subs.splice(subs.indexOf(s),1);},
+  db={ watchCollection(path,cb){const s={path,cb,doc:false};subs.push(s);cb(qrows(path,s));return()=>subs.splice(subs.indexOf(s),1);},
+    watchQuery(path,field,value,cb){const s={path,cb,doc:false,ff:{f:field,v:value}};subs.push(s);cb(qrows(path,s));return()=>subs.splice(subs.indexOf(s),1);},
+    watchArrayQuery(path,field,value,cb){const s={path,cb,doc:false,af:{f:field,v:value}};subs.push(s);cb(qrows(path,s));return()=>subs.splice(subs.indexOf(s),1);},
     async getUserBy(field,value){return rows("users").filter(u=>String(u[field]??"")===String(value));},
     watchDoc(path,cb){const s={path,cb,doc:true};subs.push(s);const[cp,id]=split(path);cb(exists(cp,id)?{id,...C(cp).get(id)}:null);return()=>subs.splice(subs.indexOf(s),1);},
     async get(path){const[cp,id]=split(path);return exists(cp,id)?{id,...C(cp).get(id)}:null;},
@@ -1285,6 +1291,11 @@ if(DEMO){
   // A dead listener is now reported instead of silently swallowed — see listenerDied().
   db={ watchCollection(path,cb){const c=collection(fs,...path.split("/")); return onSnapshot(c,s=>{const r=[];s.forEach(d=>r.push({id:d.id,...d.data()}));cb(r);},e=>listenerDied(path,e));},
     watchQuery(path,field,value,cb){const q=query(collection(fs,...path.split("/")),where(field,"==",value));
+      return onSnapshot(q,s=>{const r=[];s.forEach(d=>r.push({id:d.id,...d.data()}));cb(r);},e=>listenerDied(path,e));},
+    // "this array field contains me" — a SINGLE-field condition, so Firestore's automatic
+    // indexes cover it and no composite index has to be created by hand. That matters: it's
+    // what lets the DM listener below be provably rule-safe without a console step.
+    watchArrayQuery(path,field,value,cb){const q=query(collection(fs,...path.split("/")),where(field,"array-contains",value));
       return onSnapshot(q,s=>{const r=[];s.forEach(d=>r.push({id:d.id,...d.data()}));cb(r);},e=>listenerDied(path,e));},
     async getUserBy(field,value){const q=query(collection(fs,"users"),where(field,"==",value)); const s=await getDocs(q); return s.docs.map(d=>({id:d.id,...d.data()}));},
     watchDoc(path,cb){return onSnapshot(doc(fs,...path.split("/")),s=>cb(s.exists()?{id:s.id,...s.data()}:null),e=>listenerDied(path,e));},
@@ -1397,7 +1408,39 @@ const orgTypeLabel = () => ORG_TYPE_LABELS[myOrg?.orgType||"chamber"]||"Organisa
 const memberName = uid => (orgMembers.find(m=>m.id===uid)||{}).name || (uid===me?.uid ? (me.name||"You") : "Colleague");
 // CHAT state — "team" (colleagues + staff, the default), "all" (whole chamber incl. the
 // senior — deliberately chosen, so the owner isn't dragged into every thread), or a DM.
+//
+// Room messages (team/all) and DMs live in SEPARATE collections, and that split is load-
+// bearing rather than cosmetic. Everything used to sit in orgmsgs, read with one query:
+// "every message in my chamber". But the rule on orgmsgs is "…unless it's a DM you're not
+// part of" — and Firestore rules are NOT filters: a query whose results include even one
+// document the rules disallow is refused ENTIRELY with permission-denied, rather than having
+// that document quietly dropped. So the instant any two OTHER people in a chamber sent each
+// other a DM, that query started asking for a document the caller may not read, and every
+// member's chat listener was refused. Before listenerDied() existed the refusal was silent,
+// which is exactly what the owner kept hitting: nothing ever arrived, a sent message's
+// optimistic bubble had nothing to replace it so it sat on its clock forever, and since every
+// colleague's listener failed identically, nobody saw anybody's messages. Writes were always
+// permitted — only reading was broken, so no message was ever actually lost.
+// Now each query can only ever return documents its reader is allowed to have:
+//   orgmsgs  where orgId == mine              -> team/all only; all readable by any member
+//   orgdms   where members array-contains me  -> only DMs I'm a participant of
+// Both are single-field conditions, so Firestore's automatic indexes cover them and there is
+// no composite index to create by hand.
 let chatChannel="team", chatMsgs=[], chatUnsub=null, chatChannelPicked=false;
+// The three sources chatMsgs is assembled from. Kept apart because each listener replaces its
+// OWN slice wholesale: with one shared array, a room message arriving would wipe an in-flight
+// DM's optimistic bubble (and vice versa), making a message the user just sent flicker out.
+// pendingMsgs holds optimistic sends only, so no snapshot can ever clobber them.
+let roomMsgs=[], dmMsgs=[], pendingMsgs=[], dmUnsub=null;
+function syncChatMsgs(){
+  // An optimistic bubble whose real document has now arrived would otherwise show twice.
+  if(pendingMsgs.length){
+    const key=m=>JSON.stringify([m.by, m.channel||"", m.text||""]);
+    const landed=new Set([...roomMsgs,...dmMsgs].map(key));
+    pendingMsgs=pendingMsgs.filter(p=>p._ext || !landed.has(key(p)));
+  }
+  chatMsgs=[...roomMsgs, ...dmMsgs, ...pendingMsgs.filter(p=>!p._ext)].sort((a,b)=>tsMs(a.at)-tsMs(b.at));
+}
 // chatreads/{uid} — everyone's per-channel "read up to" marker. Mine drives my unread
 // counts; everyone else's turns my sent ticks into seen ticks.
 let chatReads={}, chatReadUnsub=null, _chatStick=true;
@@ -1413,6 +1456,15 @@ let chatErr="", chatDraft="";
 // office sees and answers these here rather than in Collaborate.
 let extMsgs=[], extUnsub=null;
 const dmChannel = (a,b) => "dm:"+[a,b].sort().join("_");
+// The other participant of a DM channel, resolved from the member list by rebuilding each
+// candidate's channel id — NOT by splitting the id on "_". A uid is an opaque string that may
+// itself contain the separator (the demo's own fixtures do), and splitting one that does
+// yields nonsense: "dm:u_ch_jr_u_ch_owner".slice(3).split("_") is six fragments, not two uids.
+// That used to be cosmetic; now that `members` is what both the DM query and the Firestore
+// rule authorise on, a wrong array means a message nobody — including its own sender — can
+// read. Falls back to the old split only if the peer isn't in the loaded member list.
+const dmPeer = ch => (orgMembers.find(m=>m.id!==me?.uid && dmChannel(me?.uid,m.id)===ch)||{}).id || null;
+const dmMembers = ch => { const p=dmPeer(ch); return p ? [me.uid,p].sort() : ch.slice(3).split("_"); };
 const linkKey=(a,b)=>a+"_"+b;
 const otherUid = l => (l.fromUid===me?.uid ? l.toUid : l.fromUid);
 const otherName = l => (l.fromUid===me?.uid ? (l.toName||"") : (l.fromName||""));
@@ -2677,8 +2729,9 @@ function renderThread(id){
               not to be dragged into every message.
      "all"    the whole chamber including the senior. Deliberately chosen, for announcements.
      "dm:…"   one-to-one, so reaching the senior is an explicit act.
-   Messages live in one orgmsgs collection keyed by {orgId, channel}; the rules scope reads
-   to the org (and, for a DM, to its two participants). */
+   Room messages (team/all) live in orgmsgs keyed by {orgId, channel}; DMs live in orgdms
+   keyed by {members}. Two collections rather than one because a single chamber-wide query
+   could not be made rule-safe — see the chat-state comment above for the full reason. */
 // Keyed on the org actually being watched, the same way watchOrg() is, and for the same two
 // reasons — one of which was a real leak. applyGate() runs on every users/{uid}, orgs/{orgId}
 // and config/trialLimit snapshot, and it used to call this each time, tearing down all three
@@ -2695,11 +2748,26 @@ function watchChat(){
   if(_chatOrgId===oid) return;
   _chatOrgId=oid;
   if(chatUnsub){chatUnsub();chatUnsub=null;}
+  if(dmUnsub){dmUnsub();dmUnsub=null;}
   if(extUnsub){extUnsub();extUnsub=null;}
   if(chatReadUnsub){chatReadUnsub();chatReadUnsub=null;}
+  roomMsgs=[]; dmMsgs=[];
   if(!oid) return;
+  // Team + Everyone. Every document this returns is readable by any member of the chamber,
+  // which is what makes the query rule-safe — see the chat-state comment for why that had to
+  // change. A DM can no longer be written here at all (firestore.rules rejects it), so this
+  // query cannot be poisoned by one again.
   chatUnsub=db.watchQuery("orgmsgs","orgId",me.orgId, rows=>{
-    chatMsgs=(rows||[]).slice().sort((a,b)=>tsMs(a.at)-tsMs(b.at));
+    roomMsgs=(rows||[]).filter(m=>!String(m.channel||"").startsWith("dm:"));
+    syncChatMsgs();
+    purgeYesterdaysChat();
+    if(curTab==="chat") renderChat(); else paintChatBadge();
+  });
+  // My DMs, and only mine — "members contains me" is both the query and the rule, so the two
+  // cannot disagree about what I'm allowed to see.
+  dmUnsub=db.watchArrayQuery("orgdms","members",me.uid, rows=>{
+    dmMsgs=rows||[];
+    syncChatMsgs();
     purgeYesterdaysChat();
     if(curTab==="chat") renderChat(); else paintChatBadge();
   });
@@ -2718,15 +2786,20 @@ function watchChat(){
    moment the date rolls over, and each person's own stale messages are then deleted for
    real — you can only ever delete your own, so nobody can wipe a colleague's record. */
 const sameDayAsToday = ms => { try{ return new Date(ms).toLocaleDateString('en-CA')===todayISO(); }catch(e){ return false; } };
+// chatMsgs already folds in non-ext optimistic sends (syncChatMsgs); ext ones are added here
+// so an incoming linkmsgs snapshot can't wipe a reply that's still in flight either.
 const chatIn = ch => ch.startsWith("ext:")
-  ? extMsgs.filter(m=>m.linkId===ch.slice(4) && sameDayAsToday(tsMs(m.at)))
+  ? [...extMsgs, ...pendingMsgs.filter(p=>p._ext)].filter(m=>m.linkId===ch.slice(4) && sameDayAsToday(tsMs(m.at)))
   : chatMsgs.filter(m=>m.channel===ch && sameDayAsToday(tsMs(m.at)));
+// Which collection a chamber message lives in — the ONLY thing that should ever decide this,
+// so an edit or delete can't be aimed at the wrong one.
+const msgColl = m => String((m&&m.channel)||"").startsWith("dm:") ? "orgdms" : "orgmsgs";
 let _purgedOn="";
 async function purgeYesterdaysChat(){
   if(!inOrg()) return;
   const t=todayISO(); if(_purgedOn===t) return; _purgedOn=t;
-  const stale=chatMsgs.filter(m=>m.by===me.uid && !sameDayAsToday(tsMs(m.at)));
-  for(const m of stale){ try{ await db.remove("orgmsgs/"+m.id); }catch(e){} }
+  const stale=chatMsgs.filter(m=>m.by===me.uid && !m._pending && !sameDayAsToday(tsMs(m.at)));
+  for(const m of stale){ try{ await db.remove(msgColl(m)+"/"+m.id); }catch(e){} }
 }
 const myReadAt = ch => (chatReads[me?.uid]||{})[ch] || 0;
 function chatUnread(ch){
@@ -2739,7 +2812,7 @@ function unreadCount(ch){
 }
 // Who, other than me, is expected to see this channel — the denominator for read receipts.
 function channelAudience(ch){
-  if(ch.startsWith("dm:")) return ch.slice(3).split("_").filter(u=>u!==me?.uid);
+  if(ch.startsWith("dm:")) return dmMembers(ch).filter(u=>u!==me?.uid);
   return orgMembers.map(m=>m.id).filter(u=>u!==me?.uid);   // ext threads: the office side
 }
 let _readWriteAt=0;
@@ -2885,12 +2958,12 @@ function msgActions(id){
     if(!text){ $("me_err").textContent="A message can't be empty — delete it instead."; return; }
     if(text===m.text){ closeModal(); return; }
     $("me_save").disabled=true;
-    try{ await db.update("orgmsgs/"+id,{text, editedAt:db.now()}); closeModal(); }
+    try{ await db.update(msgColl(m)+"/"+id,{text, editedAt:db.now()}); closeModal(); }
     catch(e){ $("me_err").textContent="Couldn't save that."; $("me_save").disabled=false; }
   };
   $("me_del").onclick=async()=>{
     if(!confirm("Delete this message? Everyone in the thread loses it.")) return;
-    try{ await db.remove("orgmsgs/"+id); closeModal(); }
+    try{ await db.remove(msgColl(m)+"/"+id); closeModal(); }
     catch(e){ $("me_err").textContent="Couldn't delete that."; }
   };
 }
@@ -2934,12 +3007,14 @@ async function sendChat(){
     coll="linkmsgs";
     base={ linkId, orgId:me.orgId, scope:"chamber",
       extName:prev.extName||prev.name||"", by:me.uid, name:me.name||"", byName:me.name||"", text };
-    extMsgs=[...extMsgs, {...base, id:pendingId, at:new Date(), _pending:true}];
+    pendingMsgs=[...pendingMsgs, {...base, id:pendingId, at:new Date(), _pending:true, _ext:true}];
   } else {
-    coll="orgmsgs";
+    const dm=chatChannel.startsWith("dm:");
+    coll = dm ? "orgdms" : "orgmsgs";     // separate collections — see the chat-state comment
     base={ orgId:me.orgId, channel:chatChannel, by:me.uid, byName:me.name||"", text };
-    if(chatChannel.startsWith("dm:")) base.members=chatChannel.slice(3).split("_");   // rules read this
-    chatMsgs=[...chatMsgs, {...base, id:pendingId, at:new Date(), _pending:true}];
+    if(dm) base.members=dmMembers(chatChannel);   // both the query and the rule authorise on this
+    pendingMsgs=[...pendingMsgs, {...base, id:pendingId, at:new Date(), _pending:true}];
+    syncChatMsgs();
   }
   renderChat();
   let settled=false;
@@ -2951,11 +3026,15 @@ async function sendChat(){
   try{
     await db.add(coll, {...base, at:db.now()});
     settled=true; clearTimeout(slow);
-    if(chatErr){ chatErr=""; if(curTab==="chat") renderChat(); }
+    // The listener has already delivered the real document by now (Firestore raises the local
+    // snapshot before the server ack this await is waiting on), so retiring the optimistic
+    // copy here swaps clock for tick rather than blanking the bubble.
+    pendingMsgs=pendingMsgs.filter(m=>m.id!==pendingId); syncChatMsgs();
+    if(chatErr) chatErr="";
+    if(curTab==="chat") renderChat();
   }catch(e){
     settled=true; clearTimeout(slow);
-    if(ext) extMsgs=extMsgs.filter(m=>m.id!==pendingId);
-    else chatMsgs=chatMsgs.filter(m=>m.id!==pendingId);
+    pendingMsgs=pendingMsgs.filter(m=>m.id!==pendingId); syncChatMsgs();
     chatDraft=text;                       // survives the re-render, so the message isn't lost
     chatErr="Couldn't send — check your connection and try again. Your message is still in the box.";
     renderChat();
@@ -3478,8 +3557,10 @@ function boot(user){
   if(adminUsersUnsub){adminUsersUnsub();adminUsersUnsub=null;} if(adminOrgsUnsub){adminOrgsUnsub();adminOrgsUnsub=null;}
   if(adminCodeUnsub){adminCodeUnsub();adminCodeUnsub=null;}
   if(chatUnsub){chatUnsub();chatUnsub=null;} if(chatReadUnsub){chatReadUnsub();chatReadUnsub=null;} if(extUnsub){extUnsub();extUnsub=null;}
+  if(dmUnsub){dmUnsub();dmUnsub=null;}
   links=[];linksOut=[];linksIn=[];collabOpen=null;linkMsgs=[];peerBoardUid=null;peerBoardName="";peerMatters=[];linkFound=null;
   chatMsgs=[]; extMsgs=[]; chatChannel="team"; chatChannelPicked=false; chatReads={}; _chatStick=true;
+  roomMsgs=[]; dmMsgs=[]; pendingMsgs=[];
   // boot() has just unsubscribed all three chat listeners above, so the watch key has to go
   // with them — otherwise signing back into the SAME chamber would match the stale key and
   // never resubscribe, leaving chat permanently dead for the rest of the session.
@@ -3870,7 +3951,11 @@ function seedDemo(db){
   db.set("orgmsgs/seedmsg1",{orgId:"o_chamber",channel:"team",by:"u_ch_jr",byName:"Nikhil Rao",text:"Court 5 is running fast today — item 28 already.",at:{_t:Date.now()-3600000}});
   db.set("orgmsgs/seedmsg2",{orgId:"o_chamber",channel:"team",by:"u_ch_clerk",byName:"Vikas Sharma",text:"Noted. I'll keep the papers ready for 32.",at:{_t:Date.now()-3400000}});
   db.set("orgmsgs/seedmsg3",{orgId:"o_chamber",channel:"all",by:"u_ch_owner",byName:"Sameer Deshmukh",text:"Conference at 4pm today for tomorrow's Regular board.",at:{_t:Date.now()-1800000}});
-  db.set("orgmsgs/seedmsg4",{orgId:"o_chamber",channel:"dm:u_ch_clerk_u_ch_jr",members:["u_ch_clerk","u_ch_jr"],by:"u_ch_clerk",byName:"Vikas Sharma",text:"Sir, the AoR signature is pending on the Kapoor case.",at:{_t:Date.now()-900000}});
+  // DMs live in orgdms, NOT orgmsgs — and this fixture is deliberately a DM between two people
+  // who are NOT the account you sign in as by default. That is the exact shape that used to
+  // break chat for everyone in the chamber (see the chat-state comment), so the demo now
+  // reproduces it by default rather than only on a lucky day.
+  db.set("orgdms/seeddm1",{orgId:"o_chamber",channel:"dm:u_ch_clerk_u_ch_jr",members:["u_ch_clerk","u_ch_jr"],by:"u_ch_clerk",byName:"Vikas Sharma",text:"Sir, the AoR signature is pending on the Kapoor case.",at:{_t:Date.now()-900000}});
 }
 </script>
 </body>
