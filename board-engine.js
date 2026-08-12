@@ -15,7 +15,11 @@
      remarksByCourt   {court: {items:{item: "OVER"|"PASS OVER"|…}}}
      poMarks          {"court_item": {mode,after,…}|null}   already date-filtered
      doneMarks        {"court_item": {v:"att"|"abs",…}|null} already date-filtered
-     boardPO          {"court_item": true}                   already date-filtered
+     boardPO          {"court_item": true}                   currently outstanding, live-observed
+     recalledPO       {"court_item": true}                   confirmed recalled earlier today —
+                                                               tells classify() a court's passover
+                                                               queue is already moving, not merely
+                                                               declared
      itemHi           {court: highestRawItemSeenToday}
      miscTotalByCourt {court: int|null}   Misc list size (caller precomputes)
      boardByCourt     {court: bcRow}      the parsed board keyed by court
@@ -152,6 +156,15 @@
     let n = 0; for (const k in po) { const kn = parseInt(k, 10); if (!isNaN(kn) && kn < ourN) n++; }
     return n;
   }
+  // Has this court recalled ANY previously passed-over item today? Direct evidence the court
+  // is actively working its passover queue rather than saving recalls for the very end —
+  // classify() uses this to choose which of two estimates for OUR OWN passed-over matter to
+  // trust (see the "mark" branch below).
+  function hasRecalledPO(ctx, court) {
+    const rp = ctx.recalledPO || {}; const prefix = String(court) + "_";
+    for (const k in rp) { if (rp[k] && k.indexOf(prefix) === 0) return true; }
+    return false;
+  }
 
   const doneOf = (ctx, court, item) => (ctx.doneMarks || {})[poKey(court, item)] || null;
   const poFor = (ctx, court, item) => (ctx.poMarks || {})[poKey(court, item)] || null;
@@ -220,11 +233,30 @@
         const tp = (passIdx != null && passIdx > curPos) ? passIdx : seq.length - 1;
         gap = Math.max(0, tp - curPos);
       }
-      // No sequence, no explicit recall point: assume the court takes passovers at the END
-      // of the board. gap = matters still to be called (total − current) + passovers before ours.
+      // No sequence, no explicit recall point: two different estimates, chosen by whether we
+      // have actual evidence of how this court is handling recalls today.
+      //
+      // Once the court has recalled at least one OTHER passed-over item today (hasRecalledPO),
+      // that's direct proof it's already working its passover queue interleaved with fresh
+      // business, not saving them for later — so rank purely by how many other still-
+      // outstanding passovers are ahead of ours (owner: "once passovers cases are taken up the
+      // app is failing to see sequence of passovers and failing to calculate how far our case
+      // which was 4th passover in line is"). passoversBeforeOurs() only counts items STILL in
+      // recalledPO/boardPO's live-observed set, so as each one gets recalled in turn it drops
+      // out and this count — and therefore our own gap — shrinks in step, the same way any
+      // other "N away" queue does elsewhere in this file.
+      //
+      // Before any recall has been observed for this court today, there's no evidence either
+      // way, so fall back to the original assumption: recalls wait for the rest of the list.
+      // Getting this wrong in THAT direction is the safer failure — it under-promises rather
+      // than telling someone their matter is closer than it is.
       if (gap == null) {
-        const total = miscTotalFor(ctx, e.courtNo), cur = parseInt(bc.item, 10);
-        if (total != null && !isNaN(cur)) { gap = Math.max(0, total - cur) + passoversBeforeOurs(ctx, e.courtNo, ours); tail = " · taken at end"; }
+        if (hasRecalledPO(ctx, e.courtNo)) {
+          gap = passoversBeforeOurs(ctx, e.courtNo, ours); tail = " · in the passover queue";
+        } else {
+          const total = miscTotalFor(ctx, e.courtNo), cur = parseInt(bc.item, 10);
+          if (total != null && !isNaN(cur)) { gap = Math.max(0, total - cur) + passoversBeforeOurs(ctx, e.courtNo, ours); tail = " · taken at end"; }
+        }
       }
       if (gap == null) return { tier: "later", label: "passed over — awaiting its turn", short: "passed over", po: true };
       if (gap <= 0) return { tier: "now", label: "passed over — item on now", short: "NOW", gap, po: true };
@@ -241,8 +273,34 @@
         const cur = parseInt(bc.item, 10);
         const miscDone = (seq.length && curPos >= 0) ? curPos + 1 : (isNaN(cur) ? 0 : cur);
         const miscLeft = Math.max(0, (miscTotal != null ? miscTotal : seq.length) - miscDone);
-        const gap = miscLeft + (regRank - 1);
-        const detail = miscLeft > 0 ? "Misc: " + miscLeft + " to go" : "Misc done";
+        // Misc's own outstanding passovers are still Misc business, not yet disposed, and
+        // Misc must finish before Regular starts — so they count toward the gap too (owner:
+        // "miscellaneous list comes first before the regular list and so also any passover
+        // from the miscellaneous list comes first before regular list ... unless there is a
+        // specific sequence provides for otherwise"). Concrete worked example that shaped
+        // this: Court 8, item 31 current, Misc total 35, six outstanding Misc passovers, our
+        // matter is Regular #104 (regRank 4) — expected gap = 6 (passovers) + 4 (Misc left:
+        // 32-35) + 3 (Regular ahead: 101-103) = 13.
+        //
+        // Only passovers AT OR BEHIND the board's current item count here — one still ahead
+        // (item > cur) is already inside miscLeft above (it hasn't been reached OR skipped
+        // yet from our vantage point), so adding it again would double it.
+        //
+        // The exception: if the announced sequence explicitly places Regular items BEFORE its
+        // mention of passovers (i.e. the court is saying "101-120 first, passovers after"),
+        // that overrides the default — those passovers are no longer Misc-first business.
+        const poException = seq.length && passIdx != null && seq.slice(0, passIdx).some(n => n >= REG_BASE);
+        let miscPOLeft = 0;
+        if (!poException) {
+          const po = passoverItemsFor(ctx, e.courtNo);
+          const miscCeil = miscTotal != null ? miscTotal : (REG_BASE - 1);
+          const curN = isNaN(cur) ? -1 : cur;
+          for (const k in po) { const n = parseInt(k, 10); if (!isNaN(n) && n <= miscCeil && n <= curN) miscPOLeft++; }
+        }
+        const gap = miscLeft + miscPOLeft + (regRank - 1);
+        const detail = (miscLeft > 0 || miscPOLeft > 0)
+          ? "Misc: " + miscLeft + " to go" + (miscPOLeft ? " · " + miscPOLeft + " passover" + (miscPOLeft === 1 ? "" : "s") : "")
+          : "Misc done";
         if (gap <= 1) return { tier: "now", label: "Regular — get in now", short: "NOW", gap, reg: true };
         if (gap <= 4) return { tier: "soon", label: "Regular — ~" + gap + " away · " + detail, short: gap + " away", gap, reg: true };
         return { tier: "later", label: "Regular — ~" + gap + " away · " + detail, short: gap + " away", gap, reg: true };
