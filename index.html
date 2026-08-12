@@ -1221,9 +1221,9 @@ if(DEMO){
     async update(path,data){const[cp,id]=split(path);const m=C(cp);m.set(id,{...(m.get(id)||{}),...data});emitC(cp);emitD(path);},
     async remove(path){const[cp,id]=split(path);C(cp).delete(id);emitC(cp);}, now };
   let authCb=null,cur=null;
-  // Mirrors the prod wrapper below: whoever signs in, make sure their users/{uid} doc
-  // (and any chamber they're creating or joining) exists before the app boots.
-  const wrap = cb => async user => { if(user){ try{ await ensureUserDoc(user.uid, user.email||"", pendingReg); pendingReg=null; }catch(e){} } cb(user); };
+  // Mirrors the prod wrapper below: ensureUserDoc() runs alongside boot(), not blocking in
+  // front of it — see that wrapper's comment for why.
+  const wrap = cb => user => { if(user) ensureUserDoc(user.uid, user.email||"", pendingReg).then(()=>{pendingReg=null;}).catch(()=>{}); cb(user); };
   auth={ onChange(cb){ authCb=wrap(cb); setTimeout(()=>authCb(cur),0); },
     signIn(){ cur={uid:"u_demo",email:"rohan@example.in"}; setTimeout(()=>authCb&&authCb(cur),0); return Promise.resolve(); },
     signUp(email,pass,reg){ pendingReg=reg; cur={uid:"u_"+(idc++),email}; setTimeout(()=>authCb&&authCb(cur),0); return Promise.resolve(); },
@@ -1250,9 +1250,18 @@ if(DEMO){
     async add(path,data){const r=await addDoc(collection(fs,...path.split("/")),data);return r.id;},
     async update(path,data){await updateDoc(doc(fs,...path.split("/")),data);},
     async remove(path){await deleteDoc(doc(fs,...path.split("/")));}, now:()=>new Date() };
-  auth={ onChange(cb){ onAuthStateChanged(fa,async user=>{
-      if(user){ try{ await ensureUserDoc(user.uid, user.email||"", pendingReg); pendingReg=null; }
-        catch(e){ /* transient: app still boots; boot() watchDoc picks up the profile */ } }
+  // ensureUserDoc() is NOT awaited before cb(user)/boot() — that used to serialize EVERY
+  // sign-in (including the common "app reopened, session already valid" case, not just a
+  // fresh login) behind a whole extra Firestore round-trip, on top of everything boot()
+  // itself already has to do (owner: "The login is taking time, a lot of time"). It's
+  // redundant anyway: boot()'s own users/{uid} watchDoc listener reads the identical
+  // document a moment later regardless. Letting it run in the background costs nothing for
+  // a returning user (their doc already exists, ensureUserDoc is a no-op past the first
+  // read) and only matters for a brand-new signup, where boot() briefly runs off a
+  // placeholder profile until the real doc lands — the SAME watchDoc listener picks that up
+  // and re-renders automatically, so nothing is actually lost, just no longer serialized.
+  auth={ onChange(cb){ onAuthStateChanged(fa,user=>{
+      if(user) ensureUserDoc(user.uid, user.email||"", pendingReg).then(()=>{pendingReg=null;}).catch(()=>{});
       cb(user); }); },
     signIn(email,pass){return signInWithEmailAndPassword(fa,email,pass);},
     signUp(email,pass,reg){ pendingReg=reg; return createUserWithEmailAndPassword(fa,email,pass); },
@@ -3087,6 +3096,7 @@ function renderSettings(){
     // the PIN survives sign-out on purpose: it only ever unlocks a session, so keeping the
     // salted hash leaks nothing, and it starts working again the moment you sign back in.
     if(hasPinFor(me.uid) && !confirm("Sign out on this device? You'll need your password to get back in — your PIN then works again straight after.")) return;
+    markSignOutReason("settings sign-out button");
     auth.signOut();
   };
   $("st_delAcct").onclick=deleteMyAccountFlow;
@@ -3349,6 +3359,26 @@ function applyGate(){
   // the PIN they asked for at signup — do it now that there's a session to attach it to
   if(wantPinAfterBoot && !hasPinFor(me.uid)){ wantPinAfterBoot=false; setTimeout(startPinSetup, 400); }
 }
+// Diagnostic breadcrumb, not a fix by itself — added because two rounds of guessing at "why
+// does the phone sometimes show the login screen unprompted" (owner: "It should not
+// automatically logout unless logout button is pressed") turned up nothing wrong in this
+// app's own code: no persistence downgrade anywhere (Firebase's default, most-durable
+// browserLocalPersistence is never overridden), no storage-clearing code, and every
+// auth.signOut() call site is either an explicit button press or the 5-wrong-PIN-tries
+// safety net. That points at the platform itself (iOS Safari's storage-eviction policy can
+// clear an installed web app's data on its own) — outside anything this code can prevent —
+// but "points at" isn't "proven", and shipping a guessed fix for a cause that can't be
+// observed is exactly how the footer-gap bug burned two rounds earlier this project. So:
+// tag every INTENTIONAL sign-out with why, right before calling signOut() (synchronous, so
+// the marker is guaranteed to exist by the time the resulting boot(null) fires — signOut()
+// notifies onAuthStateChanged asynchronously, a moment later, never before this line runs).
+// boot(null) consumes (reads + deletes) that marker once: present = an explained sign-out,
+// nothing to show. Absent, but this device previously had a real session = Firebase itself
+// dropped the session with none of our own code asking for it — a genuinely unexplained
+// sign-out, surfaced right on the login screen (not buried in devtools) so there's an actual
+// timestamp to report next time it happens, instead of another guess.
+const SIGNOUT_KEY="crSignOutReason", WAS_SIGNED_IN_KEY="crWasSignedIn";
+function markSignOutReason(reason){ try{ localStorage.setItem(SIGNOUT_KEY, JSON.stringify({reason, at:Date.now()})); }catch(e){} }
 function boot(user){
   unsub.forEach(u=>u&&u()); unsub=[]; if(userDocUnsub){userDocUnsub();userDocUnsub=null;}
   if(threadUnsub){threadUnsub();threadUnsub=null;} if(peerUnsub){peerUnsub();peerUnsub=null;}
@@ -3364,9 +3394,23 @@ function boot(user){
     hidePinLock();
     $("app").classList.add("hidden"); $("paywall").classList.add("hidden"); $("login").classList.remove("hidden");
     document.body.classList.add("signed-out");
+    // See markSignOutReason()'s comment above: was this an intentional sign-out (the marker
+    // will already be here, just written) or did Firebase report signed-out with none of our
+    // own code asking for it? Only worth flagging if this device had a real session before —
+    // a first-time visitor seeing the login screen is normal, not a "logout".
+    try{
+      const wasIn = localStorage.getItem(WAS_SIGNED_IN_KEY)==="1";
+      const raw = localStorage.getItem(SIGNOUT_KEY);
+      if(wasIn && !raw){
+        const el=$("lgErr");
+        if(el) el.textContent="You were signed out automatically (unexpected) at "+new Date().toLocaleString()+" — please sign back in, and let us know this keeps happening.";
+      }
+      localStorage.removeItem(SIGNOUT_KEY);
+    }catch(e){}
     paintLoginPin();
     stopPolling(); return;
   }
+  try{ localStorage.setItem(WAS_SIGNED_IN_KEY,"1"); }catch(e){}
   const uid=user.uid;
   // A returning user with a PIN on this device unlocks with 4 digits instead of the
   // password. Skip straight through when they just typed their password anyway.
@@ -3379,7 +3423,7 @@ function boot(user){
   });
 }
 auth.onChange(boot);
-$("pwSignOut").onclick=()=>auth.signOut();
+$("pwSignOut").onclick=()=>{ markSignOutReason("paywall sign-out button"); auth.signOut(); };
 $("pwGo").onclick=async()=>{
   $("pwErr").textContent="";
   const val=($("pwCode").value||"").trim();
@@ -3471,7 +3515,7 @@ $("btnOut").onclick=()=>{
     <div class="stg-gh" style="margin:10px 0 0">Signing out needs your password to get back in${pinOn?" — your PIN keeps working after that":""}.</div>
   </div></div>`;
   $("lo_lock").onclick=()=>{ closeModal(); if(pinOn) showPinLock(me.uid); else startPinSetup(); };
-  $("lo_out").onclick=()=>{ closeModal(); auth.signOut(); };
+  $("lo_out").onclick=()=>{ closeModal(); markSignOutReason("leaving sheet sign-out button"); auth.signOut(); };
 };
 // Calendar field — shows the picked (default: today's) date on the header pill; the real
 // <input type=date> UNDER it (see .cal-native-overlay) is what actually receives the tap
@@ -3597,7 +3641,7 @@ async function pinDigit(d){
     return;
   }
   const s=pinStore(); s.tries=(s.tries||0)+1; localStorage.setItem(PIN_KEY,JSON.stringify(s));
-  if(s.tries>=5){ clearPin(); hidePinLock(); auth.signOut(); return; }
+  if(s.tries>=5){ clearPin(); hidePinLock(); markSignOutReason("5 wrong PIN attempts"); auth.signOut(); return; }
   pinShake(`Wrong PIN — ${5-s.tries} ${5-s.tries===1?"try":"tries"} left.`);
 }
 document.querySelectorAll("#pinPad button").forEach(b=>b.onclick=()=>{
@@ -3611,7 +3655,7 @@ $("pinClose").onclick=()=>{
   // so this branch is a no-op in normal use.
   if(pinSetupMode){ hidePinLock(); if(curTab==="settings") render(); }
 };
-$("pinUsePass").onclick=()=>{ hidePinLock(); auth.signOut(); };   // PIN kept — see setPin/paintLoginPin
+$("pinUsePass").onclick=()=>{ hidePinLock(); markSignOutReason("use password instead button"); auth.signOut(); };   // PIN kept — see setPin/paintLoginPin
 // Case-reaching alerts: toggled from Settings. Two layers, one switch —
 //   1. notifyReaching() below: an immediate in-page Notification while the app is open. Fast
 //      (rides the same 6s board poll) but, like any page JS, dies the instant the phone locks.
