@@ -1255,16 +1255,20 @@ function parseBoard(html){
    DATA LAYER — Firebase (prod) / in-memory (demo)
    ============================================================ */
 // A live listener that dies takes a silent piece of the app with it: the pane it feeds simply
-// stops updating and keeps showing whatever it last had. Chat is where that hurts most, so
-// say so there rather than let a frozen thread look like a working one. Logged for every
-// path either way, so the console names the collection and the Firestore error code.
+// stops updating and keeps showing whatever it last had. Always logged, naming the collection
+// and the Firestore error code, so a real recurrence is still diagnosable from the console.
+//
+// This USED to also put a "Live chat updates stopped — orgdms: permission-denied..." banner in
+// the chat pane itself — deliberately, while tracking down the orgmsgs/orgdms rules bug this
+// exact message helped find and fix. Its job is done: the underlying cause is gone, and a raw
+// collection name + Firestore error code in front of the owner's colleagues and clerk is
+// exactly the kind of internal detail a diagnostic aid should carry, not a shipped feature
+// (owner: "Remove the diagnostic message which is displaying in the chat section"). If chat's
+// live updates ever die again for a genuinely new reason, this still logs it below — check the
+// console rather than the chat pane.
 function listenerDied(path, err){
   const code=(err&&err.code)||"error";
   console.error("[CourtReach] live updates stopped for "+path+" ("+code+")", err);
-  if(path==="orgmsgs"||path==="orgdms"||path==="linkmsgs"||path==="chatreads"){
-    chatErr="Live chat updates stopped — "+path+": "+code+". Close and reopen the app to reconnect — anything you sent since may not have gone through.";
-    if(curTab==="chat") renderChat();
-  }
 }
 let db, auth, pendingReg=null;
 if(DEMO){
@@ -1637,7 +1641,19 @@ function recordBoardPO(){
   for(const c of board){
     if(!c.item) continue;
     const key=String(c.court)+"_"+String(c.item);
-    if(c.passover) boardPO.marks[key]=true;
+    // "Still passed over right now" per EITHER live signal — the board row's own raw status
+    // text (c.passover), OR the dedicated remark column (remarksByCourt, fetched separately,
+    // refreshed every ~40s, and the one actually behind "cases which are noted in the app as
+    // pass over" — owner: "PO tag is not working despite the Court 8 taking up passover cases
+    // which are noted in the app as pass over"). Only checking c.passover missed every
+    // passover that was ONLY ever flagged via the remark column and never literally showed
+    // "pass over" in the board's own raw status text — which is the common case, since the
+    // remark column is the more complete, authoritative source (board-engine.js's own
+    // passoverItemsFor() already trusts it over the raw board text for the same reason).
+    // Reusing that exact function here — not a re-implementation of its matching rules —
+    // means this can never quietly drift from what classify() itself considers "passed over".
+    const stillPO = c.passover || (Math.floor(parseFloat(c.item)) in ENG.passoverItemsFor({remarksByCourt}, c.court));
+    if(stillPO) boardPO.marks[key]=true;
     else if(boardPO.marks[key]){ delete boardPO.marks[key]; recalledPO.set[key]=true; }
   }
 }
@@ -1937,13 +1953,18 @@ function boardCell(c, mini){
   // number so it never reshuffles as the court progresses (owner: "constant order").
   const best=ks.slice().sort((a,b)=>(TIER_RANK[a.k.tier]-TIER_RANK[b.k.tier])||((a.k.gap??999)-(b.k.gap??999)))[0];
   const tier=best?.k.tier||"idle";
-  // Red is a hair earlier than the engine's own "now" tier (gap<=1): the island specifically
-  // should read red the moment a case is 3 away (owner: "The Court island should become red as
-  // soon as the case is 3 away"), not wait until it reaches "soon"→"now" at gap<=1. Applied
-  // only as a display override on the CELL'S colour — classify()'s own tier (labels, TIER_RANK
-  // sorting, My cases' proximity chip, flash's own colour bands) is untouched, so "3 away"
-  // still READS as "3 away" everywhere, it just paints the island the same red as "now" would.
-  const cellTier = (best && best.k.gap!=null && best.k.gap<=3 && (tier==="now"||tier==="soon")) ? "now" : tier;
+  // The island's colour runs its OWN bands, tighter than classify()'s own tier boundaries
+  // (owner: "The Court island should become red as soon as the case is 3 away" / "Court island
+  // should become amber if the case is seven or closer") — red 0-3, amber 4-7, green 8+,
+  // in place of the engine's red-only-at-<=1 / amber-2-to-4 / green-5+ split. Applied only as a
+  // display override on the CELL'S colour when there's an actual gap to band — classify()'s own
+  // tier (labels, TIER_RANK sorting, My cases' proximity chip, flash's own colour bands) is
+  // untouched, so "3 away" or "6 away" still reads as exactly that everywhere, it just paints
+  // the island a color keyed to these tighter thresholds instead of the engine's own.
+  const g = best?.k.gap;
+  const cellTier = (best && g!=null && (tier==="now"||tier==="soon"||tier==="later"))
+    ? (g<=3 ? "now" : g<=7 ? "soon" : "later")
+    : tier;
   const ordered=ks.slice().sort((a,b)=>(parseFloat(a.e.itemNo)||0)-(parseFloat(b.e.itemNo)||0));
   const overrides=getStrikeOverrides();
   const cnt = ordered.length>=4?" cnt4p":ordered.length===3?" cnt3":"";

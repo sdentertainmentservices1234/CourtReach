@@ -271,7 +271,19 @@
         if (miscTotal == null && !seq.length)
           return { tier: "later", label: "Regular list — after the Miscellaneous list", short: "after Misc", reg: true };
         const cur = parseInt(bc.item, 10);
-        const miscDone = (seq.length && curPos >= 0) ? curPos + 1 : (isNaN(cur) ? 0 : cur);
+        // miscDone approximates "how far into Misc has the court actually gotten" — but once
+        // recalls are happening, the board's CURRENT item can be a low-numbered passover being
+        // recalled right now, which is a temporary DIP, not real regression. Using cur alone
+        // there would read that dip as "only just started Misc" and wildly overstate what's
+        // left (owner's report: Court 8 showing 21 away with only three passovers and three
+        // Regular matters actually outstanding — 21 is explained exactly by this: cur reading
+        // a recalled low item while the court had genuinely already reached item ~97+ of a
+        // ~100 Misc list). itemHi (the highest raw item any poll has seen at this court today)
+        // never regresses on a recall the way cur does — same signal onRegularList() already
+        // trusts for its own "has this court moved past Misc" call — so take whichever is
+        // higher.
+        const hi = (ctx.itemHi || {})[e.courtNo] || 0;
+        const miscDone = (seq.length && curPos >= 0) ? curPos + 1 : Math.max(isNaN(cur) ? 0 : cur, hi);
         const miscLeft = Math.max(0, (miscTotal != null ? miscTotal : seq.length) - miscDone);
         // Misc's own outstanding passovers are still Misc business, not yet disposed, and
         // Misc must finish before Regular starts — so they count toward the gap too (owner:
@@ -282,9 +294,13 @@
         // matter is Regular #104 (regRank 4) — expected gap = 6 (passovers) + 4 (Misc left:
         // 32-35) + 3 (Regular ahead: 101-103) = 13.
         //
-        // Only passovers AT OR BEHIND the board's current item count here — one still ahead
-        // (item > cur) is already inside miscLeft above (it hasn't been reached OR skipped
-        // yet from our vantage point), so adding it again would double it.
+        // Only passovers AT OR BEHIND the court's REACH so far count here — one still ahead of
+        // that (item > miscDone) is already inside miscLeft above (it hasn't been reached OR
+        // skipped yet from our vantage point), so adding it again would double it. Boundary is
+        // miscDone (== max(cur,hi)), not cur alone, for the same reason miscDone itself uses
+        // it: a passover with item number between a temporary recall dip and the court's real
+        // peak was genuinely already reached and skipped, and using cur here would silently
+        // drop it from the gap entirely — not double-counted, just gone.
         //
         // The exception: if the announced sequence explicitly places Regular items BEFORE its
         // mention of passovers (i.e. the court is saying "101-120 first, passovers after"),
@@ -294,8 +310,7 @@
         if (!poException) {
           const po = passoverItemsFor(ctx, e.courtNo);
           const miscCeil = miscTotal != null ? miscTotal : (REG_BASE - 1);
-          const curN = isNaN(cur) ? -1 : cur;
-          for (const k in po) { const n = parseInt(k, 10); if (!isNaN(n) && n <= miscCeil && n <= curN) miscPOLeft++; }
+          for (const k in po) { const n = parseInt(k, 10); if (!isNaN(n) && n <= miscCeil && n <= miscDone) miscPOLeft++; }
         }
         const gap = miscLeft + miscPOLeft + (regRank - 1);
         const detail = (miscLeft > 0 || miscPOLeft > 0)
@@ -320,7 +335,7 @@
     return { tier: "later", label: gap + " items away" + poNote, short: gap + " away", gap, approx, poNote };
   }
 
-  const API = { classify, seqInfo, orderPos, parseSequenceLine, preStartGap, preStartResult, isMentioning, MENT_END, REG_BASE };
+  const API = { classify, seqInfo, orderPos, parseSequenceLine, preStartGap, preStartResult, isMentioning, MENT_END, REG_BASE, passoverItemsFor };
   root.BoardEngine = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
 })(typeof self !== "undefined" ? self : (typeof globalThis !== "undefined" ? globalThis : this));
