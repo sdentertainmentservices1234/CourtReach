@@ -340,6 +340,17 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px 12px;-webkit-over
 .case-status-chip.over_absent{background:var(--now)}
 .case-status-chip.passover{background:#33507e}
 .case-status-chip.not_taken{background:#6b7787}
+/* A tap-to-expand accordion row hid the status picker with no visible sign it existed there
+   (owner: "there is no mark status option in my cases tab. We had worked on it but its not
+   there") — it was there, just undiscoverable behind a bare chevron. This chip is the missing
+   sign: shown right on the collapsed row, for exactly the cases where a status CAN be set and
+   hasn't been, so it disappears the moment one is (the status chip above takes its place). It
+   rides the row head's own data-toggle (no separate wiring needed) — tapping it opens the same
+   picker a tap anywhere else on the head already did, now with something telling you it's there.*/
+.case-markst-hint{margin-left:auto;flex:none;display:flex;align-items:center;gap:4px;font-size:10.5px;
+  font-weight:700;letter-spacing:.2px;color:var(--accent);border:1px dashed var(--accent);
+  border-radius:20px;padding:4px 10px;white-space:nowrap}
+.case-markst-hint i{font-size:12px}
 .case-status-picker{margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
 .cr-lab2{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);margin-bottom:7px}
 .status-opts{display:flex;flex-wrap:wrap;gap:6px}
@@ -525,7 +536,14 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px 12px;-webkit-over
    without ever touching position:fixed. */
 nav.botnav{flex:none;width:100%;display:flex;z-index:30;
   background:var(--panel);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
-nav.botnav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;border:none;
+/* position:relative is load-bearing, not decoration: .badge (the Chat tab's unread dot) is
+   position:absolute, and with no positioned ancestor here it falls all the way back to <body>
+   — top:4px/left:8px in PAGE coordinates, nowhere near this button, effectively invisible
+   (owner: "The chat tab in the button panel doesnt show any notificaiton badge. it should
+   even for a private message" — the badge logic itself was already correct; verified with the
+   DM/team-unread counter both incrementing correctly, it just never rendered where anyone
+   would see it). This is what makes .badge position against the button it's actually inside. */
+nav.botnav button{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;border:none;
   color:var(--mut);font-size:11px;font-weight:600;padding:9px 4px 8px}
 nav.botnav button i{font-size:22px;line-height:1}
 nav.botnav button.on{color:var(--accent)}
@@ -1871,7 +1889,21 @@ function boardCell(c, mini){
   const overrides=getStrikeOverrides();
   const cnt = ordered.length>=4?" cnt4p":ordered.length===3?" cnt3":"";
   const items=ordered.map(x=>{
-    const over=x.k.tier==="passed";                      // truly over/done — not merely passed-over/deferred
+    // "passed" tier fires for several REASONS board-engine.js deliberately does NOT all treat
+    // as confirmed-over — mentioning past its 10:40 cutoff, a Single/Chamber-list item number
+    // the board has moved beyond, or (the common case) our item's raw number simply being
+    // behind the board's current one. NONE of those are a board confirmation the matter is
+    // actually disposed — an item can be "passed" on the number line while genuinely being a
+    // passover the court hasn't recalled yet, and striking it through says, wrongly, that it's
+    // done (owner: "dont strikethrough any case unless you have information from the display
+    // board that the case is over or if someone has marked the case as over"). board-engine.js
+    // already tracks exactly that distinction and only sets `over` true for the two things the
+    // owner named: the board's own OVER remark (isOver()) or the user's own status mark
+    // (doneOf() — over_att/over_absent from My cases). Read that flag, not the tier, so the
+    // rest of the app's "passed" styling (island colour, sorting) is untouched — only the
+    // literal strikethrough gets stricter. Same distinction the code already relies on
+    // elsewhere (flashMatters()/notifyReaching() both check k.over, not k.tier).
+    const over=!!x.k.over;
     const off=!!overrides[strikeKey(c.court,x.e.itemNo)];
     const struck=over&&!off, shown=over&&off;
     return `<span class="oi-it${struck?" struck":""}${shown?" overridden":""}" data-strike-court="${esc(c.court)}" data-strike-item="${esc(x.e.itemNo)}">${esc(x.e.itemNo)}</span>`;
@@ -2166,6 +2198,7 @@ function renderMine(){
         ${m.scope==="personal"?`<span class="cr-tag">Personal</span>`:""}
         ${st?`<span class="case-status-chip ${m.status}">${esc(st.badge)}</span>`
           :k?`<span class="case-prox ${proxBandOf(k)}">${esc(k.short||"—")}</span>`:""}
+        ${(editable&&!st)?`<span class="case-markst-hint"><i class="ti ti-flag-3"></i> Mark status</span>`:""}
         <i class="ti ti-chevron-down cr-chev"></i>
       </div>
       <div class="case-row-body">
@@ -2876,6 +2909,22 @@ function receipt(msg, ch){
 }
 function renderChat(){
   if(!inOrg()){ $("main").innerHTML=`<div class="empty">Chat is for organisation accounts.<br>Join your organisation from <b>Settings</b> to message colleagues and staff.</div>`; return; }
+  // renderChat() rebuilds #main.innerHTML wholesale, same as every other tab here — but this
+  // is the one tab where that happens WHILE someone may be mid-keystroke, because it's called
+  // from four live listeners keyed on the whole chamber (chatUnsub/dmUnsub/extUnsub/
+  // chatReadUnsub), not just "a new message in the thread I'm looking at": a COLLEAGUE reading
+  // ANY thread updates chatreads, which re-fires chatReadUnsub, which rebuilds this pane out
+  // from under someone typing in a completely different conversation. The rebuilt textarea's
+  // VALUE already survived that (chatDraft, painted back below) — but it's a new DOM node, so
+  // FOCUS did not, and on iOS Safari a text input losing focus closes the keyboard outright
+  // (owner: "the keyboard suddenly disappears... Dont know if the same problem occurs for the
+  // android users" — confirmed by reproducing it here: the old and new #chatText are different
+  // nodes and document.activeElement falls back to <body> the instant this runs). Capture
+  // focus+selection now, restore it onto the NEW node synchronously after rebuilding — same
+  // task, no delay — which is what stops iOS from ever treating this as "the keyboard should
+  // close": from the OS's perspective a text input never actually lost focus.
+  const taWasFocused = document.activeElement && document.activeElement.id==="chatText";
+  const taSel = taWasFocused ? {start:document.activeElement.selectionStart, end:document.activeElement.selectionEnd} : null;
   const threads=chatThreads();
   // land everyone on their own default: staff and colleagues in Team, the senior in
   // Everyone — until they pick a thread themselves, after which we respect that.
@@ -2942,6 +2991,8 @@ function renderChat(){
   grow();
   $("chatSend").onclick=sendChat;
   ta.onkeydown=e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); sendChat(); } };
+  // See the comment at the top of this function — this is the other half of it.
+  if(taWasFocused){ ta.focus(); try{ ta.setSelectionRange(taSel.start, taSel.end); }catch(e){} }
   markChatRead(chatChannel); paintChatBadge();
 }
 // Edit or delete one of your own messages. Author-only, enforced in the rules too.
