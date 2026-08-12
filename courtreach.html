@@ -502,6 +502,7 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px 12px;-webkit-over
 .bbub .bt{display:block;font-size:9.5px;color:var(--mut);text-align:right;margin-top:3px}
 .bbub.them{align-self:flex-start;background:#fff;border:1px solid var(--line)}
 .bbub.me{align-self:flex-end;background:#e7eef7;border:1px solid #cfe0f2}
+.bbub.pending{opacity:.6}
 .bcompose{display:flex;gap:7px;align-items:flex-end}
 .bcompose textarea{flex:1;resize:none;min-height:42px;max-height:110px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);font-size:14px;font-family:inherit}
 .bsend{flex:none;width:44px;height:44px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center}
@@ -618,6 +619,10 @@ main#main.chatmode{overflow:hidden;display:flex;flex-direction:column}
 .msg-ed{opacity:.75;margin-right:4px;font-style:italic}
 .msg.me{cursor:pointer}
 .msg .tick.all{color:#8ed0ff}
+/* shown locally the instant Send is tapped, before Firestore confirms it — see sendChat()/
+   sendLinkMsg(). Faded + a clock tick instead of the usual sent/seen check, so a slow
+   connection reads as "sending", not as the message having silently failed to appear at all. */
+.msg.pending{opacity:.6}
 .msg.me .msg-at{color:rgba(255,255,255,.85)}
 .chat-empty{margin:auto;text-align:center;color:var(--mut);font-size:13.5px;line-height:1.6}
 .chat-empty i{font-size:30px;opacity:.4;display:block;margin-bottom:6px}
@@ -2257,12 +2262,24 @@ function openThread(id){ collabOpen=id; linkScope="peer";
   renderCollab();
 }
 function closeThread(){ collabOpen=null; if(threadUnsub){threadUnsub();threadUnsub=null;} linkMsgs=[]; renderCollab(); }
+// Same optimistic-send + real error fix as sendChat() — see its comment for why (owner:
+// "we type the message and send it but it doesnt show").
 async function sendLinkMsg(id){ const ta=$("cl_ta"); const text=(ta?ta.value:"").trim(); if(ta) ta.value=""; if(!text) return;
+  const errEl=$("clSendErr"); if(errEl) errEl.textContent="";
   const l=(links||[]).find(x=>x.id===id), uid=l&&otherUid(l);
-  const rec={linkId:id, by:me.uid, name:me.name||"", text, at:db.now(), scope:linkScope};
+  const rec={linkId:id, by:me.uid, name:me.name||"", text, scope:linkScope};
   // addressed to the office: stamp the chamber so its members (not just the two of us) can read it
   if(linkScope==="chamber" && peerOrgs[uid]?.orgId){ rec.orgId=peerOrgs[uid].orgId; rec.extName=me.name||""; }
-  try{ await db.add("linkmsgs", rec); }catch(e){} }
+  const pendingId="_pending"+Date.now();
+  linkMsgs=[...linkMsgs, {...rec, id:pendingId, at:new Date(), _pending:true}];
+  renderThread(id);
+  try{ await db.add("linkmsgs", {...rec, at:db.now()}); }
+  catch(e){
+    linkMsgs=linkMsgs.filter(m=>m.id!==pendingId);
+    ta.value=text; renderThread(id);
+    const e2=$("clSendErr"); if(e2) e2.textContent="Couldn't send — check your connection and try again.";
+  }
+}
 // A colleague's board is now just another tab on the board home — selecting it here simply
 // switches the view; syncBoardView() does the subscribing.
 function viewPeerBoard(link){ if(!linkActive(link)) return;   // permission is scoped to the day it was sought for
@@ -2582,8 +2599,9 @@ function renderThread(id){
                   : `Goes to ${esc(chamberOpt)} — their colleagues and staff. ${esc(nm)} hasn't opened direct messages for this collaboration.`)
       : `Only ${esc(nm)} sees this.`}</div>`:""}
     <div class="bthread" id="cl_thread">${shown.length? shown.map(m=>{ const mine=m.by===me.uid;
-        return `<div class="bbub ${mine?"me":"them"}">${mine?"":`<span class="bn">${esc(m.name||"")}</span>`}<span>${esc(m.text)}</span><span class="bt">${esc(clockIST(tsMs(m.at)))}</span></div>`; }).join("")
+        return `<div class="bbub ${mine?"me":"them"}${m._pending?" pending":""}">${mine?"":`<span class="bn">${esc(m.name||"")}</span>`}<span>${esc(m.text)}</span><span class="bt">${m._pending?"sending\u2026":esc(clockIST(tsMs(m.at)))}</span></div>`; }).join("")
         : `<div class="bsub" style="text-align:center;padding:16px">No messages yet — say hello.</div>`}</div>
+    <div class="am-err" id="clSendErr" style="margin:2px 2px 0"></div>
     <div class="bcompose"><textarea id="cl_ta" rows="1" placeholder="Message ${esc(linkScope==="chamber"?chamberOpt:nm)}\u2026"></textarea><button class="bsend" id="cl_send"><i class="ti ti-send"></i></button></div></div>`;
   $("main").querySelectorAll("[data-ls]").forEach(b=>b.onclick=()=>{ linkScope=b.dataset.ls; renderCollab(); });
   $("cl_back").onclick=closeThread;
@@ -2701,8 +2719,9 @@ function dayLabel(ms){
 function linkify(text){
   return esc(text).replace(/\b(https?:\/\/[^\s<]+)/g, u=>`<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`);
 }
-// ✓ sent · ✓✓ seen by someone · ✓✓ (accent) seen by everyone who can see the thread
+// clock (sending, not yet confirmed) · ✓ sent · ✓✓ seen by someone · ✓✓ (accent) seen by everyone
 function receipt(msg, ch){
+  if(msg._pending) return `<span class="tick"><i class="ti ti-clock"></i></span>`;
   const aud=channelAudience(ch); if(!aud.length) return "";
   const ts=tsMs(msg.at);
   const seen=aud.filter(u=>((chatReads[u]||{})[ch]||0) >= ts).length;
@@ -2730,7 +2749,7 @@ function renderChat(){
     const run = m.by===prevBy && (ts-prevAt) < 5*60000;
     const next=msgs[i+1];
     const runEnds = !next || next.by!==m.by || (tsMs(next.at)-ts)>=5*60000 || dayLabel(tsMs(next.at))!==day;
-    body+=`<div class="msg ${mine?"me":"them"}${run?" run":""}${runEnds?" tail":""}"${mine?` data-mid="${esc(m.id)}"`:""}>
+    body+=`<div class="msg ${mine?"me":"them"}${run?" run":""}${runEnds?" tail":""}${m._pending?" pending":""}"${(mine&&!m._pending)?` data-mid="${esc(m.id)}"`:""}>
       ${(!mine&&!run)?`<div class="msg-who">${esc(m.byName||m.name||"Colleague")}</div>`:""}
       <div class="msg-tx">${linkify(m.text||"")}</div>
       <div class="msg-at">${m.editedAt?`<span class="msg-ed">edited</span>`:""}${esc(clockIST(ts))}${mine?receipt(m,chatChannel):""}</div>
@@ -2752,6 +2771,7 @@ function renderChat(){
     <div class="reg-hint" style="margin:0 0 6px">${blurb}</div>
     <div class="chat-log" id="chatLog">${body||`<div class="chat-empty"><i class="ti ti-message-2"></i><div>No messages yet.</div><div style="opacity:.7">Say something to get the thread started.</div></div>`}</div>
     <button class="chat-jump hidden" id="chatJump" aria-label="Jump to latest"><i class="ti ti-arrow-down"></i></button>
+    <div class="am-err" id="chatSendErr" style="margin:0 2px 4px"></div>
     <div class="chat-send">
       <textarea id="chatText" rows="1" placeholder="Message${cur.dm?" "+esc(cur.full):""}…"></textarea>
       <button id="chatSend" aria-label="Send"><i class="ti ti-send"></i></button>
@@ -2797,21 +2817,47 @@ function msgActions(id){
     catch(e){ $("me_err").textContent="Couldn't delete that."; }
   };
 }
+// Was: type it, hit send, wait for the full Firestore round-trip before it appears at all —
+// and if that write ever failed (a rules edge case, a network blip in a courtroom with poor
+// signal), the ONLY visible effect was the text quietly reappearing in the box, no error
+// shown anywhere (owner: "we type the message and send it but it doesnt show"). Now: the
+// message appears IMMEDIATELY, faded with a clock tick (receipt()), before Firestore even
+// confirms it — the real watcher naturally replaces it with the confirmed version the moment
+// it round-trips (chatUnsub/threadUnsub fully reassign chatMsgs/linkMsgs from fresh rows each
+// time, so the optimistic entry is simply overwritten, never double-shown). If the write
+// genuinely fails, the optimistic bubble is removed, the text is restored so it can be
+// retried, and — the actual fix — an error is now shown instead of failing in silence.
 async function sendChat(){
   const ta=$("chatText"); if(!ta) return;
   const text=(ta.value||"").trim(); if(!text || !inOrg()) return;
+  const errEl=$("chatSendErr"); if(errEl) errEl.textContent="";
   ta.value=""; ta.style.height="auto"; _chatStick=true;
+  const pendingId="_pending"+Date.now();
   if(chatChannel.startsWith("ext:")){                      // reply to an outside collaborator
     const linkId=chatChannel.slice(4);
     const prev=extMsgs.find(m=>m.linkId===linkId)||{};
-    try{ await db.add("linkmsgs",{ linkId, orgId:me.orgId, scope:"chamber",
-      extName:prev.extName||prev.name||"", by:me.uid, name:me.name||"", byName:me.name||"", text, at:db.now() }); }
-    catch(e){ ta.value=text; }
+    const base={ linkId, orgId:me.orgId, scope:"chamber",
+      extName:prev.extName||prev.name||"", by:me.uid, name:me.name||"", byName:me.name||"", text };
+    extMsgs=[...extMsgs, {...base, id:pendingId, at:new Date(), _pending:true}];
+    renderChat();
+    try{ await db.add("linkmsgs", {...base, at:db.now()}); }
+    catch(e){
+      extMsgs=extMsgs.filter(m=>m.id!==pendingId);
+      ta.value=text; renderChat();
+      const e2=$("chatSendErr"); if(e2) e2.textContent="Couldn't send — check your connection and try again.";
+    }
     return;
   }
-  const msg={ orgId:me.orgId, channel:chatChannel, by:me.uid, byName:me.name||"", text, at:db.now() };
+  const msg={ orgId:me.orgId, channel:chatChannel, by:me.uid, byName:me.name||"", text };
   if(chatChannel.startsWith("dm:")) msg.members=chatChannel.slice(3).split("_");   // rules read this
-  try{ await db.add("orgmsgs", msg); }catch(e){ ta.value=text; }
+  chatMsgs=[...chatMsgs, {...msg, id:pendingId, at:new Date(), _pending:true}];
+  renderChat();
+  try{ await db.add("orgmsgs", {...msg, at:db.now()}); }
+  catch(e){
+    chatMsgs=chatMsgs.filter(m=>m.id!==pendingId);
+    ta.value=text; renderChat();
+    const e2=$("chatSendErr"); if(e2) e2.textContent="Couldn't send — check your connection and try again.";
+  }
 }
 
 /* ===== SETTINGS — profile, subscription, notification permissions (owner: "settings
