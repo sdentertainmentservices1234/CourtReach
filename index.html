@@ -1134,7 +1134,26 @@ let joinNotice="", _joinNoticeTimer=null;   // shown on the Settings tab after a
 let leaderMsg="", _leaderMsgTimer=null;    // ditto, for "X is now the senior"
 // Create users/{uid} on first sign-in (both demo and prod funnel through here).
 async function ensureUserDoc(uid, email, reg){
-  const existing=await db.get("users/"+uid).catch(()=>null);
+  // "Does a profile already exist?" has THREE answers, not two — and conflating two of them
+  // was silently wiping people out of their chambers (owner: "i as an admin joined a chamber.
+  // Later after some time i found out i was not part of that chamber anymore... I was kicked
+  // out automatically"). This read used to be `.catch(()=>null)`, so a read that FAILED
+  // (offline app open, a flaky court-building connection, a Firestore cold-start hiccup) was
+  // indistinguishable from "this user is brand new" — and the code below then wrote a fresh
+  // blank profile over the real one with merge:false, i.e. a FULL overwrite: orgId/orgRole
+  // gone (kicked out of the chamber), name/phone/designation/office gone, createdAt reset.
+  // Worse, resolveOrgFor() can't put the chamber back on a plain sign-in: with no `reg` it
+  // only checks the email pre-approval list, so anyone who joined by CODE loses the chamber
+  // outright. Why an admin account specifically: firestore.rules pins createdAt and gates
+  // orgId changes (orgClaimOk) for an ordinary member, so the bad write was REJECTED for
+  // everyone else — but `allow update: if isAdmin() || ...` lets an admin write anything, so
+  // the wipe only actually landed on an admin's own profile.
+  // A failed read is now its own case: we don't know what's there, so we touch NOTHING.
+  // boot()'s users/{uid} watchDoc still populates the profile on its own, so nothing is lost
+  // by sitting this one out — the next sign-in retries it.
+  let existing=null;
+  try{ existing = await db.get("users/"+uid); }
+  catch(e){ return; }
   if(existing){
     // Already have a profile. Only thing to do is honour a pre-approval added after signup.
     if(!existing.orgId && email){
@@ -1153,7 +1172,11 @@ async function ensureUserDoc(uid, email, reg){
         office:reg.chamber||reg.name, active:true, createdAt:db.now() }
     : { name:(email||"").split("@")[0], email, role:"user", active:true, createdAt:db.now() };
   if(org.orgId){ base.orgId=org.orgId; base.orgRole=org.orgRole; if(org.joinedVia) base.joinedVia=org.joinedVia; }
-  await db.set("users/"+uid, base);
+  // merge:true, belt-and-braces on top of the read fix above. For a genuinely new user this
+  // is identical to a plain set (there's nothing to merge with), but it means that even if
+  // this line is ever reached with a profile actually present, it can only ADD fields — never
+  // blank out an existing chamber membership, name or trial start date.
+  await db.set("users/"+uid, base, true);
 }
 // Matters entered BEFORE joining were private work; joining an organisation must not
 // suddenly put them on the office board. Stamp them personal first, so there is never a
@@ -1202,6 +1225,18 @@ function parseBoard(html){
 /* ============================================================
    DATA LAYER — Firebase (prod) / in-memory (demo)
    ============================================================ */
+// A live listener that dies takes a silent piece of the app with it: the pane it feeds simply
+// stops updating and keeps showing whatever it last had. Chat is where that hurts most, so
+// say so there rather than let a frozen thread look like a working one. Logged for every
+// path either way, so the console names the collection and the Firestore error code.
+function listenerDied(path, err){
+  const code=(err&&err.code)||"error";
+  console.error("[CourtReach] live updates stopped for "+path+" ("+code+")", err);
+  if(path==="orgmsgs"||path==="linkmsgs"||path==="chatreads"){
+    chatErr="Live chat updates stopped ("+code+"). Close and reopen the app to reconnect — anything you sent since may not have gone through.";
+    if(curTab==="chat") renderChat();
+  }
+}
 let db, auth, pendingReg=null;
 if(DEMO){
   const now=()=>({_t:Date.now()}); let idc=1; const gid=()=>"g"+(idc++);
@@ -1240,11 +1275,19 @@ if(DEMO){
       import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"),
       import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js")]);
   const app=initializeApp(firebaseConfig); const fa=getAuth(app); const fs=getFirestore(app);
-  db={ watchCollection(path,cb){const c=collection(fs,...path.split("/")); return onSnapshot(c,s=>{const r=[];s.forEach(d=>r.push({id:d.id,...d.data()}));cb(r);});},
+  // EVERY onSnapshot here now passes an error handler. Without one, a listener that hits an
+  // error — most commonly permission-denied, e.g. the moment your users/{uid}.orgId stops
+  // matching the chamber a live query is scoped to — is TERMINATED by the SDK and the app is
+  // never told. The callback simply stops firing, forever, with no error anywhere the owner
+  // could see. In chat that reads as a thread frozen mid-conversation, an optimistic bubble
+  // stuck on its clock because nothing is left to replace it, and colleagues never receiving
+  // the message (owner: "A watch keeps on showing... No one else is able to see my messages").
+  // A dead listener is now reported instead of silently swallowed — see listenerDied().
+  db={ watchCollection(path,cb){const c=collection(fs,...path.split("/")); return onSnapshot(c,s=>{const r=[];s.forEach(d=>r.push({id:d.id,...d.data()}));cb(r);},e=>listenerDied(path,e));},
     watchQuery(path,field,value,cb){const q=query(collection(fs,...path.split("/")),where(field,"==",value));
-      return onSnapshot(q,s=>{const r=[];s.forEach(d=>r.push({id:d.id,...d.data()}));cb(r);});},
+      return onSnapshot(q,s=>{const r=[];s.forEach(d=>r.push({id:d.id,...d.data()}));cb(r);},e=>listenerDied(path,e));},
     async getUserBy(field,value){const q=query(collection(fs,"users"),where(field,"==",value)); const s=await getDocs(q); return s.docs.map(d=>({id:d.id,...d.data()}));},
-    watchDoc(path,cb){return onSnapshot(doc(fs,...path.split("/")),s=>cb(s.exists()?{id:s.id,...s.data()}:null));},
+    watchDoc(path,cb){return onSnapshot(doc(fs,...path.split("/")),s=>cb(s.exists()?{id:s.id,...s.data()}:null),e=>listenerDied(path,e));},
     async get(path){const s=await getDoc(doc(fs,...path.split("/"))); return s.exists()?{id:s.id,...s.data()}:null;},
     async set(path,data,merge){await setDoc(doc(fs,...path.split("/")),data,{merge:!!merge});},
     async add(path,data){const r=await addDoc(collection(fs,...path.split("/")),data);return r.id;},
@@ -1358,6 +1401,13 @@ let chatChannel="team", chatMsgs=[], chatUnsub=null, chatChannelPicked=false;
 // chatreads/{uid} — everyone's per-channel "read up to" marker. Mine drives my unread
 // counts; everyone else's turns my sent ticks into seen ticks.
 let chatReads={}, chatReadUnsub=null, _chatStick=true;
+// Chat error + unsent draft live in STATE, not in the DOM. renderChat() rebuilds #main's
+// whole innerHTML on every incoming message, so anything written straight into the pane
+// (a "couldn't send" warning, a recovered draft) is wiped by the next snapshot that lands —
+// which is exactly how a failed send came to look like it had silently done nothing (owner:
+// "The messages are not being delivered... No one else is able to see my messages"). Same
+// reason stgMsg exists for Settings; chat needed the same treatment.
+let chatErr="", chatDraft="";
 // Messages an OUTSIDE collaborator addressed to this whole chamber (linkmsgs with
 // scope:'chamber'). The senior holds the link; their clerks and juniors don't — so the
 // office sees and answers these here rather than in Collaborate.
@@ -2629,16 +2679,30 @@ function renderThread(id){
      "dm:…"   one-to-one, so reaching the senior is an explicit act.
    Messages live in one orgmsgs collection keyed by {orgId, channel}; the rules scope reads
    to the org (and, for a DM, to its two participants). */
+// Keyed on the org actually being watched, the same way watchOrg() is, and for the same two
+// reasons — one of which was a real leak. applyGate() runs on every users/{uid}, orgs/{orgId}
+// and config/trialLimit snapshot, and it used to call this each time, tearing down all three
+// chat listeners and building three fresh ones on every one of those events: pure churn, and
+// churn during sign-in specifically (owner: "The login is taking time"). Worse, it was called
+// as `if(inOrg()) watchChat()`, so when someone STOPPED being in an org it was never called
+// at all — the old listeners kept running against a chamber the user was no longer a member
+// of, which the rules then deny, which (before listenerDied() existed) killed them in total
+// silence. Now: rebuild only when the org genuinely changes, and always tear all three down —
+// including extUnsub, which the old early-return skipped entirely.
+let _chatOrgId=undefined;
 function watchChat(){
+  const oid = inOrg() ? me.orgId : null;
+  if(_chatOrgId===oid) return;
+  _chatOrgId=oid;
   if(chatUnsub){chatUnsub();chatUnsub=null;}
+  if(extUnsub){extUnsub();extUnsub=null;}
   if(chatReadUnsub){chatReadUnsub();chatReadUnsub=null;}
-  if(!inOrg()) return;
+  if(!oid) return;
   chatUnsub=db.watchQuery("orgmsgs","orgId",me.orgId, rows=>{
     chatMsgs=(rows||[]).slice().sort((a,b)=>tsMs(a.at)-tsMs(b.at));
     purgeYesterdaysChat();
     if(curTab==="chat") renderChat(); else paintChatBadge();
   });
-  if(extUnsub){extUnsub();extUnsub=null;}
   extUnsub=db.watchQuery("linkmsgs","orgId",me.orgId, rows=>{
     extMsgs=(rows||[]).filter(m=>(m.scope||"")==="chamber").sort((a,b)=>tsMs(a.at)-tsMs(b.at));
     if(curTab==="chat") renderChat(); else paintChatBadge();
@@ -2780,7 +2844,7 @@ function renderChat(){
     <div class="reg-hint" style="margin:0 0 6px">${blurb}</div>
     <div class="chat-log" id="chatLog">${body||`<div class="chat-empty"><i class="ti ti-message-2"></i><div>No messages yet.</div><div style="opacity:.7">Say something to get the thread started.</div></div>`}</div>
     <button class="chat-jump hidden" id="chatJump" aria-label="Jump to latest"><i class="ti ti-arrow-down"></i></button>
-    <div class="am-err" id="chatSendErr" style="margin:0 2px 4px"></div>
+    <div class="am-err" id="chatSendErr" style="margin:0 2px 4px">${esc(chatErr)}</div>
     <div class="chat-send">
       <textarea id="chatText" rows="1" placeholder="Message${cur.dm?" "+esc(cur.full):""}…"></textarea>
       <button id="chatSend" aria-label="Send"><i class="ti ti-send"></i></button>
@@ -2797,8 +2861,12 @@ function renderChat(){
   jump.onclick=()=>{ log.scrollTop=log.scrollHeight; _chatStick=true; jump.classList.add("hidden"); markChatRead(chatChannel); };
 
   const ta=$("chatText");
+  // Anything typed-but-unsent is repainted from state, so an incoming message (which rebuilds
+  // this whole pane) can never swallow a draft — including one handed back by a failed send.
+  if(chatDraft) ta.value=chatDraft;
   const grow=()=>{ ta.style.height="auto"; ta.style.height=Math.min(ta.scrollHeight,110)+"px"; };
-  ta.oninput=grow; grow();
+  ta.oninput=()=>{ chatDraft=ta.value; grow(); };
+  grow();
   $("chatSend").onclick=sendChat;
   ta.onkeydown=e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); sendChat(); } };
   markChatRead(chatChannel); paintChatBadge();
@@ -2834,38 +2902,63 @@ function msgActions(id){
 // confirms it — the real watcher naturally replaces it with the confirmed version the moment
 // it round-trips (chatUnsub/threadUnsub fully reassign chatMsgs/linkMsgs from fresh rows each
 // time, so the optimistic entry is simply overwritten, never double-shown). If the write
-// genuinely fails, the optimistic bubble is removed, the text is restored so it can be
-// retried, and — the actual fix — an error is now shown instead of failing in silence.
+// genuinely fails, the optimistic bubble is removed and an error is shown instead of failing
+// in silence.
+//
+// That round tried to hand the text back too, but didn't: a failed send still lost the message
+// outright. `ta.value=text; renderChat();` looks like
+// it restores the draft, but renderChat() rebuilds #main's entire innerHTML — so `ta` is a
+// DETACHED node by the time anyone could read it, and the freshly-built textarea comes up
+// empty. The typed text was gone, and the error written into #chatSendErr right after was
+// itself erased by the next incoming-message re-render. Net effect from the owner's side: the
+// message never arrives, nobody else sees it, and the app never says why. Both now live in
+// state (chatDraft/chatErr) which renderChat() paints back every time, so neither can be lost
+// to a re-render.
+// The clock also can't hang forever any more. db.add() -> addDoc() only settles when the
+// SERVER acknowledges the write: with no usable connection it neither resolves nor rejects,
+// so the optimistic bubble sat there showing a clock indefinitely with nothing explaining it
+// (owner: "A watch keeps on showing on the message thread which i assume means not delivered
+// yet"). A 12s timer now says so out loud, while leaving the write queued — Firestore does
+// deliver it once the connection returns, so this warns without throwing the message away.
 async function sendChat(){
   const ta=$("chatText"); if(!ta) return;
   const text=(ta.value||"").trim(); if(!text || !inOrg()) return;
-  const errEl=$("chatSendErr"); if(errEl) errEl.textContent="";
+  chatErr=""; chatDraft="";
   ta.value=""; ta.style.height="auto"; _chatStick=true;
   const pendingId="_pending"+Date.now();
-  if(chatChannel.startsWith("ext:")){                      // reply to an outside collaborator
+  const ext=chatChannel.startsWith("ext:");
+  let base, coll;
+  if(ext){                                                 // reply to an outside collaborator
     const linkId=chatChannel.slice(4);
     const prev=extMsgs.find(m=>m.linkId===linkId)||{};
-    const base={ linkId, orgId:me.orgId, scope:"chamber",
+    coll="linkmsgs";
+    base={ linkId, orgId:me.orgId, scope:"chamber",
       extName:prev.extName||prev.name||"", by:me.uid, name:me.name||"", byName:me.name||"", text };
     extMsgs=[...extMsgs, {...base, id:pendingId, at:new Date(), _pending:true}];
-    renderChat();
-    try{ await db.add("linkmsgs", {...base, at:db.now()}); }
-    catch(e){
-      extMsgs=extMsgs.filter(m=>m.id!==pendingId);
-      ta.value=text; renderChat();
-      const e2=$("chatSendErr"); if(e2) e2.textContent="Couldn't send — check your connection and try again.";
-    }
-    return;
+  } else {
+    coll="orgmsgs";
+    base={ orgId:me.orgId, channel:chatChannel, by:me.uid, byName:me.name||"", text };
+    if(chatChannel.startsWith("dm:")) base.members=chatChannel.slice(3).split("_");   // rules read this
+    chatMsgs=[...chatMsgs, {...base, id:pendingId, at:new Date(), _pending:true}];
   }
-  const msg={ orgId:me.orgId, channel:chatChannel, by:me.uid, byName:me.name||"", text };
-  if(chatChannel.startsWith("dm:")) msg.members=chatChannel.slice(3).split("_");   // rules read this
-  chatMsgs=[...chatMsgs, {...msg, id:pendingId, at:new Date(), _pending:true}];
   renderChat();
-  try{ await db.add("orgmsgs", {...msg, at:db.now()}); }
-  catch(e){
-    chatMsgs=chatMsgs.filter(m=>m.id!==pendingId);
-    ta.value=text; renderChat();
-    const e2=$("chatSendErr"); if(e2) e2.textContent="Couldn't send — check your connection and try again.";
+  let settled=false;
+  const slow=setTimeout(()=>{
+    if(settled) return;
+    chatErr="Still sending — your connection looks slow. It will go through on its own once you're back online.";
+    if(curTab==="chat") renderChat();
+  },12000);
+  try{
+    await db.add(coll, {...base, at:db.now()});
+    settled=true; clearTimeout(slow);
+    if(chatErr){ chatErr=""; if(curTab==="chat") renderChat(); }
+  }catch(e){
+    settled=true; clearTimeout(slow);
+    if(ext) extMsgs=extMsgs.filter(m=>m.id!==pendingId);
+    else chatMsgs=chatMsgs.filter(m=>m.id!==pendingId);
+    chatDraft=text;                       // survives the re-render, so the message isn't lost
+    chatErr="Couldn't send — check your connection and try again. Your message is still in the box.";
+    renderChat();
   }
 }
 
@@ -3354,8 +3447,8 @@ function applyGate(){
     loadCourtUpdates();
     startPolling();
   }
-  if(inOrg()) watchChat();
-  render();
+  watchChat();      // unconditional on purpose — this is also what STOPS the chat listeners
+  render();         // when you leave an organisation. See watchChat()'s own comment.
   // the PIN they asked for at signup — do it now that there's a session to attach it to
   if(wantPinAfterBoot && !hasPinFor(me.uid)){ wantPinAfterBoot=false; setTimeout(startPinSetup, 400); }
 }
@@ -3387,6 +3480,10 @@ function boot(user){
   if(chatUnsub){chatUnsub();chatUnsub=null;} if(chatReadUnsub){chatReadUnsub();chatReadUnsub=null;} if(extUnsub){extUnsub();extUnsub=null;}
   links=[];linksOut=[];linksIn=[];collabOpen=null;linkMsgs=[];peerBoardUid=null;peerBoardName="";peerMatters=[];linkFound=null;
   chatMsgs=[]; extMsgs=[]; chatChannel="team"; chatChannelPicked=false; chatReads={}; _chatStick=true;
+  // boot() has just unsubscribed all three chat listeners above, so the watch key has to go
+  // with them — otherwise signing back into the SAME chamber would match the stale key and
+  // never resubscribe, leaving chat permanently dead for the rest of the session.
+  _chatOrgId=undefined; chatErr=""; chatDraft="";
   boardView="mine"; mineView="mine";
   booted=false;
   if(!user){
