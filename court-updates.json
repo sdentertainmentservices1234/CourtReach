@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-11T19:02:21.355795Z",
+  "generated_at": "2026-08-12T13:57:00.459182Z",
   "parser_version": 8,
   "window": [
     "2026-08-12",
@@ -15501,6 +15501,377 @@
           }
         }
       }
+    },
+    "2026-08-17": {
+      "lists_found": [
+        "Registrar (main)"
+      ],
+      "lists": {
+        "Registrar": {
+          "1": {
+            "coram": "SH. APOORV SINGH, REGISTRAR",
+            "total": "35",
+            "fresh": "",
+            "items": {
+              "1": "SLP(C) No. OSMANBHAI TARMAMAD SIDA (DEAD) THROUGH VERSUS THE STATE OF GUJARAT AND ORS.",
+              "1.1": "Connected BHAVNABEN AND ORS. VERSUS THE STATE OF GUJARAT AND ORS.",
+              "2": "SLP(C) No. 16994/2023 SRI. Y. GOPALA SHETTY VERSUS APPI SHEDTHI DEAD BY LRS AND ORS.",
+              "3": "SLP(C) No. SENTINEL PROPERTIES PRIVATE LIMITED VERSUS AMIN VIRAL ATULBHAI AMIN AND ORS.",
+              "4": "SLP(C) No. 2724/2025 C. GOPALA SHETTY AND ANR. VERSUS PAVADA VENKOBAPPA AND ORS. ANKOLEKAR GURUDATTA",
+              "5": "Diary No. 3826-2025 NARENDRA KUMAR VISHWAKARMA VERSUS THE STATE OF MADHYA PRADESH AND ORS.",
+              "5.1": "Connected PRAVEEN KUMAR TIWARI VERSUS STATE OF MADHYA PRADESH AND ORS.",
+              "6": "C.A. No. 2528/2025 NARAYANA RAJU AND ANR. VERSUS JAMUNA AND ORS.",
+              "6.1": "Connected NAGARATHNA AND ORS. VERSUS JAMUNA AND ORS.",
+              "7": "ARBIT.PETITON No. M/S DEEP DISTRIBUTORS PVT. LTD. VERSUS TIGER BREWERY INDUSTRIES PVT. LTD.",
+              "8": "SLP(C) No. THE STATE BANK OF INDIA VERSUS VIPUL CHANDRAKANT RAJGOR AND ORS.",
+              "9": "T.P.(C) No. 32/2026 VISHNUMOLAKALA PRABHODHAR VERSUS BODDAPATI RAVI",
+              "10": "SLP(C) No. 13215/2026 KARNATAKA NEERAVARI NIGAM LIMITED VERSUS SUSHILA R. PATIL AND ORS.",
+              "11": "T.P.(C) No. 359/2026 JYOTI TRIPATHI @ JYOTI VERSUS RAJESH",
+              "12": "SLP(Crl) No. A.D. ARUN VERSUS THE STATE OF TAMIL NADU AND ANR.",
+              "13": "SLP(C) No. SHIVSHANKAR RAJBHAR AND ORS. VERSUS BORAD OF REVENUE AND ORS.",
+              "14": "SLP(Crl) No. 6046/2026 AMIT KUMAR @ RINKU VERSUS STATE OF BIHAR AND ANR.",
+              "15": "SLP(Crl) No. 6904/2026 MANDEEP ALIAS MOTHA VERSUS STATE OF HARYANA AND ANR.",
+              "16": "SLP(C) No. 12256/2026 HEMANT A. LELE VERSUS SMITA UDAY BAPAT AND ORS.",
+              "17": "SLP(C) No. LALJI DUBEY VERSUS RATAN SHANKAR MISHRA AND ORS.",
+              "18": "SLP(C) No. 13816/2026 PUSHPANBEN VELJIBHAI SHETA AND ORS. VERSUS BHANUBEN MANHARBHAI AHIR AND ORS.",
+              "19": "SLP(Crl) No. 6916/2026 DEVAJI MENA VERSUS SURESH @ BHAU KANHAIYALAL DHARMAJI BHIL",
+              "20": "SLP(Crl) No. 7676/2026 MUHAMMED SALI CHEENAMMADATH VERSUS STATE OF KERALA AND ORS.",
+              "21": "Diary No. 19644-2026 SAHARA INDIA REAL ESTATE CORP.LTD AND ORS. VERSUS SECURITIES AND EXCH.BOARD OF INDIA AND ANR.",
+              "22": "SLP(C) No. 14084/2026 GEETA DEVI AND ORS. VERSUS SHWETA AGARWAL AND ORS.",
+              "23": "C.A. No. 7955/2026 COMMISSIONER OF CUSTOMS (ADJUDICATION) VERSUS AHMED A R BUHARI COASTAL ENERGY P LTD",
+              "24": "SLP(Crl) No. 6510/2026 TEJO DEVI VERSUS STATE OF HARYANA AND ANR.",
+              "25": "C.A. No. COMMISSIONER OF SERVICE TAX, KOLKATA VERSUS M/S GAINWELL COMMOSALES (FORMERLY KNOWN",
+              "26": "T.P.(C) No. 1427/2026 NAGARATHNA AND ANR. VERSUS KALPITA SAIKIA AND ORS.",
+              "27": "C.A. No. 9799/2026 SARLA DEVI VERSUS NORTHERN RAILWAY CENTRAL HOSPITAL AND",
+              "28": "T.P.(C) No. 1441/2026 SUMATI RAGHAVAN VERSUS SUBRAMANIAN RAGHAVAN",
+              "29": "T.P.(C) No. 1453/2026 KARISHMA DOBHAL KHUGSHAL VERSUS GAURAV KHUGSHAL",
+              "30": "SLP(C) No. 19392/2026 SHRIRAM KESHAV PATHAK VERSUS MUKTABAI AND ORS. SHASHIBHUSHAN P.",
+              "31": "SLP(C) No. 22399/2026 SRINIVASA VERSUS THE STATE OF KARNATAKA AND ORS.",
+              "32": "T.P.(C) No. 1846/2026 AYISHA AFREEN VERSUS ISMAIL KHAN MOHAMMED",
+              "33": "SLP(C) No. 22336/2026 S VELLAISAMY VERSUS THE DISTRICT COLLECTOR AND ORS.",
+              "34": "SLP(Crl) No. MOHAMMED ASGAR VERSUS STATE OF KARNATAKA",
+              "35": "T.P.(C) No. 1840/2026 NEHA BHUSHAN VERSUS DIPANSHU KHANNA"
+            },
+            "advocates": {
+              "1": {
+                "pet": "TARUNA SINGH GOHIL",
+                "resp": "SWATI GHILDIYAL"
+              },
+              "1.1": {
+                "pet": "BHAVNA SARKAR",
+                "resp": "SWATI GHILDIYAL"
+              },
+              "2": {
+                "pet": "HARISHA S.R",
+                "resp": "DILIP ANNASAHEB TAUR"
+              },
+              "3": {
+                "pet": "ROOH-E-HINA DUA",
+                "resp": "MALAK MANISH BHATT"
+              },
+              "4": {
+                "pet": "V. N. RAGHUPATHY"
+              },
+              "5": {
+                "pet": "RUCHI GUPTA",
+                "resp": "MRINAL GOPAL ELKER VIKAS UPADHYAY"
+              },
+              "5.1": {
+                "pet": "VIKAS UPADHYAY",
+                "resp": "MRINAL GOPAL ELKER"
+              },
+              "6": {
+                "pet": "BHARADWAJ S",
+                "resp": "LUBNA NAAZ NISHANTH PATIL"
+              },
+              "6.1": {
+                "pet": "DHARMAPRABHAS LAW",
+                "resp": "LUBNA NAAZ"
+              },
+              "7": {
+                "pet": "PAREKH & CO"
+              },
+              "8": {
+                "pet": "SANJAY KAPUR"
+              },
+              "9": {
+                "pet": "HITENDRA NATH RATH"
+              },
+              "10": {
+                "pet": "HETU ARORA SETHI",
+                "resp": "SANCHIT GARGA NAVEEN SHARMA"
+              },
+              "11": {
+                "pet": "SOMESH CHANDRA JHA"
+              },
+              "12": {
+                "pet": "VISHAL ARUN MISHRA",
+                "resp": "B. KARUNAKARAN"
+              },
+              "13": {
+                "pet": "AKSHAT SRIVASTAVA",
+                "resp": "MOHD. WAQUAS"
+              },
+              "14": {
+                "pet": "VANYA GUPTA",
+                "resp": "MANISH KUMAR"
+              },
+              "15": {
+                "pet": "MPS LEGAL",
+                "resp": "SAMAR VIJAY SINGH"
+              },
+              "16": {
+                "pet": "SURBHI KAPOOR"
+              },
+              "17": {
+                "pet": "VIKASH CHANDRA SHUKLA",
+                "resp": "PRANAY SHRIDHAR CHITALE"
+              },
+              "18": {
+                "pet": "ALAPATI SAHITHYA",
+                "resp": "MEHAAK JAGGI"
+              },
+              "19": {
+                "pet": "JAIKRITI S. JADEJA",
+                "resp": "TARUNA SINGH GOHIL"
+              },
+              "20": {
+                "pet": "JOSE ABRAHAM"
+              },
+              "21": {
+                "pet": "MD. SHAHID ANWAR"
+              },
+              "22": {
+                "pet": "UMESH DUBEY"
+              },
+              "23": {
+                "pet": "GURMEET SINGH MAKKER"
+              },
+              "24": {
+                "pet": "SURENDER SINGH HOODA",
+                "resp": "AKSHAY AMRITANSHU"
+              },
+              "25": {
+                "pet": "GURMEET SINGH MAKKER",
+                "resp": "CHARANYA"
+              },
+              "26": {
+                "pet": "PIYUSH HANS"
+              },
+              "27": {
+                "pet": "HARISH PANDEY"
+              },
+              "28": {
+                "pet": "MISHRA RAJ SHEKHAR"
+              },
+              "29": {
+                "pet": "RATISH KUMAR SHARMA"
+              },
+              "30": {
+                "pet": "SATYAJEET KUMAR"
+              },
+              "31": {
+                "pet": "GURURAJ & NAYAK"
+              },
+              "32": {
+                "pet": "AVADH BIHARI KAUSHIK"
+              },
+              "33": {
+                "pet": "BHAVNA SARKAR",
+                "resp": "M.P. PARTHIBAN"
+              },
+              "34": {
+                "pet": "DHARMAPRABHAS LAW"
+              },
+              "35": {
+                "pet": "PRADEEP KUMAR JHA"
+              }
+            },
+            "main": 35,
+            "supp": 0
+          },
+          "2": {
+            "coram": "MS. GRACY L. BAWITLUNG, REGISTRAR",
+            "total": "35",
+            "fresh": "",
+            "items": {
+              "1": "Diary No. 10628-2026 THE STATE OF ODISHA AND ORS. VERSUS BIPINI BIHARI SAMAL",
+              "2": "Diary No. 44383-2026 SUBBU @ SUBRAMANIYAN VERSUS STATE BY THE DEPUTY SUPERINTENDENT OF",
+              "3": "SLP(C) No. THE ORIENTAL INSURANCE CO. LTD. VERSUS PADAM BAHADUR RAI AND ORS.",
+              "4": "Diary No. 69807-2025 K JAYAPRAKASH AND ANR. VERSUS SHANTHAMMA AND ORS.",
+              "5": "C.A. No. TARUN SAWHNEY VERSUS UDYAN LAL AND ORS. TATINI BASU [CAVEAT] ,",
+              "6": "SLP(Crl) No. 8881/2026 M/S GAJANANA ENTERPRISES VERSUS SYED SHEHZI",
+              "7": "SLP(C) No. KAMLA DEVI VERSUS BANK OF INDIA AND ORS.",
+              "8": "SLP(C) No. NIRMALA AND ANR. VERSUS AMIT KUMAR AND ORS.",
+              "9": "SLP(C) No. HEER MEHTA LANDMARK DEVELOPERS PVT LTD VERSUS SUMOTO ESTATES PRIVATE LIMITED AND ORS.",
+              "10": "SLP(C) No. 28737/2018 BATTA SUBBAMMA VERSUS VIJAYABHASKAR AND ORS.",
+              "11": "SLP(C) No. THE EXECUTIVE OFFICER A/M VERSUS M. NALLI KRISHNAN AND ORS.",
+              "12": "SLP(C) No. 3043/2025 DAWA SHERPA VERSUS THE ORIENTAL INSURANCE COMPANY LTD. AND",
+              "13": "SLP(C) No. 1916/2025 COMMISSIONER OF CUSTOMS LUDHIANA VERSUS VINOD KUMAR GARD",
+              "14": "SLP(C) No. 10222/2025 SHAHNAJ AND ORS. VERSUS SURPAL SINGH S RAOL AND ORS. PARMANAND GAUR [R-3],",
+              "15": "Diary No. 14485-2025 SAMARTH GARDEN CHS LTD VERSUS NARENDRA KUMAR DUBEY AND ORS.",
+              "15.1": "Connected SAMARTH GARDEN CHS LTD VERSUS SUNDEEP DSOUZA AND ORS.",
+              "16": "T.P.(C) No. 1262/2025 RADHA VERMA VERSUS NARESH KUMAR VERMA",
+              "17": "Diary No. 23229-2025 LAJJA RAM AND ORS. VERSUS UNION OF INDIA AND ORS.",
+              "18": "Diary No. 35397-2025 RAMACHANDRAN AND ORS. VERSUS STATE",
+              "19": "C.A. No. COMMISSIONER OF CUSTOMS (PORT) KOLKATA VERSUS M/S ALLIANCE INTERNATIONAL",
+              "20": "SLP(C) No. 17618/2026 STATE OF UP AND ORS. VERSUS DINESH KUMAR SINGH AND ORS.",
+              "21": "R.P.(Crl.) No. 266/2026 MINISTRY OF COMPANY AFFAIRS VERSUS AMIT PATEL AND ORS.",
+              "22": "T.P.(C) No. 3337/2025 KIRTI SINGH VERSUS PRATEEK SINGH BAGHEL",
+              "23": "SLP(C) No. 10194/2026 THAMBI DEVARATHINAM @ K. DEVARATHINAM VERSUS KARUR VYSYA BANK LTD. AND ORS.",
+              "24": "T.P.(Crl.) No. 260/2026 LAKSHMI DEVI VERSUS DEEPA KUMARI AND ORS.",
+              "24.1": "Connected DEEPA KUMARI VERSUS RANJAN KUMAR RAVI",
+              "25": "C.A. No. SECURITIES AND EXCHANGE BOARD OF INDIA VERSUS SUKHRAJ KAUR RAJBANS",
+              "26": "SLP(C) No. 13178/2026 MANVIR KAUR VERSUS GAGANDEEP SINGH",
+              "27": "SLP(Crl) No. 8896/2026 STATE OF KERALA VERSUS NOUSHAR @ KOCHUMONY",
+              "28": "SLP(Crl) No. 8739/2026 MUTHU SUMITH JAIPAL VERSUS THE STATE OF KARNATAKA AND ORS.",
+              "28.1": "Connected SOUNDIRAM MUTHU AND ANR. VERSUS THE STATE OF KARNATAKA AND ORS.",
+              "29": "Diary No. 31627-2026 SURYA KANT VARADE VERSUS HIGH COURT OF MADHYA PRADESH",
+              "30": "SLP(C) No. 22721/2026 STATE OF ODISHA AND ORS. VERSUS SARAT CHANDRA PATRA",
+              "31": "T.P.(C) No. 1849/2026 SUVATI SATYANARAYAN AND ORS. VERSUS DHIRAJ NARENDRA ROKADE AND ANR.",
+              "32": "SLP(Crl) No. PREETI VARMA VERSUS SHARATHU RAJU AND ORS.",
+              "33": "T.P.(C) No. 1843/2026 DEEPA RISHABHA MISHRA@ DEEPA ALOK KUMAR VERSUS RISHABHA RAMESH MISHRA AND ANR.",
+              "34": "T.P.(C) No. 1834/2026 DOLON CHAUDHURY VERSUS ABHISHEK PATRA",
+              "35": "SLP(C) No. 24361/2026 E. SENTHIL ANAND AND ANR. VERSUS SELVI. S. DHIVYA AND ANR."
+            },
+            "advocates": {
+              "1": {
+                "pet": "NAVEEN KUMAR"
+              },
+              "2": {
+                "pet": "VAIRAWAN A.S"
+              },
+              "3": {
+                "pet": "VIRESH B. SAHARYA",
+                "resp": "AKANKSHA MEHRA"
+              },
+              "4": {
+                "pet": "MANISH TIWARI"
+              },
+              "5": {
+                "pet": "DIVYAKANT LAHOTI"
+              },
+              "6": {
+                "pet": "HARISHA S.R"
+              },
+              "7": {
+                "pet": "AKSHAT SHRIVASTAVA",
+                "resp": "AMARJEET SINGH"
+              },
+              "8": {
+                "pet": "SUMANT DATT"
+              },
+              "9": {
+                "pet": "VIKAS MEHTA"
+              },
+              "10": {
+                "pet": "D. ABHINAV RAO",
+                "resp": "GUNTUR PRABHAKAR"
+              },
+              "11": {
+                "pet": "RAKESH K. SHARMA",
+                "resp": "P. SOMA SUNDARAM"
+              },
+              "12": {
+                "pet": "BRAJESH PANDEY &",
+                "resp": "SUDHIR NAAGAR"
+              },
+              "13": {
+                "pet": "GURMEET SINGH MAKKER"
+              },
+              "14": {
+                "pet": "K. PAARI VENDHAN"
+              },
+              "15": {
+                "pet": "TANUJ BAGGA SHARMA"
+              },
+              "15.1": {
+                "pet": "TANUJ BAGGA SHARMA",
+                "resp": "SHASHIBHUSHAN P ADGAONKAR"
+              },
+              "16": {
+                "pet": "PAWANSHREE AGRAWAL"
+              },
+              "17": {
+                "pet": "SATISH KUMAR",
+                "resp": "SANJAY KUMAR SINGH"
+              },
+              "18": {
+                "pet": "R. ILAM PARIDI",
+                "resp": "B. KARUNAKARAN"
+              },
+              "19": {
+                "pet": "GURMEET SINGH MAKKER",
+                "resp": "SANJEEV MALHOTRA"
+              },
+              "20": {
+                "pet": "SAKSHI KAKKAR",
+                "resp": "AKANSHA , AJIT SHARMA"
+              },
+              "21": {
+                "pet": "MADHULIKA UPADHYAY"
+              },
+              "22": {
+                "pet": "ANAS TANWIR"
+              },
+              "23": {
+                "pet": "K. V. VIJAYAKUMAR",
+                "resp": "ARTI ANUPRIYA"
+              },
+              "24": {
+                "pet": "NANITA SHARMA",
+                "resp": "ROBIN KHOKHAR"
+              },
+              "24.1": {
+                "pet": "ROBIN KHOKHAR"
+              },
+              "25": {
+                "pet": "EXPLETUS LEGAL",
+                "resp": "MAYANK PANDEY"
+              },
+              "26": {
+                "pet": "R. N. KESWANI"
+              },
+              "27": {
+                "pet": "JAMES P. THOMAS"
+              },
+              "28": {
+                "pet": "SHANKEY AGRAWAL",
+                "resp": "SANCHIT GARGA DHARMAPRABHAS LAW ASSOCIATES"
+              },
+              "28.1": {
+                "pet": "SHANKEY AGRAWAL",
+                "resp": "SANCHIT GARGA DHARMAPRABHAS LAW ASSOCIATES"
+              },
+              "29": {
+                "pet": "TARUN ARORA"
+              },
+              "30": {
+                "pet": "SRISATYA MOHANTY",
+                "resp": "KEDAR NATH TRIPATHY"
+              },
+              "31": {
+                "pet": "VIVEK KISHORE"
+              },
+              "32": {
+                "pet": "SYED ABDUL HASEEB",
+                "resp": "SANCHIT GARGA"
+              },
+              "33": {
+                "pet": "DEVVRAT"
+              },
+              "34": {
+                "pet": "ABHIJIT BANERJEE"
+              },
+              "35": {
+                "pet": "M.P. PARTHIBAN"
+              }
+            },
+            "main": 35,
+            "supp": 0
+          }
+        }
+      }
     }
   },
   "sources": {
@@ -15524,6 +15895,9 @@
       "M_C_1": 546381,
       "M_S_1": 518973,
       "M_R_1": 532720
+    },
+    "2026-08-17": {
+      "M_R_1": 524308
     }
   },
   "note": "Per-court bench + per-item case line from the SC published lists. Drafting aid only — the court's published list is authoritative."
