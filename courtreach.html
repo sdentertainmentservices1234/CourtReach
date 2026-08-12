@@ -1233,7 +1233,7 @@ function listenerDied(path, err){
   const code=(err&&err.code)||"error";
   console.error("[CourtReach] live updates stopped for "+path+" ("+code+")", err);
   if(path==="orgmsgs"||path==="linkmsgs"||path==="chatreads"){
-    chatErr="Live chat updates stopped ("+code+"). Close and reopen the app to reconnect — anything you sent since may not have gone through.";
+    chatErr="Live chat updates stopped — "+path+": "+code+". Close and reopen the app to reconnect — anything you sent since may not have gone through.";
     if(curTab==="chat") renderChat();
   }
 }
