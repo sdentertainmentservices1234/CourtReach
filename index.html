@@ -278,8 +278,7 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px 12px;-webkit-over
 #flashHost.single .flash-on{font-size:clamp(30px,9vw,56px)}
 #flashHost.single .fl-k{font-size:clamp(12px,2.8vw,16px)} #flashHost.single .fl-v{font-size:clamp(34px,10vw,58px)}
 #flashHost.multi{background:rgba(244,246,249,.9);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);place-content:center;justify-items:stretch;align-items:stretch}
-#flashHost.multi.n2,#flashHost.multi.n3,#flashHost.multi.n4{grid-template-columns:1fr 1fr}
-#flashHost.multi.n5,#flashHost.multi.n6{grid-template-columns:1fr 1fr 1fr}
+#flashHost.multi.n2,#flashHost.multi.n3,#flashHost.multi.n4{grid-template-columns:1fr 1fr}   /* capped at 4 — see showFlash() */
 #flashHost.multi .flash-cell{border-radius:22px;color:#fff;width:100%;max-width:440px;margin:0 auto;min-height:clamp(240px,33vh,340px);justify-content:center;padding:clamp(20px,3.6vh,38px) clamp(16px,4.5vw,30px);animation:flashpulse 1.1s ease-in-out infinite}
 #flashHost.multi .flash-cell.b-green{background:linear-gradient(160deg,#33935a,#1e5d37);box-shadow:0 16px 40px rgba(30,93,55,.34)}
 #flashHost.multi .flash-cell.b-amber{background:linear-gradient(160deg,#ca9827,#876010);box-shadow:0 16px 40px rgba(135,96,16,.32)}
@@ -1938,6 +1937,13 @@ function boardCell(c, mini){
   // number so it never reshuffles as the court progresses (owner: "constant order").
   const best=ks.slice().sort((a,b)=>(TIER_RANK[a.k.tier]-TIER_RANK[b.k.tier])||((a.k.gap??999)-(b.k.gap??999)))[0];
   const tier=best?.k.tier||"idle";
+  // Red is a hair earlier than the engine's own "now" tier (gap<=1): the island specifically
+  // should read red the moment a case is 3 away (owner: "The Court island should become red as
+  // soon as the case is 3 away"), not wait until it reaches "soon"→"now" at gap<=1. Applied
+  // only as a display override on the CELL'S colour — classify()'s own tier (labels, TIER_RANK
+  // sorting, My cases' proximity chip, flash's own colour bands) is untouched, so "3 away"
+  // still READS as "3 away" everywhere, it just paints the island the same red as "now" would.
+  const cellTier = (best && best.k.gap!=null && best.k.gap<=3 && (tier==="now"||tier==="soon")) ? "now" : tier;
   const ordered=ks.slice().sort((a,b)=>(parseFloat(a.e.itemNo)||0)-(parseFloat(b.e.itemNo)||0));
   const overrides=getStrikeOverrides();
   const cnt = ordered.length>=4?" cnt4p":ordered.length===3?" cnt3":"";
@@ -1964,7 +1970,7 @@ function boardCell(c, mini){
   // The island stays a pure court/item/proximity readout — no names. Who's appearing is
   // in My cases and in the court sheet (owner: "I don't want juniors' names coming on the
   // court islands. They are being shown in my cases").
-  return `<div class="cell${stk} ours ${tier} ${idle?"idle":""}${mine?" mycase":""}" ${dc}>
+  return `<div class="cell${stk} ours ${cellTier} ${idle?"idle":""}${mine?" mycase":""}" ${dc}>
     ${mine?`<div class="mycase-rib"><i class="ti ti-star-filled"></i> Your case</div>`:""}
     ${head}
     <div class="cell-ours${cnt}"><span class="oi">${items}</span><span class="ourlab">${esc(best?.k.short||best?.k.label||"—")}</span></div></div>`;
@@ -2169,7 +2175,13 @@ function showFlash(items){
   if(_flashTimer){ clearTimeout(_flashTimer); _flashTimer=null; }
   let host=$("flashHost");
   if(!host){ host=document.createElement("div"); host.id="flashHost"; host.onclick=hideFlash; document.body.appendChild(host); }
-  items=items.slice(0,6);
+  // Capped at 4 (owner: "The flash for more than four courts is spilling out of the screen
+  // size. Limit the flash to four courts at max at a time.") — inRangeMatters() already sorts
+  // closest-first, so this keeps the courts that actually need attention soonest, dropping the
+  // farther ones rather than truncating arbitrarily. A 5th/6th flash cell in a 3-column grid
+  // pushed the multi-court layout to two rows past a typical phone's viewport height — 4 fits
+  // 2×2 within it.
+  items=items.slice(0,4);
   const cell=r=>{
     const body = r.gap<=0
       ? `<div class="flash-on">Our <b>${esc(r.item)}</b> is on</div>`
