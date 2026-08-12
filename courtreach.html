@@ -337,25 +337,18 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px 12px;-webkit-over
 .case-prox.later{color:#1e6b3a;background:#e3f2e8}
 .case-prox.passed,.case-prox.idle{color:#5a6672;background:var(--panel2)}
 /* Owner-declared case status — a row-header badge in place of the proximity chip once set,
-   and the picker that sets/changes/clears it inside the row body. */
+   and the bar that sets/changes/clears it. Two earlier attempts (a hidden-behind-accordion
+   picker, then a "Mark status" hint chip pointing at it) still weren't found (owner: "the
+   status option is still not there despite multiple bug reviews. Its not there") — so this bar
+   is now its OWN block, unconditionally rendered right under the row head, not tucked inside
+   the collapsible body behind any tap-to-reveal interaction at all. */
 .case-status-chip{margin-left:auto;flex:none;font-size:10.5px;font-weight:800;letter-spacing:.3px;
   border-radius:20px;padding:4px 11px;text-transform:uppercase;white-space:nowrap;color:#fff}
 .case-status-chip.over_att{background:#1e6b3a}
 .case-status-chip.over_absent{background:var(--now)}
 .case-status-chip.passover{background:#33507e}
 .case-status-chip.not_taken{background:#6b7787}
-/* A tap-to-expand accordion row hid the status picker with no visible sign it existed there
-   (owner: "there is no mark status option in my cases tab. We had worked on it but its not
-   there") — it was there, just undiscoverable behind a bare chevron. This chip is the missing
-   sign: shown right on the collapsed row, for exactly the cases where a status CAN be set and
-   hasn't been, so it disappears the moment one is (the status chip above takes its place). It
-   rides the row head's own data-toggle (no separate wiring needed) — tapping it opens the same
-   picker a tap anywhere else on the head already did, now with something telling you it's there.*/
-.case-markst-hint{margin-left:auto;flex:none;display:flex;align-items:center;gap:4px;font-size:10.5px;
-  font-weight:700;letter-spacing:.2px;color:var(--accent);border:1px dashed var(--accent);
-  border-radius:20px;padding:4px 10px;white-space:nowrap}
-.case-markst-hint i{font-size:12px}
-.case-status-picker{margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
+.case-status-bar{padding:10px 13px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--panel2)}
 .cr-lab2{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);margin-bottom:7px}
 .status-opts{display:flex;flex-wrap:wrap;gap:6px}
 .status-opt{flex:none;font-size:12px;font-weight:600;padding:7px 12px;border-radius:9px;border:1px solid var(--line);
@@ -1614,46 +1607,50 @@ function classify(e){ const bc=boardByCourt()[String(e.courtNo)];
     seqByCourt, remarksByCourt, boardPO:boardPO.marks, recalledPO:recalledPO.set, poMarks:po, doneMarks:done,
     miscTotalByCourt:miscTotalByCourt(), itemHi:itemHi.max }); }
 
-// Record passovers we see live on the board (accumulated for the day — the live board only
-// ever shows ONE row per court, its CURRENT item, so a passover that's scrolled off has to be
-// remembered from an earlier poll or it's lost), and each court's highest-seen item (used to
-// detect the Misc→Regular reset).
+// Record passovers we see live (accumulated for the day) and each court's highest-seen item
+// (used to detect the Misc→Regular reset).
 //
-// boardPO.marks used to only ever GROW: an item once seen as "PASS OVER" stayed in it for the
-// rest of the day even after the court called it again and disposed of it, because nothing
-// ever removed it. board-engine.js's passoversBeforeOurs()/outstandingMiscPO both read this
-// set to answer "how many passovers still rank ahead of me" — with stale entries never
-// clearing, that count only ever went UP through the day, never down, no matter how many
-// passovers the court actually worked through (owner: "once passovers cases are taken up the
-// app is failing to see sequence of passovers and failing to calculate how far our case ...
-// is"). Fixed the only way it can be: the board itself is the sole source of truth for "is
-// this exact item passed-over RIGHT NOW", so the moment we see a previously-marked item as the
-// court's current item again WITHOUT that remark, it's been recalled — clear it. recalledPO
-// remembers that this happened (separately, and never cleared — needed for as long as the
-// item stays "on", not just the one poll the transition happened in) so the board can show
-// "PO6" instead of a bare "6" (owner: "if it was passed over and then taken up ... it should
-// show PO6"), and so board-engine.js can tell a still-untouched passover queue (estimate by
-// assuming recall waits for the rest of the list) from one it's now seen active recalls in
-// (estimate by queue position instead — see the "in the passover queue" branch in classify()).
+// Two rounds' worth of this still wasn't working (owner: "You are wrong on the passover being
+// marked through status option ... the passovers are feeded in the court island passover tab
+// directly from the display board information") — and that panel, courtPassovers(), was right
+// there the whole time: it reads the FULL remarksByCourt items map for a court (every item the
+// remark column currently reports, not just one), which is exactly the live source of truth.
+// This function, though, only ever looked at `board` — ONE row per court, whichever item is
+// CURRENT at the moment of a poll. A passover is essentially never still "current" by the next
+// poll — the whole point of a passover is the court has already moved on — so the transition
+// this was supposed to catch (marked passed-over → later recalled) needed that exact item to
+// BE the board's current row on two separate polls, which barely ever happens. Owner's own
+// repro nails it: Court 11's item 11 (a passover) got recalled and item 11 was never observed
+// by this function as "current + passed over" at any point, so recalledPO never learned this
+// court had ANY recall activity today, so classify() kept assuming recalls wait for the end of
+// the list — and separately, board-engine.js's passoversBeforeOurs()/miscPOLeft depend on the
+// SAME stale boardPO.marks set this function maintains, so a passover that was never correctly
+// recorded outstanding could never correctly drop out once resolved either.
+//
+// Fixed to scan every item remarksByCourt currently reports for each court, not the board's
+// single current row — matching what courtPassovers() already does, and reusing
+// board-engine.js's own passoverItemsFor() rather than re-implementing its matching rules, so
+// this can never quietly drift from what classify() itself considers "passed over".
 function recordBoardPO(){
   if(boardPO.date!==todayISO()) boardPO={date:todayISO(),marks:{}};
   if(recalledPO.date!==todayISO()) recalledPO={date:todayISO(),set:{}};
+  for(const court in remarksByCourt){
+    const outstanding=ENG.passoverItemsFor({remarksByCourt}, court);   // {normalizedItem: {...}}
+    for(const key in boardPO.marks){
+      const i=key.indexOf("_"); if(i<=0 || key.slice(0,i)!==court) continue;
+      if(!(key.slice(i+1) in outstanding)){ delete boardPO.marks[key]; recalledPO.set[key]=true; }
+    }
+    for(const n in outstanding) boardPO.marks[court+"_"+n]=true;
+  }
+  // The raw board row's own status text can flag a passover the remark column hasn't (yet)
+  // picked up — same transition logic, just against the board's single current item, and
+  // normalised the same way (Math.floor(parseFloat(...))) so keys never mismatch between the
+  // two sources above and below.
   for(const c of board){
     if(!c.item) continue;
-    const key=String(c.court)+"_"+String(c.item);
-    // "Still passed over right now" per EITHER live signal — the board row's own raw status
-    // text (c.passover), OR the dedicated remark column (remarksByCourt, fetched separately,
-    // refreshed every ~40s, and the one actually behind "cases which are noted in the app as
-    // pass over" — owner: "PO tag is not working despite the Court 8 taking up passover cases
-    // which are noted in the app as pass over"). Only checking c.passover missed every
-    // passover that was ONLY ever flagged via the remark column and never literally showed
-    // "pass over" in the board's own raw status text — which is the common case, since the
-    // remark column is the more complete, authoritative source (board-engine.js's own
-    // passoverItemsFor() already trusts it over the raw board text for the same reason).
-    // Reusing that exact function here — not a re-implementation of its matching rules —
-    // means this can never quietly drift from what classify() itself considers "passed over".
-    const stillPO = c.passover || (Math.floor(parseFloat(c.item)) in ENG.passoverItemsFor({remarksByCourt}, c.court));
-    if(stillPO) boardPO.marks[key]=true;
+    const n=Math.floor(parseFloat(c.item)); if(isNaN(n)) continue;
+    const key=String(c.court)+"_"+n;
+    if(c.passover) boardPO.marks[key]=true;
     else if(boardPO.marks[key]){ delete boardPO.marks[key]; recalledPO.set[key]=true; }
   }
 }
@@ -1664,8 +1661,10 @@ function noteItemHi(){
 // Is a court's CURRENT item one that was passed over and has now been recalled (owner: "if a
 // case number 6 which was passed over ... is called again after some time it should show
 // PO6")? Reads the same recalledPO set recordBoardPO() maintains — true for as long as this
-// exact item stays the court's current one, false again the moment it moves on.
-const wasRecalledPO = (court,item) => !!(item && recalledPO.set[String(court)+"_"+String(item)]);
+// exact item stays the court's current one, false again the moment it moves on. Normalised the
+// same way recordBoardPO() writes its keys (Math.floor(parseFloat(...))), so "40" and "40.0"
+// (or a decimal sub-item) can never mismatch between the two.
+const wasRecalledPO = (court,item) => { const n=Math.floor(parseFloat(item)); return !isNaN(n) && !!recalledPO.set[String(court)+"_"+n]; };
 
 /* ===== ROUTE RAIL — ported from the SD display board =====
    "Which court to reach, in what order" — a walking-distance-aware ETA per court,
@@ -2276,6 +2275,13 @@ function renderMine(){
     const who = m._with ? "with "+m._with : (m.byLabel || (m._by&&m._by!==me?.uid ? memberName(m._by) : ""));
     const st=m.status && CASE_STATUSES[m.status];
     const editable=!m._readonly && m._by===me?.uid && m.source!=="daysheet";
+    // The status picker used to live inside .case-row-body, behind the same tap-to-expand
+    // accordion as the title/meta/actions — with a "Mark status" hint chip added on the
+    // collapsed row pointing at it. Neither made it reliably found (owner, after that hint chip
+    // had already shipped: "the status option is still not there despite multiple bug reviews.
+    // Its not there"). Rather than guess at a THIRD reason a tap-to-reveal control might be
+    // failing to register or be seen on a real device, removed the dependency on the
+    // interaction entirely — it's now its own block, always rendered, never behind a chevron.
     return `<div class="case-row">
       <div class="case-row-head" data-toggle="1">
         <span class="cr-sn">${i+1}.</span>
@@ -2284,20 +2290,19 @@ function renderMine(){
         ${m.scope==="personal"?`<span class="cr-tag">Personal</span>`:""}
         ${st?`<span class="case-status-chip ${m.status}">${esc(st.badge)}</span>`
           :k?`<span class="case-prox ${proxBandOf(k)}">${esc(k.short||"—")}</span>`:""}
-        ${(editable&&!st)?`<span class="case-markst-hint"><i class="ti ti-flag-3"></i> Mark status</span>`:""}
         <i class="ti ti-chevron-down cr-chev"></i>
       </div>
+      ${editable?`<div class="case-status-bar">
+        <div class="cr-lab2">Status${st?` — tap "${esc(st.label)}" again to clear`:""}</div>
+        <div class="status-opts">${Object.entries(CASE_STATUSES).map(([key,def])=>
+          `<button class="status-opt${m.status===key?" on "+key:""}" data-setstatus="${esc(m.id)}|${key}">${esc(def.label)}</button>`).join("")}
+        </div>
+      </div>`:""}
       <div class="case-row-body">
         <div class="case-title">${esc(m.title||("Court "+m.court+" · item "+m.item))}</div>
         ${bits?`<div class="case-meta">${esc(bits)}</div>`:""}
         ${m.bench?`<div class="case-meta"><span class="cm-k">Bench</span>${esc(m.bench)}</div>`:""}
         ${m.aor?`<div class="case-meta"><span class="cm-k">AoR</span>${esc(m.aor)}</div>`:""}
-        ${editable?`<div class="case-status-picker">
-          <div class="cr-lab2">Status${st?` — tap "${esc(st.label)}" again to clear`:""}</div>
-          <div class="status-opts">${Object.entries(CASE_STATUSES).map(([key,def])=>
-            `<button class="status-opt${m.status===key?" on "+key:""}" data-setstatus="${esc(m.id)}|${key}">${esc(def.label)}</button>`).join("")}
-          </div>
-        </div>`:""}
         ${m.source==="daysheet"?`<div class="case-meta" style="opacity:.7"><i class="ti ti-refresh"></i> Synced from the day sheet — edit it there, not here.</div>`
           :editable?`<div class="case-acts">
           ${inOrg()?`<button class="case-del" data-scope="${esc(m.id)}"><i class="ti ti-${isChamberMatter(m)?"eye-off":"building-bank"}"></i> ${isChamberMatter(m)?"Make private":"Share with organisation"}</button>`:""}
