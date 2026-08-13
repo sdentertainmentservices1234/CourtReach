@@ -258,6 +258,10 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px 12px;-webkit-over
 .cell.stk.mini .ourlab{font-size:10.5px}
 .cell.stk.mini .cell-ours.cnt3 .ourlab{font-size:9.5px}
 .cell.stk.mini .cell-ours.cnt4p .ourlab{font-size:8.5px}
+/* the Supreme Court's own remark column text, when it's saying something beyond plain
+   proximity — DISMISSED, LIST ON <date>, AFTER N WEEKS, PASS OVER, etc. */
+.ourremark{display:block;font-size:10px;font-weight:600;opacity:.85;margin-top:2px;text-transform:none;letter-spacing:0}
+.cell.stk.mini .ourremark{font-size:9px}
 .oi-sep{opacity:.6;margin:0 1px}
 .oi-it{cursor:pointer;border-radius:3px;padding:0 1px}
 .oi-it.struck{text-decoration:line-through;text-decoration-thickness:1.6px;opacity:.72}
@@ -387,6 +391,7 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px 12px;-webkit-over
 .cm-mine{display:flex;align-items:flex-start;gap:10px;background:#fbf3df;border:1px solid #e6d29a;border-radius:11px;padding:9px 12px;margin-bottom:6px}
 .cm-mine-it{font-family:var(--mono);font-size:15px;font-weight:800;color:var(--navy);flex:none;line-height:1.35}
 .cm-mine-t{flex:1;min-width:0;font-size:12.5px;line-height:1.35;color:var(--ink);overflow-wrap:anywhere}
+.cm-mine-rmk{display:block;font-size:11px;font-weight:700;color:var(--accent);margin-top:2px}
 .cm-mine-s{flex:none;font-size:10px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;border-radius:20px;padding:3px 8px;white-space:nowrap}
 .cm-mine-s.now{color:#fff;background:var(--now)}
 .cm-mine-s.soon{color:#7a4f0d;background:#f8efd8}
@@ -1606,6 +1611,14 @@ function classify(e){ const bc=boardByCourt()[String(e.courtNo)];
     nowMins:nowMinsIST(), boardByCourt:boardByCourt(),
     seqByCourt, remarksByCourt, boardPO:boardPO.marks, recalledPO:recalledPO.set, poMarks:po, doneMarks:done,
     miscTotalByCourt:miscTotalByCourt(), itemHi:itemHi.max }); }
+// The raw remark-column text for one of OUR items — "DISMISSED", "OVER", "LIST ON 25.08.2026",
+// "AFTER 4 WEEKS", "PASS OVER", whatever the Supreme Court's own board is currently showing
+// against that exact item (owner: "Sometimes the Supreme Court Display Board show information
+// about what happened to a case like is it dismissed, over, or list on __ date or after ___
+// weeks, passover etc. I want that remark to be shown"). Same source, same decimal-item
+// normalisation, as isOver()/isPassOver() use internally — this just surfaces the text itself
+// instead of only a yes/no.
+const remarkFor = (court,item) => ENG.detailRemark({remarksByCourt}, court, item);
 
 // Record passovers we see live (accumulated for the day) and each court's highest-seen item
 // (used to detect the Misc→Regular reset).
@@ -1990,10 +2003,18 @@ function boardCell(c, mini){
   // The island stays a pure court/item/proximity readout — no names. Who's appearing is
   // in My cases and in the court sheet (owner: "I don't want juniors' names coming on the
   // court islands. They are being shown in my cases").
+  // The Supreme Court's own remark column, when it says something beyond plain proximity —
+  // dismissed, list on a future date, after N weeks, passover, etc. (owner: "Sometimes the
+  // Supreme Court Display Board show information about what happened to a case ... I want that
+  // remark to be shown below our case number"). Shown for the same MOST URGENT item the rest of
+  // this card already summarises (best), not every tracked item here — the court sheet (tap the
+  // island) breaks it out per item for a multi-case court.
+  const remark = best ? remarkFor(c.court, best.e.itemNo) : "";
   return `<div class="cell${stk} ours ${cellTier} ${idle?"idle":""}${mine?" mycase":""}" ${dc}>
     ${mine?`<div class="mycase-rib"><i class="ti ti-star-filled"></i> Your case</div>`:""}
     ${head}
-    <div class="cell-ours${cnt}"><span class="oi">${items}</span><span class="ourlab">${esc(best?.k.short||best?.k.label||"—")}</span></div></div>`;
+    <div class="cell-ours${cnt}"><span class="oi">${items}</span><span class="ourlab">${esc(best?.k.short||best?.k.label||"—")}</span>
+      ${remark?`<span class="ourremark">${esc(remark)}</span>`:""}</div></div>`;
 }
 
 /* ===== COURT DETAIL — tap an island for its coram, declared sequence, passovers ===== */
@@ -2062,7 +2083,12 @@ function openCourtModal(court,_refetched){
     ${mineHere.length?`<div class="cm-h"><i class="ti ti-star-filled"></i> ${inOrg()?"Chamber case":"Your case"}${mineHere.length>1?"s":""} here</div>${mineHere.map(e=>{ const k=classify(e);
       // on a chamber board, say whose matter each item is
       const who = inOrg() ? (e.byName||"") : "";   // already resolved by shape() — byLabel first, then account name
-      return `<div class="cm-mine"><span class="cm-mine-it">${esc(e.itemNo)}</span><span class="cm-mine-t">${esc(e.caseTitle||("item "+e.itemNo))}${who?` <span style="color:var(--mut)">· ${esc(who)}</span>`:""}</span><span class="cm-mine-s ${proxBandOf(k)}">${esc(k.short||"—")}</span></div>`; }).join("")}`:""}
+      // the board's own remark for THIS specific item — a multi-case court can have a
+      // different remark per item, so unlike the island (which only shows the most urgent
+      // one), the court sheet breaks it out per item (owner: "then in the pop up that comes
+      // after clicking the court island").
+      const rmk=remarkFor(court, e.itemNo);
+      return `<div class="cm-mine"><span class="cm-mine-it">${esc(e.itemNo)}</span><span class="cm-mine-t">${esc(e.caseTitle||("item "+e.itemNo))}${who?` <span style="color:var(--mut)">· ${esc(who)}</span>`:""}${rmk?`<span class="cm-mine-rmk">${esc(rmk)}</span>`:""}</span><span class="cm-mine-s ${proxBandOf(k)}">${esc(k.short||"—")}</span></div>`; }).join("")}`:""}
     <div class="cm-card"><div class="cm-h"><i class="ti ti-list-numbers"></i> Declared sequence</div>${seq.length
       ?`<div class="cm-body">${esc(seqRanges(seq))}, then the rest of the cases</div>`
       :`<div class="cm-none">Not declared yet.</div>`}</div>
