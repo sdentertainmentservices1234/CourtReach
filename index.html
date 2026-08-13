@@ -2719,7 +2719,7 @@ async function sendLinkMsg(id){ const ta=$("cl_ta"); const text=(ta?ta.value:"")
   const pendingId="_pending"+Date.now();
   linkMsgs=[...linkMsgs, {...rec, id:pendingId, at:new Date(), _pending:true}];
   renderThread(id);
-  try{ await db.add("linkmsgs", {...rec, at:db.now()}); }
+  try{ const newId = await db.add("linkmsgs", {...rec, at:db.now()}); notifyChatPush("linkmsgs", newId); }
   catch(e){
     linkMsgs=linkMsgs.filter(m=>m.id!==pendingId);
     ta.value=text; renderThread(id);
@@ -3398,8 +3398,9 @@ async function sendChat(){
     if(curTab==="chat") renderChat();
   },12000);
   try{
-    await db.add(coll, {...base, at:db.now()});
+    const newId = await db.add(coll, {...base, at:db.now()});
     settled=true; clearTimeout(slow);
+    notifyChatPush(coll, newId);
     // The listener has already delivered the real document by now (Firestore raises the local
     // snapshot before the server ack this await is waiting on), so retiring the optimistic
     // copy here swaps clock for tick rather than blanking the bubble.
@@ -4273,6 +4274,44 @@ function notifyReaching(items){
    in-page path above still covers the app-open case regardless. */
 function _b64ToU8(s){ s=s.replace(/-/g,"+").replace(/_/g,"/"); s+="=".repeat((4-s.length%4)%4);
   const bin=atob(s), u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i); return u; }
+/* Tell the worker a message has landed, so the recipients' locked phones light up now rather
+   than whenever the next cron tick happens to run (owner: "people will not use the app if
+   messages are not popping on their locked phone screen like whatsapp does"). Case alerts
+   have to be POLLED — nobody is holding a phone waiting to report that a court moved — but a
+   message is the opposite: the sender is right here, so it can announce itself immediately.
+
+   Only the collection and the document id go over the wire. The worker reads the message back
+   out of Firestore and works out the recipients itself, so nothing here can put words in
+   somebody's mouth or aim a notification at a person outside the conversation.
+
+   Deliberately not awaited and deliberately silent: the message is already saved and already
+   on screen by this point. A failed notification must never make a delivered message look
+   like it failed. */
+/* Tapping a chat notification should land you in the conversation, not on whatever tab you
+   last left open. The service worker can't switch tabs itself, so it focuses the window and
+   posts here; #chat covers the case where the app had to be launched cold. Guarded on being
+   signed in and in an organisation, so a stale notification can't drop a signed-out user on
+   a tab that isn't theirs. */
+function openChatFromNotification(){
+  if(!me || !inOrg()) return;
+  const b=document.querySelector('nav.botnav button[data-tab="chat"]');
+  if(b) b.click();
+}
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.addEventListener("message", ev=>{
+    if(ev.data && ev.data.crOpen==="chat") openChatFromNotification();
+  });
+}
+if(location.hash==="#chat") setTimeout(()=>{ openChatFromNotification(); history.replaceState(null,"",location.pathname); }, 1200);
+
+function notifyChatPush(coll, id){
+  if(!coll || !id) return;
+  auth.idToken().then(idToken=>{
+    if(!idToken) return;
+    return fetch(BOARD_PROXY+"/cr-push-chat",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({idToken, coll, id})});
+  }).catch(()=>{});
+}
 async function syncPushSub(){
   try{
     if(!VAPID_PUBLIC_KEY || !notifOn || !me?.uid) return;

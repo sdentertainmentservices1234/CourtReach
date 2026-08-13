@@ -25,6 +25,27 @@ independent of whether you (or anyone) has the app open anywhere. That's the onl
 it actually covers a solo advocate — if your phone is the only device and it's locked,
 nothing else exists to notice your case got close unless the worker is doing it itself.
 
+## Two different things, on purpose
+
+**Case alerts are polled.** The cron watcher below re-reads the Supreme Court board every
+minute and works out whether anything of yours got close. It has to be a poll: nobody is
+sitting there ready to tell us a court moved on.
+
+**Chat messages announce themselves.** When you send a message, your app calls
+`/cr-push-chat` the instant the message is saved, and the recipients' phones light up in
+about a second. Polling would have been wrong here — a minute-late message in a courtroom
+is worse than useless — and unnecessary, because the sender's app is open by definition.
+Owner: *"people will not use the app if messages are not popping on their locked phone
+screen like whatsapp does."*
+
+The chat endpoint takes only a collection name and a document id. Everything else is read
+back out of Firestore by the worker: the message must already exist, its `by` must be the
+caller, and the recipient list is derived from the stored document. So nobody can push
+words somebody never said, push as somebody else, or aim a notification at a person
+outside the conversation. The `team` thread also skips the senior, exactly as the in-app
+badge does — they asked not to be pulled into every message, and a push that ignored that
+would undo the point of the thread.
+
 ---
 
 ## One-time setup (~20 min)

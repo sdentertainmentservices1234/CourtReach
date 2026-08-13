@@ -15,20 +15,37 @@ self.addEventListener("activate", e => { e.waitUntil(self.clients.claim()); });
 self.addEventListener("push", e => {
   let d = {};
   try { d = e.data ? e.data.json() : {}; } catch (_) { d = { body: e.data ? e.data.text() : "" }; }
-  const title = d.title || "CourtReach";
-  const opts = {
-    body: d.body || "", tag: d.tag || "cr", renotify: true, data: d,
-    icon: "icon-192-v2.png", badge: "icon-192-v2.png",
-    vibrate: [160, 90, 160],
-  };
-  e.waitUntil(self.registration.showNotification(title, opts));
+  e.waitUntil((async () => {
+    // Is the app already on screen? A chat message arriving while you are looking at the chat
+    // tab does not need to buzz the phone — you can see it. The notification is still SHOWN,
+    // because a push handler that shows nothing gets the browser's own "this site was updated
+    // in the background" notice instead, which is worse; it is just shown quietly.
+    const cs = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const onScreen = cs.some(c => c.visibilityState === "visible");
+    const quiet = onScreen && d.kind === "chat";
+    const title = d.title || "CourtReach";
+    await self.registration.showNotification(title, {
+      body: d.body || "", tag: d.tag || "cr", renotify: !quiet, data: d,
+      icon: "icon-192-v2.png", badge: "icon-192-v2.png",
+      silent: quiet,
+      vibrate: quiet ? undefined : [160, 90, 160],
+    });
+  })());
 });
-// Tapping the notification focuses the app if it's already open somewhere, else opens it.
+// Tapping the notification focuses the app if it's already open somewhere, else opens it —
+// and for a chat message, asks the page to switch to the Chat tab, so tapping lands you in
+// the conversation rather than wherever you happened to leave the app.
 self.addEventListener("notificationclick", e => {
   e.notification.close();
+  const kind = (e.notification.data && e.notification.data.kind) || "";
   e.waitUntil((async () => {
     const cs = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    for (const c of cs) { if ("focus" in c) return c.focus(); }
-    if (self.clients.openWindow) return self.clients.openWindow("./index.html");
+    for (const c of cs) {
+      if ("focus" in c) {
+        try { if (kind === "chat") c.postMessage({ crOpen: "chat" }); } catch (_) {}
+        return c.focus();
+      }
+    }
+    if (self.clients.openWindow) return self.clients.openWindow(kind === "chat" ? "./index.html#chat" : "./index.html");
   })());
 });
