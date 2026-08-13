@@ -80,7 +80,9 @@ jobs:
           assert len(m)==1, f"expected 1 module script, found {len(m)}"
           open('/tmp/_built.mjs','w').write(m[0])
           EOF
-          npx terser /tmp/_built.mjs -o /dev/null   # parses, or this step fails
+          # --module matters: the app uses top-level await, which is only legal in a module.
+          # Without it this check fails on correct output.
+          npx terser /tmp/_built.mjs --module -o /dev/null   # parses, or this step fails
 
           ls -la _site
 
