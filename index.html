@@ -3908,8 +3908,9 @@ function renderSettings(){
         const good=(j.results||[]).filter(x=>+x.status>=200 && +x.status<300).length;
         pushTestMsg = good
           ? `Sent to ${good} of ${j.devices} device${j.devices===1?"":"s"}. If nothing appears, the phone is blocking it — check CourtReach's notification settings there.`
-          : `⚠️ The push service refused it: ${esc((j.results||[]).map(x=>x.status).join(", "))}. `+
-            `403 means the worker's VAPID keys don't match this app's; 404 or 410 means the subscription had expired and has been cleared — test again.`;
+          : `⚠️ The push service refused it: ${esc((j.results||[]).map(x=>x.status+(x.detail?" — "+x.detail:"")).join("; "))}. `+
+            `403 means the worker's VAPID keys don't match this app's; 404 or 410 means the subscription had expired and has been cleared — test again; `+
+            `"error — DataError" means a VAPID secret on the worker is malformed or the two halves aren't a pair — re-paste both.`;
       }
     }catch(e){ pushTestMsg="Couldn't reach the alert service — "+esc((e&&e.message)||"failed")+"."; }
     pt.disabled=false; renderSettings();
