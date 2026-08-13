@@ -658,6 +658,55 @@ main#main.chatmode{overflow:hidden;display:flex;flex-direction:column}
 .thr-n{background:var(--now);color:#fff;font-size:10px;font-weight:800;border-radius:20px;
   min-width:17px;height:17px;display:inline-flex;align-items:center;justify-content:center;padding:0 4px}
 .thr.on .thr-n{background:#fff;color:var(--navy)}
+/* ===== CHAT — thread list beside the conversation =====
+   A horizontal strip of chips was fine for three threads and stopped being fine the moment a
+   chamber had colleagues, DMs and outside collaborators in it: the one you wanted scrolled
+   off sideways and there was nothing to say who had written last (owner: "I want chat
+   interface to be made like whatsapp"). So it's a list and a conversation, the shape every
+   messaging app has settled on. On a phone they're two screens with a back arrow; from
+   820px up they sit side by side and the back arrow disappears, because there is nothing to
+   go back TO when the list never left. */
+.chat2{display:flex;flex:1;min-height:0}
+.chat-list{width:100%;flex:none;display:flex;flex-direction:column;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.chat-conv{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0;position:relative}
+@media(max-width:819px){
+  .chat-conv{display:none}
+  .chat2.open .chat-list{display:none}
+  .chat2.open .chat-conv{display:flex}
+}
+@media(min-width:820px){
+  .chat-list{width:288px;border-right:1px solid var(--line);padding-right:6px}
+  .chat-conv{padding-left:14px}
+  .cv-back{display:none}
+}
+.cl-head{flex:none;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--mut);padding:2px 4px 8px}
+.cl-row{display:flex;align-items:center;gap:11px;width:100%;padding:10px 6px;text-align:left;
+  background:none;border:none;border-bottom:1px solid var(--line);color:var(--ink);font-family:inherit}
+.cl-row:active{background:var(--panel2)}
+.cl-row.on{background:var(--panel2)}
+.cl-av{flex:none;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:var(--navy);color:#fff;font-size:13px;font-weight:800;letter-spacing:.02em}
+.cl-av.room{background:var(--accent)}
+.cl-av.ext{background:var(--mut)}
+/* these are spans (a <button> may not contain block-level elements), so the stacking has to
+   be asked for explicitly — left inline they run the name and the preview onto one line */
+.cl-mid{flex:1;min-width:0;display:block}
+.cl-nm{display:block;font-size:14.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cl-last{display:block;font-size:12.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.cl-row.unread .cl-nm{font-weight:800}
+.cl-row.unread .cl-last{color:var(--ink);font-weight:600}
+.cl-right{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:5px;min-width:38px}
+.cl-time{font-size:10.5px;color:var(--mut);white-space:nowrap}
+.cl-n{background:var(--now);color:#fff;font-size:10px;font-weight:800;border-radius:20px;
+  min-width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
+/* conversation header — who you're talking to, and the way back on a phone */
+.cv-head{display:flex;align-items:center;gap:10px;flex:none;padding:2px 2px 9px;border-bottom:1px solid var(--line)}
+.cv-back{flex:none;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);
+  background:var(--panel);color:var(--ink);font-size:16px}
+.cv-who{flex:1;min-width:0;display:block}
+.cv-nm{display:block;font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cv-sub{display:block;font-size:11.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
 /* jump-to-latest, shown only when you've scrolled up */
 .chat-jump{position:absolute;right:14px;bottom:74px;width:38px;height:38px;border-radius:50%;
   border:1px solid var(--line);background:var(--panel);color:var(--ink);font-size:17px;
@@ -1543,6 +1592,10 @@ const memberName = uid => (orgMembers.find(m=>m.id===uid)||{}).name || (uid===me
 // above) — one more tap to actually send is a small cost for that safety.
 const QUICK_REPLIES = ["Noted","On my way","In court","Will call","OK"];
 let chatChannel="team", chatMsgs=[], chatUnsub=null, chatChannelPicked=false;
+// Phone only: is the conversation showing, or the list of them? From 820px up both are on
+// screen at once and this is ignored. Starts false, so opening Chat lands on the list —
+// which is the point of having one.
+let chatOpen=false;
 // The three sources chatMsgs is assembled from. Kept apart because each listener replaces its
 // OWN slice wholesale: with one shared array, a room message arriving would wipe an in-flight
 // DM's optimistic bubble (and vice versa), making a message the user just sent flicker out.
@@ -3159,21 +3212,57 @@ async function markChatRead(ch){
   try{ await db.set("chatreads/"+me.uid,{orgId:me.orgId, [ch]:ts},true); }catch(e){}
 }
 // Threads, in the order this particular person should see them.
+/* Every conversation this account can hold, in one list: the two rooms, one row per chamber
+   colleague, and one per outside advocate briefing the office (owner: "I want all names
+   there, chamber colleagues, team, everyone, collaborating advocate etc").
+   `full` is what the list shows — a column has room for a real name, unlike the old chips,
+   which had to abbreviate to a first name to fit. */
 function chatThreads(){
   const leader=isOrgLeader();
   const list=[];
-  if(!leader) list.push({id:"team", label:"Team", sub:"Colleagues & staff"});
-  list.push({id:"all", label:"Everyone", sub:"Whole organisation"});
-  if(leader) list.push({id:"team", label:"Team", sub:"Colleagues & staff"});
+  if(!leader) list.push({id:"team", label:"Team", full:"Team", sub:"Colleagues & staff", room:true});
+  list.push({id:"all", label:"Everyone", full:"Everyone", sub:"Whole organisation", room:true});
+  if(leader) list.push({id:"team", label:"Team", full:"Team", sub:"Colleagues & staff", room:true});
   orgMembers.filter(m=>m.id!==me?.uid).sort((a,b)=>String(a.name||"").localeCompare(String(b.name||"")))
     .forEach(m=>list.push({id:dmChannel(me.uid,m.id), label:(m.name||"Colleague").split(" ")[0],
       sub:m.designation||"", dm:true, uid:m.id, full:m.name||"Colleague"}));
-  // briefing lawyers / AoRs who addressed the office as a whole
+  // Advocates outside the chamber. Two sources, deliberately merged: someone who has already
+  // written to the office (extMsgs), AND every live collaboration whether or not a word has
+  // been exchanged yet. Listing only the first meant a senior you were actively collaborating
+  // with simply wasn't in the list until they spoke first, which is not a list of people you
+  // can message — it's a list of people who happened to message you.
+  // The LINK decides whose thread this is, not the last message in it. Naming it from the
+  // messages meant that the moment the office replied first, `m.name` was the replier — so
+  // the thread renamed itself after whoever in the chamber had spoken last, and could end up
+  // labelled with your own name. The link knows who the other party is; ask it.
   const seen={};
-  extMsgs.forEach(m=>{ if(!seen[m.linkId]) seen[m.linkId]={linkId:m.linkId, name:m.extName||m.name||"Collaborator"}; });
+  activeLinks().forEach(l=>{ seen[l.id]={linkId:l.id, name:otherName(l)||"Collaborator"}; });
+  extMsgs.forEach(m=>{ if(seen[m.linkId]) return;              // a lapsed link with history
+    const l=(links||[]).find(x=>x.id===m.linkId);
+    seen[m.linkId]={linkId:m.linkId, name:(l?otherName(l):"")||m.extName||"Collaborator"}; });
   Object.values(seen).forEach(x=>list.push({id:"ext:"+x.linkId, label:(x.name||"").split(" ")[0],
-    sub:"Outside the chamber", ext:true, linkId:x.linkId, full:x.name}));
+    sub:"Outside the chamber", ext:true, linkId:x.linkId, full:x.name||"Collaborator"}));
   return list;
+}
+/* The list is ordered by who spoke last, the way a messaging app is — otherwise the thread
+   that actually needs an answer sits below three silent ones. Threads with nothing in them
+   keep their declared order underneath (rooms, then colleagues A-Z, then collaborators), so
+   an empty chamber doesn't look shuffled and a colleague you've never messaged is still
+   exactly where you'd reach for them. */
+function chatThreadsSorted(){
+  const list=chatThreads().map((t,i)=>{
+    const msgs=chatIn(t.id), last=msgs[msgs.length-1];
+    return {...t, _i:i, last, lastAt:last?tsMs(last.at):0};
+  });
+  return list.sort((a,b)=> (b.lastAt-a.lastAt) || (a._i-b._i));
+}
+// "Nikhil: on my way" — who spoke, then what, the way a list row summarises a thread.
+function threadPreview(t){
+  if(!t.last) return t.sub||"";
+  const mine=t.last.by===me?.uid;
+  const who = mine ? "You" : (t.dm ? "" : String(t.last.byName||t.last.name||"").split(" ")[0]);
+  const body=String(t.last.text||"").replace(/\s+/g," ").trim();
+  return (who?who+": ":"")+body;
 }
 function paintChatBadge(){
   const b=$("chatBadge"); if(!b) return;
@@ -3261,20 +3350,51 @@ function renderChat(){
     : (isOrgLeader() ? `Your colleagues' and staff's thread — you can read and post, but you're not notified here.`
         : hasLeader() ? `Colleagues and staff — ${esc(orgLeaderName())} isn't notified here. Message them directly to reach them.`
         : `Colleagues and staff.${isOrgOwner()?" No senior nominated yet — set one in Settings \u2192 Organisation and this thread will leave them out.":""}`);
-  $("main").innerHTML=`<div class="chat-wrap">
-    <div class="chat-threads">${threads.map(t=>{ const n=unreadCount(t.id);
-      const mute=isOrgLeader()&&t.id==="team";
-      return `<button class="thr${t.id===chatChannel?" on":""}" data-ch="${esc(t.id)}">${esc(t.label)}${(n&&!mute&&t.id!==chatChannel)?`<span class="thr-n">${n>9?"9+":n}</span>`:""}</button>`;}).join("")}</div>
-    <div class="reg-hint" style="margin:0 0 6px">${blurb}</div>
-    <div class="chat-log" id="chatLog">${body||`<div class="chat-empty"><i class="ti ti-message-2"></i><div>No messages yet.</div><div style="opacity:.7">Say something to get the thread started.</div></div>`}</div>
-    <button class="chat-jump hidden" id="chatJump" aria-label="Jump to latest"><i class="ti ti-arrow-down"></i></button>
-    <div class="am-err" id="chatSendErr" style="margin:0 2px 4px">${esc(chatErr)}</div>
-    <div class="chat-quick">${QUICK_REPLIES.map(q=>`<button class="qr-chip" data-qr="${esc(q)}">${esc(q)}</button>`).join("")}</div>
-    <div class="chat-send">
-      <textarea id="chatText" rows="1" placeholder="Message${cur.dm?" "+esc(cur.full):""}…"></textarea>
-      <button id="chatSend" aria-label="Send"><i class="ti ti-send"></i></button>
-    </div></div>`;
-  $("main").querySelectorAll("[data-ch]").forEach(b=>b.onclick=()=>{ chatChannel=b.dataset.ch; chatChannelPicked=true; markChatRead(chatChannel); renderChat(); });
+  const rows=chatThreadsSorted().map(t=>{
+    const n=unreadCount(t.id);
+    const mute=isOrgLeader()&&t.id==="team";   // the senior is never badged here — see chatThreads()
+    const unread=n&&!mute;
+    return `<button class="cl-row${t.id===chatChannel?" on":""}${unread?" unread":""}" data-ch="${esc(t.id)}">
+      <span class="cl-av${t.room?" room":t.ext?" ext":""}">${esc(t.room?initials(t.full):initials(t.full))}</span>
+      <span class="cl-mid">
+        <span class="cl-nm">${esc(t.full)}</span>
+        <span class="cl-last">${esc(threadPreview(t))}</span>
+      </span>
+      <span class="cl-right">
+        ${t.lastAt?`<span class="cl-time">${esc(clockIST(t.lastAt))}</span>`:""}
+        ${unread?`<span class="cl-n">${n>9?"9+":n}</span>`:""}
+      </span></button>`;
+  }).join("");
+
+  $("main").innerHTML=`<div class="chat-wrap"><div class="chat2${chatOpen?" open":""}">
+    <div class="chat-list">
+      <div class="cl-head">Chats</div>
+      ${rows}
+    </div>
+    <div class="chat-conv">
+      <div class="cv-head">
+        <button class="cv-back" id="chatBack" aria-label="Back to chats"><i class="ti ti-chevron-left"></i></button>
+        <span class="cl-av${cur.room?" room":cur.ext?" ext":""}">${esc(initials(cur.full))}</span>
+        <span class="cv-who"><span class="cv-nm">${esc(cur.full)}</span><span class="cv-sub">${esc(cur.sub||"")}</span></span>
+      </div>
+      <div class="reg-hint" style="margin:8px 0 4px">${blurb}</div>
+      <div class="chat-log" id="chatLog">${body||`<div class="chat-empty"><i class="ti ti-message-2"></i><div>No messages yet.</div><div style="opacity:.7">Say something to get the thread started.</div></div>`}</div>
+      <button class="chat-jump hidden" id="chatJump" aria-label="Jump to latest"><i class="ti ti-arrow-down"></i></button>
+      <div class="am-err" id="chatSendErr" style="margin:0 2px 4px">${esc(chatErr)}</div>
+      <div class="chat-quick">${QUICK_REPLIES.map(q=>`<button class="qr-chip" data-qr="${esc(q)}">${esc(q)}</button>`).join("")}</div>
+      <div class="chat-send">
+        <textarea id="chatText" rows="1" placeholder="Message${cur.dm?" "+esc(cur.full):""}…"></textarea>
+        <button id="chatSend" aria-label="Send"><i class="ti ti-send"></i></button>
+      </div>
+    </div></div></div>`;
+  $("main").querySelectorAll("[data-ch]").forEach(b=>b.onclick=()=>{
+    chatChannel=b.dataset.ch; chatChannelPicked=true; chatOpen=true;
+    _chatStick=true;                     // opening a thread lands you at its newest message
+    markChatRead(chatChannel); renderChat();
+  });
+  // Only ever reachable on a phone; from 820px up the list never left, so there is nothing
+  // to go back to and the button is hidden in CSS.
+  const back=$("chatBack"); if(back) back.onclick=()=>{ chatOpen=false; renderChat(); };
   // tap any message — copy for anyone's, plus edit/delete for your own (msgActions() sorts
   // out which)
   $("main").querySelectorAll("[data-mid]").forEach(b=>b.onclick=()=>msgActions(b.dataset.mid));
@@ -3304,7 +3424,11 @@ function renderChat(){
   });
   // See the comment at the top of this function — this is the other half of it.
   if(taWasFocused){ ta.focus(); try{ ta.setSelectionRange(taSel.start, taSel.end); }catch(e){} }
-  markChatRead(chatChannel); paintChatBadge();
+  // Only mark read when the conversation is actually on screen. On a phone showing the LIST,
+  // the selected thread is not being looked at, and marking it read there would clear a badge
+  // for messages nobody has seen — the one thing an unread count must never do.
+  if(chatOpen || window.matchMedia("(min-width:820px)").matches) markChatRead(chatChannel);
+  paintChatBadge();
 }
 // Message actions — was own-messages-only (Edit/Delete). Copying text out of chat (a case
 // number, a time, an address someone typed) is just as useful on a COLLEAGUE's message as your
