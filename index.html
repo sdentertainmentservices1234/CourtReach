@@ -360,14 +360,22 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px 12px;-webkit-over
 .case-status-chip.not_taken{background:#6b7787}
 .case-status-bar{padding:10px 13px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--panel2)}
 .cr-lab2{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);margin-bottom:7px}
-.status-opts{display:flex;flex-wrap:wrap;gap:6px}
-.status-opt{flex:none;font-size:12px;font-weight:600;padding:7px 12px;border-radius:9px;border:1px solid var(--line);
-  background:var(--panel2);color:var(--ink)}
-.status-opt.on{color:#fff;border-color:transparent}
-.status-opt.on.over_att{background:#1e6b3a}
-.status-opt.on.over_absent{background:var(--now)}
-.status-opt.on.passover{background:#33507e}
-.status-opt.on.not_taken{background:#6b7787}
+/* One dropdown instead of the former row of four buttons (owner: "I want status option in
+   the mycases tab to be a dropdown menu and not a display of options over there") — four
+   wrapping chips per case made every row tall and busy for a control that is used once per
+   case per day. The native select keeps the OS picker behaviour on phones for free.
+   -webkit-appearance:none + an inlined chevron because iOS otherwise draws its own bezel. */
+.status-sel{width:100%;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink);
+  background:var(--panel2) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="8" viewBox="0 0 12 8"><path d="M1 1.5 6 6.5 11 1.5" fill="none" stroke="%23788292" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>') no-repeat right 12px center;
+  border:1px solid var(--line);border-radius:9px;padding:9px 34px 9px 12px;
+  -webkit-appearance:none;appearance:none}
+.status-sel:focus{outline:none;border-color:var(--accent)}
+.status-sel.has-status{color:#fff;border-color:transparent}
+.status-sel.has-status.over_att{background-color:#1e6b3a}
+.status-sel.has-status.over_absent{background-color:var(--now)}
+.status-sel.has-status.passover{background-color:#33507e}
+.status-sel.has-status.not_taken{background-color:#6b7787}
+.status-sel.has-status option{color:var(--ink);background:var(--panel)}
 .case-title{font-family:Fraunces,serif;font-weight:600;font-size:15.5px;color:var(--ink);margin-top:0;line-height:1.28}
 .case-meta{font-size:12.5px;color:var(--mut);margin-top:4px;line-height:1.35}
 .case-meta .cm-k{font-weight:700;color:var(--ink);opacity:.65;text-transform:uppercase;font-size:9.5px;letter-spacing:.4px;margin-right:6px}
@@ -2651,15 +2659,17 @@ function renderMine(){
         <span class="cr-cn">C${esc(m.court)}/${esc(m.item)}</span>
         ${who?`<span class="cr-who">${esc(who)}</span>`:""}
         ${m.scope==="personal"?`<span class="cr-tag">Personal</span>`:""}
-        ${st?`<span class="case-status-chip ${m.status}">${esc(st.badge)}</span>`
+        ${st?`<span class="case-status-chip ${esc(cur)}">${esc(st.badge)}</span>`
           :k?`<span class="case-prox ${proxBandOf(k)}">${esc(k.short||"—")}</span>`:""}
         <i class="ti ti-chevron-down cr-chev"></i>
       </div>
       ${canMark?`<div class="case-status-bar">
-        <div class="cr-lab2">Status${stBy?` — marked by ${esc(stBy)}`:""}${st?` — tap "${esc(st.label)}" again to clear`:""}</div>
-        <div class="status-opts">${Object.entries(CASE_STATUSES).map(([key,def])=>
-          `<button class="status-opt${cur===key?" on "+key:""}" data-setstatus="${esc(m.id)}|${key}">${esc(def.label)}</button>`).join("")}
-        </div>
+        <div class="cr-lab2">Status${stBy?` — marked by ${esc(stBy)}`:""}</div>
+        <select class="status-sel${cur?" has-status "+esc(cur):""}" data-setstatus="${esc(m.id)}" aria-label="Case status">
+          <option value=""${cur?"":" selected"}>No status</option>
+          ${Object.entries(CASE_STATUSES).map(([key,def])=>
+            `<option value="${key}"${cur===key?" selected":""}>${esc(def.label)}</option>`).join("")}
+        </select>
       </div>`:""}
       <div class="case-row-body">
         <div class="case-title">${esc(m.title||("Court "+m.court+" · item "+m.item))}</div>
@@ -2689,19 +2699,21 @@ function wireMine(){
   // Mark/change/clear a case's status — tapping the already-active option clears it, so
   // there's no separate "clear" control to hunt for (owner: "Allow the status marked to be
   // updated or removed").
-  $("main").querySelectorAll("[data-setstatus]").forEach(x=>x.onclick=async(ev)=>{
-    ev.stopPropagation();
-    const [id,key]=x.dataset.setstatus.split("|");
-    // Looked up in the RENDERED list, not myOwn — the matter being marked may well be a
-    // colleague's, which is the whole point of this change.
-    const m=(mineShown||[]).find(r=>String(r.id)===id);
-    if(!m) return;
-    // Tapping the active option clears it. An explicit null, not a delete: prod deep-merges
-    // nested maps, so a removed key would simply come back.
-    const rec = statusFor(m)===key ? null
-              : {v:key, by:me.uid, byName:me.name||"", at:db.now()};
-    try{ await db.set("matterstatus/"+statusScope(m), {marks:{[statusKey(m)]:rec}}, true); }
-    catch(e){}
+  $("main").querySelectorAll("[data-setstatus]").forEach(x=>{
+    x.onclick=ev=>ev.stopPropagation();          // opening the picker must not toggle the row
+    x.onchange=async(ev)=>{
+      ev.stopPropagation();
+      const id=x.dataset.setstatus, key=x.value;
+      // Looked up in the RENDERED list, not myOwn — the matter being marked may well be a
+      // colleague's, which is the whole point of the shared store.
+      const m=(mineShown||[]).find(r=>String(r.id)===id);
+      if(!m) return;
+      // "No status" writes an explicit null, not a delete: prod deep-merges nested maps, so
+      // a removed key would simply come back.
+      const rec = key ? {v:key, by:me.uid, byName:me.name||"", at:db.now()} : null;
+      try{ await db.set("matterstatus/"+statusScope(m), {marks:{[statusKey(m)]:rec}}, true); }
+      catch(e){}
+    };
   });
   // flip a matter between the chamber board and your own private one
   $("main").querySelectorAll("[data-scope]").forEach(x=>x.onclick=async(ev)=>{
