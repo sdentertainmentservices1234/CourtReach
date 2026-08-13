@@ -3,10 +3,21 @@
 Pops a notification on your phone **even when the app is closed and the phone is
 locked** — the moment a case you're tracking (your own, or your chamber's) gets close.
 
-Built on **Web Push (VAPID)**, delivered by the **same Cloudflare worker** CourtReach
-already uses for the board relay (`BOARD_PROXY`, `sd-board.*.workers.dev` — shared with
-SD-Chamber's own board, but CourtReach's push keys/subscribers are kept completely
-separate from theirs, just living in the same worker).
+Built on **Web Push (VAPID)**, delivered by **CourtReach's own Cloudflare worker**
+(`worker.js` in this repo), which also serves the board relay (`BOARD_PROXY`).
+
+**This used to run inside SD-Chamber's `sd-board` worker and no longer does.** That was
+defensible while the worker was only a stateless relay for public board data. It stopped
+being defensible once push landed: this worker holds a KV namespace, VAPID keys and a
+Firebase **service-account key** — full admin on `courtreach-ee02b` — and runs its own
+cron. Sharing meant CourtReach's production credentials sat behind whoever could edit the
+chamber's worker, that CourtReach shared a process with SD-Chamber's unauthenticated
+`/push-send` endpoint, and that shipping a fix for one app meant redeploying the other's.
+The repos were split for exactly this reason; the worker had not been split with them.
+
+The board-proxy half is now duplicated in both workers rather than shared. That is fine:
+it is stateless, holds no secrets, and each worker's own edge cache keeps the load on the
+Supreme Court's site to roughly the couple of fetches a minute it was before.
 
 **Autonomous, not a relay.** Unlike a simpler "some open app notices and asks the
 worker to fan it out" design, this worker checks the board **on its own schedule**,
@@ -32,14 +43,16 @@ lost it, generate a fresh pair (any VAPID keygen tool) and update both the worke
 secret and `VAPID_PUBLIC_KEY` in `courtreach.html` to match — they have to be the same
 pair.
 
-### 2. Cloudflare — add a KV namespace and secrets to the worker
+### 2. Cloudflare — create CourtReach's worker, then add a KV namespace and secrets
 
-Dashboard → **Workers & Pages** → the `sd-board` worker (same one BOARD_PROXY already
-points at) → **Settings**:
+Dashboard → **Workers & Pages → Create → Worker**. Name it **`courtreach`** (the name
+becomes the hostname, so it ends up at `courtreach.<your-subdomain>.workers.dev`). Paste
+this repo's `worker.js` into the editor and **Deploy** once, so the worker exists — then
+→ **Settings**:
 
 - **Bindings → KV namespace binding** → create a new namespace (name it e.g.
   `cr-push-subs`) → bind it with **Variable name `CR_SUBS`** (exactly — the worker code
-  looks for this name specifically, kept separate from SD-Chamber's own `SUBS` binding).
+  looks for this name specifically).
 - **Variables and Secrets** → add these **Secrets**:
   - `CR_VAPID_PUBLIC`  = `BN9wPypVjBf04WZHnjoeNSBj885wrdi6w_gSX3SUr4jncPEfPB9xmdoCL7-HptWiaik9vnkIb8KtYyUsSZYWK-Q`
     (same value as `VAPID_PUBLIC_KEY` in `courtreach.html` — public, safe either place)
@@ -54,13 +67,20 @@ points at) → **Settings**:
     Otherwise: Firebase console → **courtreach-ee02b** → gear icon → **Project
     settings → Service accounts → Generate new private key**.
 
-### 3. Deploy the updated worker
+### 3. Point the app at the new worker
 
-Paste the updated `worker.js` (in `~/Projects/DisplayBoard/board-dev/worker.js` on this
-laptop — same shared worker source, now with CourtReach's `/cr-push-*` endpoints and
-its own scheduled watcher added alongside SD-Chamber's existing code) into the worker's
-editor → **Deploy**. Everything SD-Chamber already has keeps working unchanged; this
-only adds new code paths.
+Copy the new worker's `*.workers.dev` URL and set it as `BOARD_PROXY` in
+`courtreach.html` (then mirror to `index.html` and push — the Pages build deploys it).
+Until this is done the app still talks to `sd-board`, and the new worker sits idle.
+
+Check it first, before switching — the relay half needs nothing configured:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' 'https://courtreach.<your-subdomain>.workers.dev/?ctype=c'
+```
+
+`200` means the proxy works and the switch is safe. Redeploy after any later edit to
+`worker.js`; the dashboard editor cannot import from this repo, so it is a manual paste.
 
 ### 4. Add the Cron Trigger
 
@@ -118,9 +138,13 @@ crossing into range, phone locked or not.
   existing `toggleNotify()`.
 - `sw.js` — the service worker's `push`/`notificationclick` handlers (new file —
   CourtReach had no service worker before this).
-- `~/Projects/DisplayBoard/board-dev/worker.js` — the shared worker's source. The
-  CourtReach section is clearly marked (search `COURTREACH — autonomous closed-phone
-  push`) and includes an embedded copy of `board-engine.js`'s classify() logic (the
-  dashboard editor can't import across repos, so it's a manual paste — re-sync it here
-  if `board-engine.js` ever changes) plus the Firestore REST + service-account auth
-  code.
+- `worker.js` (this repo) — CourtReach's own worker: board relay, `/cr-push-*` with
+  Firebase ID-token verification, the autonomous watcher, Firestore REST +
+  service-account auth, and `board-engine.js` embedded **whole** between explicit BEGIN
+  and END markers. The dashboard editor can't import across repos, so the engine is a
+  manual paste — when `board-engine.js` changes, copy the entire file over the block
+  between those markers rather than hand-editing it there. A hand-maintained partial
+  copy is exactly how the worker previously drifted three fixes behind the app and
+  started quoting distances the app itself had stopped quoting.
+  It is NOT published by the Pages build: `.github/workflows/deploy-pages.yml` copies an
+  explicit allow-list of browser files, so nothing here reaches courtreach.app.
