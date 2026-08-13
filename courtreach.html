@@ -2000,23 +2000,53 @@ async function fetchRemarksFor(court,token){
    any more. Expiring in that case fails the safe way round, by going quiet rather than by
    continuing to assert something we can no longer confirm. */
 const REMARK_STALE=10*60000;
+/* Has this court actually sat TODAY?
+   ------------------------------------------------------------------------------------------
+   The Supreme Court's remark column does not reset overnight. Yesterday's remarks are still
+   there the next morning — until about 9.30am — so an item 53 in Court 10 that was over on
+   the 13th is still reported OVER on the 14th, hours before the court opens at 10.30 (owner,
+   exactly this case). Timestamping our FETCH did not help: the fetch is today's, only its
+   contents are yesterday's, so `day` matched and the record was kept.
+
+   Nor is a clock cutoff enough on its own — it would be a guess about when the board clears,
+   and wrong on any day the court sits early or the board is slow.
+
+   The board itself answers it. Every court reads "Not in Session" until it opens, so a court
+   we have never once seen sitting today cannot have produced a remark today: whatever is in
+   that column is left over. Once we HAVE seen it sitting, its remarks are today's and stay
+   trusted for the rest of the day, including after it rises again — which a plain clock rule
+   would get wrong at the other end, discarding the genuine end-of-day results. */
+let satToday={}, satTodayDay="";
+function noteSittingToday(){
+  const today=todayISO();
+  if(satTodayDay!==today){ satToday={}; satTodayDay=today; remarksByCourt={}; _remarkAt={}; }
+  for(const c of board||[]){
+    if(!c || !c.court) continue;
+    const idle=/not in session/i.test(c.status||"");
+    const hasItem=String(c.item||"").trim()!=="";
+    if(!idle || hasItem) satToday[String(c.court)]=true;
+  }
+}
+const courtSatToday = court => !!satToday[String(court)];
 function purgeStaleRemarks(){
   const today=todayISO(), cutoff=Date.now()-REMARK_STALE;
   for(const c in remarksByCourt){
     const r=remarksByCourt[c];
-    if(!r || r.day!==today || (r.at||0)<cutoff){ delete remarksByCourt[c]; delete _remarkAt[c]; }
+    if(!r || r.day!==today || (r.at||0)<cutoff || !courtSatToday(c)){ delete remarksByCourt[c]; delete _remarkAt[c]; }
   }
 }
 function refreshRemarks(){
   purgeStaleRemarks();
   const want=new Set(activeMatters().map(e=>String(e.courtNo)));
-  for(const c of board){ if(want.has(String(c.court)) && c.token) fetchRemarksFor(c.court,c.token); }
+  // Not fetched at all for a court that hasn't sat yet: there is nothing there today but
+  // yesterday's leavings, and not asking is simpler than asking and then discarding.
+  for(const c of board){ if(want.has(String(c.court)) && c.token && courtSatToday(c.court)) fetchRemarksFor(c.court,c.token); }
 }
 async function fetchBoard(){
   try{
     const html = await (await fetch(BOARD_PROXY+"?ctype=c",{cache:"no-store"})).text();
     const p=parseBoard(html);
-    if(p.courts.length){ board=p.courts; boardAt=Date.now(); boardErr=null; recordBoardPO(); noteItemHi(); recordPace(); } else boardErr="empty";
+    if(p.courts.length){ board=p.courts; boardAt=Date.now(); boardErr=null; noteSittingToday(); recordBoardPO(); noteItemHi(); recordPace(); } else boardErr="empty";
   }catch(e){ boardErr=String(e&&e.message||e); }
   loadCourtUpdates();       // Misc totals (throttled) — for Regular + end-of-board passover
   fetchSeqLine();           // published sequence order (throttled)

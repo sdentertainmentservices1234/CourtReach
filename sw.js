@@ -24,9 +24,17 @@ self.addEventListener("push", e => {
     const onScreen = cs.some(c => c.visibilityState === "visible");
     const quiet = onScreen && d.kind === "chat";
     const title = d.title || "CourtReach";
+    // icon: the full-colour app icon, shown large inside the notification on Android.
+    // badge: a DIFFERENT asset on purpose — Android's status-bar icon discards all colour
+    // and tints the remaining alpha, so handing it the opaque full-colour icon rendered as
+    // a plain grey square (owner: "I want proper app icon to come in the notification
+    // panels"). notif-badge.png is a white-on-transparent silhouette of the chevron mark,
+    // which is the shape that API actually wants. iOS ignores both fields and always shows
+    // the installed app's own icon — which is the correct outcome there, and needs the app
+    // added to the Home Screen.
     await self.registration.showNotification(title, {
       body: d.body || "", tag: d.tag || "cr", renotify: !quiet, data: d,
-      icon: "icon-192-v2.png", badge: "icon-192-v2.png",
+      icon: "icon-192-v2.png", badge: "notif-badge.png",
       silent: quiet,
       vibrate: quiet ? undefined : [160, 90, 160],
     });

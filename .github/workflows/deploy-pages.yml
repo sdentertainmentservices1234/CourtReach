@@ -67,7 +67,7 @@ jobs:
 
           # Everything a browser actually asks for, and nothing else.
           cp manifest.json sw.js CNAME court-updates.json _site/
-          cp icon-192-v2.png icon-512-v2.png favicon-32-v2.png apple-touch-icon-v2.png _site/
+          cp icon-192-v2.png icon-512-v2.png favicon-32-v2.png apple-touch-icon-v2.png notif-badge.png _site/
 
           # board-engine.js is plain JS — Terser handles it directly.
           npx terser board-engine.js --format comments=false -o _site/board-engine.js
