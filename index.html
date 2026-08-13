@@ -3815,7 +3815,9 @@ function renderSettings(){
         <button class="sh-btn" id="st_pushTest" type="button" style="flex:none;width:auto;padding:8px 14px;margin:0">Test</button>
       </div>
       ${pushTestMsg?`<div class="stg-sub" style="padding:0 2px 6px">${pushTestMsg}</div>`:""}
-      ${lastChatPush?`<div class="stg-sub" style="padding:0 2px 8px">Last message you sent: ${lastChatPush.recipients} ${lastChatPush.recipients===1?"person":"people"} in that conversation, ${lastChatPush.devices} registered ${lastChatPush.devices===1?"device":"devices"}, ${lastChatPush.sent} notified.</div>`:""}
+      ${lastChatPush?`<div class="stg-sub" style="padding:0 2px 8px">${lastChatPush.err
+        ?`⚠️ Last message you sent: the alert could not be processed — ${esc(lastChatPush.err)}.${/firestore/i.test(lastChatPush.err)?" The worker's CR_FIRESTORE_SA_KEY secret is bad — re-paste it.":""}`
+        :`Last message you sent: ${lastChatPush.recipients} ${lastChatPush.recipients===1?"person":"people"} in that conversation, ${lastChatPush.devices} registered ${lastChatPush.devices===1?"device":"devices"}, ${lastChatPush.sent} notified.`}</div>`:""}
     </div>`);
 
   /* ---- Security ---- */
@@ -4614,7 +4616,11 @@ function notifyChatPush(coll, id){
     // Kept only so Settings can say what the last message actually did. "Nobody in this
     // conversation" and "somebody was, but no device of theirs is registered" are different
     // problems with the same symptom — silence — and this is what tells them apart.
-    if(j) lastChatPush={at:Date.now(), recipients:j.recipients, devices:j.devices, sent:j.sent};
+    // An ERROR reply is kept as its own thing — storing it as if it were counts is how the
+    // line once read "undefined people, undefined devices": the worker had answered
+    // {"error": ...} and the counts were printed anyway, burying the one fact that mattered.
+    if(j && j.ok) lastChatPush={at:Date.now(), recipients:j.recipients, devices:j.devices, sent:j.sent};
+    else if(j) lastChatPush={at:Date.now(), err:String(j.error||"failed")};
   }).catch(()=>{});
 }
 let lastChatPush=null;
