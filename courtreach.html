@@ -1310,6 +1310,16 @@ if(DEMO){
   const qrows=(p,s)=> s.ff ? rows(p).filter(r=>String(r[s.ff.f]??"")===String(s.ff.v))
                     : s.af ? rows(p).filter(r=>Array.isArray(r[s.af.f]) && r[s.af.f].includes(s.af.v))
                     : rows(p);
+  // A merging write in real Firestore merges nested MAPS recursively — it does not replace
+  // them — which is why clearing a nested key needs an explicit null tombstone rather than a
+  // delete. The demo store used a one-level spread, so a write of {marks:{k:v}} replaced the
+  // whole marks map here and merged into it in production: the demo would have quietly
+  // disagreed with prod about the one feature it is being used to test. Arrays are replaced
+  // wholesale, as Firestore does.
+  const isMap=v=>v&&typeof v==="object"&&!Array.isArray(v)&&!(v instanceof Date)&&!("_t" in v);
+  const deepMerge=(a,b)=>{ const out={...a};
+    for(const k in b) out[k] = (isMap(b[k]) && isMap(a[k])) ? deepMerge(a[k], b[k]) : b[k];
+    return out; };
   const emitC=p=>subs.filter(s=>!s.doc&&s.path===p).forEach(s=>s.cb(qrows(p,s)));
   const emitD=p=>subs.filter(s=>s.doc&&s.path===p).forEach(s=>{const[cp,id]=split(p);s.cb(exists(cp,id)?{id,...C(cp).get(id)}:null);});
   db={ watchCollection(path,cb){const s={path,cb,doc:false};subs.push(s);cb(qrows(path,s));return()=>subs.splice(subs.indexOf(s),1);},
@@ -1330,7 +1340,7 @@ if(DEMO){
           const err=new Error("Missing or insufficient permissions."); err.code="permission-denied"; throw err;
         }
       }
-      const[cp,id]=split(path);const m=C(cp);m.set(id,merge?{...(m.get(id)||{}),...data}:{...data});emitC(cp);emitD(path);},
+      const[cp,id]=split(path);const m=C(cp);m.set(id,merge?deepMerge(m.get(id)||{},data):{...data});emitC(cp);emitD(path);},
     async add(path,data){const id=gid();C(path).set(id,{...data});emitC(path);return id;},
     async update(path,data){const[cp,id]=split(path);const m=C(cp);m.set(id,{...(m.get(id)||{}),...data});emitC(cp);emitD(path);},
     async remove(path){const[cp,id]=split(path);C(cp).delete(id);emitC(cp);}, now };
@@ -1600,7 +1610,9 @@ const shape = (m, uid) => ({courtNo:String(m.court), itemNo:String(m.item), case
   // chamber owner's own usermatters doc). Only when absent do we fall to the literal "You"
   // for your own matter, else the colleague's real account name.
   byName:m.byLabel || (uid===me?.uid?"You":memberName(uid)),
-  date:matterDate(m), scope:m.scope||"chamber", source:m.source||"", status:m.status||""});
+  // Resolved through the shared store, so a colleague's mark on a chamber matter reaches
+  // the proximity engine (doneMarks/poMarks) and the island exactly like your own would.
+  date:matterDate(m), scope:m.scope||"chamber", source:m.source||"", status:statusFor(m)});
 const usable = m => m && m.court && m.item && isCourtroom(m.court);
 // MY matters for a date. In a chamber, "mine" means the ones I keep OUT of the office.
 const myMatters = (date, personalOnly) => (myOwn||[])
@@ -1640,6 +1652,42 @@ const CASE_STATUSES = {
   passover:    {label:"Passover",                 badge:"Passover"},
   not_taken:   {label:"Not taken up",              badge:"Not taken up"},
 };
+/* WHERE A STATUS MARK LIVES — matterstatus/{scopeId}, not on the matter itself.
+   -------------------------------------------------------------------------------
+   A status used to be a field inside the owner's usermatters doc, which made it the one
+   thing on a shared board only its owner could touch (owner: "I want members of
+   organisations including chamber members to be able to mark status"). Letting colleagues
+   write into each other's usermatters would have granted them the whole matters ARRAY —
+   one bad write and a colleague's entire case list is gone. Firestore rules can't say "only
+   the status of one element of this array may change"; the array is a single field.
+
+   So the mark moved out. A status is a small, daily, shared observation — "this one's
+   over", "this one's been passed over" — and it belongs to the board it is about:
+     chamber matter  -> matterstatus/{orgId}   any member of that chamber may write
+     personal matter -> matterstatus/{myUid}   nobody else can see it, let alone mark it
+   The rules then only ever hand a colleague a bag of status marks. Cases stay untouchable.
+
+   It also fixes something the old model simply couldn't do: a day-sheet-synced matter is
+   rewritten wholesale by sync_daysheet.py every ten minutes, so a status written onto the
+   matter was wiped within the hour — which is exactly why marking was disabled for them.
+   A mark held outside the matter survives the sync, so synced matters are markable now.
+
+   Keys are date_court_item with dots flattened (item 62.1 -> 62-1), so nothing here can be
+   mistaken for a Firestore field PATH. Clearing writes an explicit null rather than
+   deleting the key: prod deep-merges nested maps, so a deleted key would just persist. */
+let statusOwn={}, statusOrg={}, statusOrgUnsub=null;
+const statusKey = m => (matterDate(m)+"_"+String(m.court)+"_"+String(m.item)).replace(/\./g,"-");
+const statusBag = m => (isChamberMatter(m) && me?.orgId) ? statusOrg : statusOwn;
+const statusScope = m => (isChamberMatter(m) && me?.orgId) ? me.orgId : (me?.uid||"");
+function statusFor(m){
+  const rec = statusBag(m)[statusKey(m)];
+  // undefined = never marked in the shared store, so fall back to a legacy mark still
+  // sitting on the matter. null = marked and then explicitly cleared, which must WIN over
+  // the legacy value rather than fall through to it.
+  if(rec !== undefined) return (rec && rec.v) || "";
+  return m.status || "";
+}
+const statusByName = m => { const r=statusBag(m)[statusKey(m)]; return (r && r.by!==me?.uid && r.byName) || ""; };
 // Built fresh per classify() call (cheap — same pattern as boardByCourt()/miscTotalByCourt()
 // elsewhere here) from whichever cases are currently in scope: always mine + (in a chamber)
 // the whole office's — same fixed, tab-independent set as flashMatters(), so a status you
@@ -2362,6 +2410,7 @@ const proxBandOf = k => k.tier==="now"?"now":k.tier==="soon"?"soon":k.tier==="la
    The list shows ONE day at a time — whichever the header calendar is on — so it always
    agrees with the board beside it (owner: "should refresh its information and display
    only as per date selected in the header calendar button"). */
+let mineShown=[];        // the rows renderMine() last drew — see the note where it's set
 function mineViews(){
   const v=[{id:"mine", label:"My cases", icon:"ti-gavel"}];
   if(inOrg()) v.push({id:"chamber", label:myOrg?.name||"Organisation", icon:"ti-building-bank"});
@@ -2391,6 +2440,9 @@ function renderMine(){
   const t=todayISO(), d=boardDate;
   const list=mineRows().filter(m=>onDate(m,d))
     .sort((a,b)=>(parseInt(a.court)||99)-(parseInt(b.court)||99)||(parseFloat(a.item)||0)-(parseFloat(b.item)||0));
+  // Kept for wireMine()'s status handler: a row may belong to a colleague, so it can't be
+  // found by id in myOwn any more.
+  mineShown=list;
   let h=viewStrip(views, mineView, "data-mv");
   // the day this list is for, and a way back to today when it isn't
   h+=`<div class="mine-day"><span class="md-d">${esc(d===t?"Today":fmtDateLong(d))}</span>
@@ -2410,8 +2462,15 @@ function renderMine(){
     // byLabel covers a matter mirrored in from outside CourtReach (e.g. a day sheet)
     // and tagged to someone with no CourtReach account of their own to attribute to.
     const who = m._with ? "with "+m._with : (m.byLabel || (m._by&&m._by!==me?.uid ? memberName(m._by) : ""));
-    const st=m.status && CASE_STATUSES[m.status];
+    const cur=statusFor(m), st=cur && CASE_STATUSES[cur], stBy=statusByName(m);
+    // Two different permissions, deliberately not one. `editable` is ownership: only the
+    // person whose case it is may retitle it, delete it, or move it on and off the shared
+    // board. `canMark` is presence: anyone actually working the chamber's board that day may
+    // record what happened to a matter on it, whoever entered it — which is the point of a
+    // shared board, and what a clerk sitting in court is there to do. A day-sheet matter is
+    // markable but not editable: its content belongs to the day sheet, its status doesn't.
     const editable=!m._readonly && m._by===me?.uid && m.source!=="daysheet";
+    const canMark=!m._readonly && (m._by===me?.uid || (isChamberMatter(m) && inOrg()));
     // The status picker used to live inside .case-row-body, behind the same tap-to-expand
     // accordion as the title/meta/actions — with a "Mark status" hint chip added on the
     // collapsed row pointing at it. Neither made it reliably found (owner, after that hint chip
@@ -2429,10 +2488,10 @@ function renderMine(){
           :k?`<span class="case-prox ${proxBandOf(k)}">${esc(k.short||"—")}</span>`:""}
         <i class="ti ti-chevron-down cr-chev"></i>
       </div>
-      ${editable?`<div class="case-status-bar">
-        <div class="cr-lab2">Status${st?` — tap "${esc(st.label)}" again to clear`:""}</div>
+      ${canMark?`<div class="case-status-bar">
+        <div class="cr-lab2">Status${stBy?` — marked by ${esc(stBy)}`:""}${st?` — tap "${esc(st.label)}" again to clear`:""}</div>
         <div class="status-opts">${Object.entries(CASE_STATUSES).map(([key,def])=>
-          `<button class="status-opt${m.status===key?" on "+key:""}" data-setstatus="${esc(m.id)}|${key}">${esc(def.label)}</button>`).join("")}
+          `<button class="status-opt${cur===key?" on "+key:""}" data-setstatus="${esc(m.id)}|${key}">${esc(def.label)}</button>`).join("")}
         </div>
       </div>`:""}
       <div class="case-row-body">
@@ -2466,10 +2525,16 @@ function wireMine(){
   $("main").querySelectorAll("[data-setstatus]").forEach(x=>x.onclick=async(ev)=>{
     ev.stopPropagation();
     const [id,key]=x.dataset.setstatus.split("|");
-    const cur=(myOwn||[]).find(m=>m.id===id);
-    const next=(cur&&cur.status===key)?null:key;
-    const matters=(myOwn||[]).map(m=>m.id!==id?m:({...m, status:next}));
-    try{ await db.set("usermatters/"+me.uid,{matters,updatedAt:db.now()},true); }catch(e){}
+    // Looked up in the RENDERED list, not myOwn — the matter being marked may well be a
+    // colleague's, which is the whole point of this change.
+    const m=(mineShown||[]).find(r=>String(r.id)===id);
+    if(!m) return;
+    // Tapping the active option clears it. An explicit null, not a delete: prod deep-merges
+    // nested maps, so a removed key would simply come back.
+    const rec = statusFor(m)===key ? null
+              : {v:key, by:me.uid, byName:me.name||"", at:db.now()};
+    try{ await db.set("matterstatus/"+statusScope(m), {marks:{[statusKey(m)]:rec}}, true); }
+    catch(e){}
   });
   // flip a matter between the chamber board and your own private one
   $("main").querySelectorAll("[data-scope]").forEach(x=>x.onclick=async(ev)=>{
@@ -3761,10 +3826,13 @@ function watchOrg(orgId){
   _watchedOrgId=orgId;
   if(orgDocUnsub){orgDocUnsub();orgDocUnsub=null;}
   if(orgMembersUnsub){orgMembersUnsub();orgMembersUnsub=null;}
+  if(statusOrgUnsub){statusOrgUnsub();statusOrgUnsub=null;}
   Object.values(orgMatterUnsubs).forEach(u=>u&&u()); orgMatterUnsubs={};
-  myOrg=null; orgMembers=[]; orgMatters={};
+  myOrg=null; orgMembers=[]; orgMatters={}; statusOrg={};
   if(!orgId){ applyGate(); return; }
   orgDocUnsub=db.watchDoc("orgs/"+orgId, d=>{ myOrg=d; applyGate(); });
+  // The chamber's shared status marks — one document, every member reads and writes it.
+  statusOrgUnsub=db.watchDoc("matterstatus/"+orgId, d=>{ statusOrg=(d&&d.marks)||{}; render(); });
   // The explicit 50 is not a product decision about chamber size — it is what the users list
   // rule requires (a query with no limit clause fails request.query.limit <= 50). A chamber
   // that ever outgrows it needs the cap raised in BOTH places, here and in firestore.rules.
@@ -3825,6 +3893,9 @@ function applyGate(){
   if(!booted){ booted=true;
     const uid=me.uid;
     unsub.push(db.watchDoc("usermatters/"+uid, d=>{ myOwn=(d&&d.matters)||[]; if(curTab!=="collab"&&!peerBoardUid) render(); }));
+    // Status marks on your PERSONAL matters. The chamber's live in matterstatus/{orgId} and
+    // are watched by watchOrg() instead, so leaving an organisation drops that half cleanly.
+    unsub.push(db.watchDoc("matterstatus/"+uid, d=>{ statusOwn=(d&&d.marks)||{}; render(); }));
     unsub.push(db.watchQuery("links","fromUid",uid, rows=>{ linksOut=rows||[]; recomputeLinks(); }));
     unsub.push(db.watchQuery("links","toUid",uid, rows=>{ linksIn=rows||[]; recomputeLinks(); }));
     // Read by EVERYONE, not just admin — this is what entitlementOf() checks to decide
