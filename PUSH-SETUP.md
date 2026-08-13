@@ -31,17 +31,31 @@ nothing else exists to notice your case got close unless the worker is doing it 
 
 ### 1. Generate the VAPID key pair
 
-Already done for you this round. The **public** half is safe to commit and is already
-baked into `courtreach.html` (`VAPID_PUBLIC_KEY`) — nothing to do there.
+Already done — a fresh pair was generated 2026-08-14. The **public** half is safe to
+commit and is already baked into `courtreach.html` (`VAPID_PUBLIC_KEY`) — nothing to do
+there.
 
-The **private** half is a real secret and is deliberately **not written in this file**
-(or anywhere else in the repo) — even in a private repo, a secret committed to git
-history is there forever, findable by anyone who ever gets read access, long after you
-might rotate it. It was given to you directly in chat, not as a file. Paste it straight
-into the Cloudflare Worker's **Secrets** in step 2 below and nowhere else. If you've
-lost it, generate a fresh pair (any VAPID keygen tool) and update both the worker
-secret and `VAPID_PUBLIC_KEY` in `courtreach.html` to match — they have to be the same
-pair.
+The **private** half is a real secret and is deliberately **not written in this file**,
+or anywhere else in the repo: even in a private repo, a secret committed to git history
+is there forever, findable by anyone who ever gets read access, long after you rotate
+it. It is on this laptop only, in the session scratchpad. Paste it into the Cloudflare
+Worker's `CR_VAPID_PRIVATE` secret and nowhere else.
+
+The earlier pair was abandoned rather than hunted down: its private half had been handed
+over in chat and never written to a file. Rotating cost nothing, because
+`/cr-push-subscribe` had never actually been deployed on the old shared worker — a POST
+to it returned board HTML — so no live subscription was ever signed by the old key.
+
+To regenerate at any time, on a Mac with no Node:
+
+```bash
+openssl ecparam -name prime256v1 -genkey -noout -out vapid.pem
+```
+
+then extract the 32-byte private scalar and the 65-byte uncompressed public point
+(`04 || X || Y`) and base64url-encode each with the padding stripped. Both halves must
+be replaced together — `VAPID_PUBLIC_KEY` in `courtreach.html` and `CR_VAPID_PUBLIC` /
+`CR_VAPID_PRIVATE` in the worker are one pair and are useless mismatched.
 
 ### 2. Cloudflare — create CourtReach's worker, then add a KV namespace and secrets
 
@@ -54,9 +68,9 @@ this repo's `worker.js` into the editor and **Deploy** once, so the worker exist
   `cr-push-subs`) → bind it with **Variable name `CR_SUBS`** (exactly — the worker code
   looks for this name specifically).
 - **Variables and Secrets** → add these **Secrets**:
-  - `CR_VAPID_PUBLIC`  = `BN9wPypVjBf04WZHnjoeNSBj885wrdi6w_gSX3SUr4jncPEfPB9xmdoCL7-HptWiaik9vnkIb8KtYyUsSZYWK-Q`
+  - `CR_VAPID_PUBLIC`  = `BPrdFlbyK--z9lHp5Vjv_ZajyGmoTdl1dYY194k0iE8ZYKNFc2mRrISqze1IJl3apcOvPWrsd5fPy1Wx-DB4QL8`
     (same value as `VAPID_PUBLIC_KEY` in `courtreach.html` — public, safe either place)
-  - `CR_VAPID_PRIVATE` = the private key given to you in chat (see step 1 — not in this file)
+  - `CR_VAPID_PRIVATE` = the private key from the pair generated 2026-08-14 (see step 1)
   - `CR_VAPID_SUBJECT` = `mailto:you@yourdomain` (any contact mailto/URL — shown to
     push services, not to users)
   - `CR_FIRESTORE_SA_KEY` = the **full JSON contents** of a `courtreach-ee02b`

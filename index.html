@@ -976,7 +976,12 @@ const BOARD_PROXY = "https://courtreach.sdentertainmentservices.workers.dev";   
 // /cr-push-* endpoints and VAPID keys (kept separate from SD-Chamber's own push feature, which
 // shares the worker but not the keys/subscriber list). Public key only — safe to ship, it's
 // how a browser verifies OUR server signed the push, not a secret. See PUSH-SETUP.md.
-const VAPID_PUBLIC_KEY = "BN9wPypVjBf04WZHnjoeNSBj885wrdi6w_gSX3SUr4jncPEfPB9xmdoCL7-HptWiaik9vnkIb8KtYyUsSZYWK-Q";
+// Rotated 2026-08-14. The previous pair's private half was handed over in chat in an earlier
+// session and never written to a file, so it was effectively unrecoverable. Rotating cost
+// nothing: /cr-push-subscribe was never actually deployed on the old shared worker (a POST to
+// it returned board HTML), so there has never been a live subscription signed by the old key.
+// This public half MUST stay in step with CR_VAPID_PRIVATE in the worker — they are one pair.
+const VAPID_PUBLIC_KEY = "BPrdFlbyK--z9lHp5Vjv_ZajyGmoTdl1dYY194k0iE8ZYKNFc2mRrISqze1IJl3apcOvPWrsd5fPy1Wx-DB4QL8";
 // CourtReach Firebase project (courtreach-ee02b). Web config is public by design; security is in the Firestore rules.
 const firebaseConfig = {
   apiKey: "AIzaSyBUTfn0j88Nn1xHz32NT4dwHmn8l0Ijcqo",
