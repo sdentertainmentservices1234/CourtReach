@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-13T17:29:48.944283Z",
+  "generated_at": "2026-08-13T18:04:24.941225Z",
   "parser_version": 9,
   "window": [
     "2026-08-13",
@@ -6274,7 +6274,6 @@
         "Chamber (main)",
         "Chamber (supp)",
         "Single Judge (main)",
-        "Single Judge (supp)",
         "Registrar (main)",
         "Registrar (supp)"
       ],
@@ -11545,7 +11544,7 @@
           },
           "11": {
             "coram": "HON'BLE MR. JUSTICE SHREE CHANDRASHEKHAR",
-            "total": "11",
+            "total": "9",
             "fresh": "",
             "items": {
               "1601": "T.P.(C) No. 2300/2026 JYOTI RAJPUT VERSUS KANWARJEET SINGH PARMAR",
@@ -11556,9 +11555,7 @@
               "1606": "T.P.(C) No. 3379/2025 VANITA SHASHIKANT KOLWALE VERSUS SHASHIKANT BHANUDAS KOLWALE",
               "1607": "T.P.(Crl.) No. 133/2026 ANU VERSUS SAROJ AND ORS.",
               "1608": "T.P.(C) No. 343/2026 NISHA VERSUS RAMAN",
-              "1609": "T.P.(C) No. 1183/2026 AISHWARYA BHARDWAJ VERSUS AKASH GOEL",
-              "1610": "T.P.(C) No. 2348/2026 NITHYAPRIYA E VERSUS RAMKUMAR R",
-              "1611": "T.P.(C) No. 2365/2026 SHEETAL VERSUS RAKESH KUMAR AND ANR."
+              "1609": "T.P.(C) No. 1183/2026 AISHWARYA BHARDWAJ VERSUS AKASH GOEL"
             },
             "advocates": {
               "1601": {
@@ -11588,21 +11585,15 @@
               "1609": {
                 "pet": "SURYA PRAKASH",
                 "resp": "QURRATULAIN"
-              },
-              "1610": {
-                "pet": "MALAVIKA JAYANTH"
-              },
-              "1611": {
-                "pet": "A. KARTHIK"
               }
             },
             "times": {},
             "main": 9,
-            "supp": 2
+            "supp": 0
           },
           "12": {
             "coram": "HON'BLE MR. JUSTICE ARUN PALLI",
-            "total": "12",
+            "total": "11",
             "fresh": "",
             "items": {
               "1601": "T.P.(C) No. 2180/2026 NEHA TEWATIA VERSUS AMAN",
@@ -11615,8 +11606,7 @@
               "1608": "T.P.(C) No. 8/2026 NIKITA VISHAL JAIN ALIAS NIKITA POPATLAL VERSUS VISHAL MOHANLAL JAIN",
               "1609": "T.P.(C) No. 465/2026 ASHISH KAPILA VERSUS AMAN SHARMA",
               "1610": "T.P.(Crl.) No. 170/2026 BIBIN JOSEPH AND ORS. VERSUS KHUSHBOO KUMARI",
-              "1611": "T.P.(C) No. 1582/2026 N. TRUSHNA REDDY VERSUS CHINMAYA KUMAR",
-              "1612": "T.P.(C) No. 1625/2026 ABHILASHA MUKESH RAJANI VERSUS RAHUL MEHRA"
+              "1611": "T.P.(C) No. 1582/2026 N. TRUSHNA REDDY VERSUS CHINMAYA KUMAR"
             },
             "advocates": {
               "1601": {
@@ -11656,15 +11646,11 @@
               },
               "1611": {
                 "pet": "V. N. RAGHUPATHY"
-              },
-              "1612": {
-                "pet": "UPMA SHRIVASTAVA",
-                "resp": "RAMESHWAR PRASAD GOYAL"
               }
             },
             "times": {},
             "main": 11,
-            "supp": 1
+            "supp": 0
           },
           "17": {
             "coram": "HON'BLE MRS. JUSTICE V. MOHANA",
@@ -24871,7 +24857,6 @@
       "M_C_1": 546381,
       "M_C_2": 509090,
       "M_S_1": 518973,
-      "M_S_2": 507038,
       "M_R_1": 532720,
       "M_R_2": 509768
     },
