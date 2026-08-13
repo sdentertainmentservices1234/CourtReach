@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-13T17:03:28.470756Z",
+  "generated_at": "2026-08-13T17:29:48.944283Z",
   "parser_version": 9,
   "window": [
     "2026-08-13",
@@ -6275,7 +6275,8 @@
         "Chamber (supp)",
         "Single Judge (main)",
         "Single Judge (supp)",
-        "Registrar (main)"
+        "Registrar (main)",
+        "Registrar (supp)"
       ],
       "lists": {
         "Miscellaneous": {
@@ -11735,19 +11736,19 @@
         "Registrar": {
           "1": {
             "coram": "SH. APOORV SINGH, REGISTRAR",
-            "total": "40",
+            "total": "42",
             "fresh": "",
             "items": {
-              "1": "Diary No. 42323-2026 ROHIT KUMAR VERSUS ANUPAM KUMARI",
-              "2": "C.A. No. 10425/2013 AHAMADEE BEGUM AND ORS. VERSUS ZAINAB BEGUM (DEAD) THROUGH LRS. AND ORS.",
-              "3": "Diary No. 25911-2024 GOVERNMENT OF KERALA AND ORS. VERSUS SANTHAMMA. D. AND ANR.",
-              "4": "SLP(C) No. 27253/2024 RAMESHWARI ARYA AND ORS. VERSUS M/S VINDHYAVASINI STEEL INDUSTRIES AND ORS.",
-              "5": "Diary No. 39670-2026 AKAL ELECTRICAL PVT LTD VERSUS NATIONAL INSURANCE COMPANY LTD AND ANR.",
+              "1": "SLP(C) No. 5606/2026 VERSUS SIDDAWWA AND ORS.",
+              "2": "SLP(C) No. 5621/2026 VERSUS SUVARNA AND ORS.",
+              "3": "SLP(C) No. 5605/2026 VERSUS HYDARBAIG MHAKTUMBAIG JAMADAR AND ANR.",
+              "4": "SLP(C) No. 13272/2026 VERSUS THE SPECIAL LAND ACQUISITION OFFICER AND",
+              "5": "SLP(C) No. 13273/2026 VERSUS SURYAKANTH AND ORS.",
               "6": "C.A. No. 5928/2024 VIJAYABAI @ KALAVATHIBAI (DEAD) BY LRS. VERSUS MUDGAL RAO AND ORS ETC",
               "6.1": "Connected KALAVATHIBAI @ VIJAYABAI (DEAD) BY LRS. VERSUS MUDGAL RAO AND ORS.",
               "7": "C.A. No. SHUMAR KHAN VERSUS BHATIA SAMAJ . AND ORS.",
               "7.1": "Connected JAHUR ALAM AND ORS. VERSUS THE STATE OF RAJASTHAN STATE OF RAJASTHAN",
-              "8": "SLP(C) No. 30549/2016 HUKAM CHAND DEAD THROUGH LRS AND ORS. VERSUS KARAM SINGH (DEAD) AND ORS.",
+              "8": "SLP(C) No./30549/2016",
               "9": "C.A. No. 4619/2026 P. MUNUSAMI VERSUS K. KALIDASS (DECEASED) BY LRS. AND ANR.",
               "10": "C.A. No. 7118/2026 THE STATE OF PUNJAB AND ANR. VERSUS BAJAJ HINDUSTAN SUGAR LTD. AND ORS.",
               "10.1": "Connected THE STATE OF PUNJAB AND ANR. VERSUS DHAMPUR SUGAR MILLS LTD. AND ORS.",
@@ -11757,7 +11758,7 @@
               "14": "SLP(C) No. 11426/2023 RELIANCE GENERAL INSURANCE CO. LTD. VERSUS A K MUTHACHARI AND ORS.",
               "14.1": "Connected RELIANCE GENERAL INSURANCE CO. LTD. VERSUS RAJANNA AND ORS.",
               "15": "SLP(C) No. 1367/2024 B. SANJEEVA SHET VERSUS SAYYED ABDUL RAHIMAN, (SINCE DECEASED) BY",
-              "16": "SLP(C) No. 26995/2024 LAKSHMAMMA (DEAD) VERSUS P. MUNIHANUMAIAH AND ORS.",
+              "16": "SLP(C) No./26995/2024 Vs.",
               "17": "Crl.A. No. 2255/2026 SIYA RAM VERSUS THE STATE OF HARYANA AND ANR.",
               "17.1": "Connected RAJESH @ KALU VERSUS STATE OF HARYANA AND ANR.",
               "17.2": "Connected JITENDER @ JITU VERSUS STATE OF HARYANA AND ANR. SAMAR VIJAY SINGH [R-1],",
@@ -11789,7 +11790,7 @@
               "31.7": "Connected JIWAN NILBAJI BORKAR VERSUS NAGPUR MUNICIPAL CORPORATION AND ORS.",
               "31.8": "Connected DINESH VERSUS NAGPUR MUNICIPAL CORPORATION AND ORS.",
               "31.9": "Connected DINESH VERSUS NAGPUR MUNICIPAL CORPORATION AND ORS. AADITYA ANIR",
-              "0": "SLP(C) No. 23655/2026 VERSUS NAGPUR MUNICIPAL CORPORATION AND ORS.",
+              "0": "SLP(C) No. 5607/2026 VERSUS SHRISHAILAPPA MARTHANDAPPA KALLAKKANAVAR",
               "32": "SLP(Crl) No. S RUBAN VERSUS STATE OF TAMIL NADU",
               "33": "T.P.(C) No. 774/2026 SHABANA VERSUS AZAD MOHMAD",
               "34": "SLP(C) No. 17767/2026 SOU. SUNANDA BABAN PARDESHI AND ANR. VERSUS MOHAN BRIJLAL PARDESHI AND ORS.",
@@ -11799,7 +11800,22 @@
               "36.1": "Connected INDORE DEVELOPMENT AUTHORITY VERSUS TEENA PURI",
               "37": "SLP(C) No. 23757/2026 NARMADA AND ORS. VERSUS KALPANA",
               "38": "ARBIT.PETITON No. IT SERVICES INDIA INC VERSUS STYLO TECHNOLOGIES PTE LTD.",
-              "39": "SLP(C) No. 1905/2022 MURALI VERSUS HARIGOPAL AND ANR."
+              "39": "SLP(C) No. 1905/2022 MURALI VERSUS HARIGOPAL AND ANR.",
+              "40": "SLP(C) No. 3948/2026 KARNATAKA NEERAVARI NIGAMA LIMITED VERSUS GADDEPPANAVAR BASALINGAPPA AND ANR.",
+              "40.1": "Connected THE LAND ACQUISITION OFFICER, AND ASSISTANT VERSUS DURAGAMMA",
+              "40.2": "Connected THE SPECIAL LAND ACQUISITION OFFICER VERSUS NINGANAGOUDA",
+              "40.3": "Connected THE EXECUTIVE ENGINEER KNNL VERSUS ASHOK RAMAPPA PUJERI AND ANR.",
+              "40.4": "Connected THE EXECUTIVE ENGINEER VERSUS TAMMANNA LANKEPPA GURAVAGOL AND ANR.",
+              "41": "SLP(C) No. 5597/2026 THE EXECUTIVE ENGINEER, KNNL AND ANR. VERSUS GIRIJABAI AND ORS.",
+              "41.1": "Connected THE SPECIAL LAND ACQUISITION OFFICER UPPER VERSUS PADDAVVA AND ORS.",
+              "41.2": "Connected THE LAND ACQUISITION OFFICER AND ASSISTANT VERSUS SANNEMMA",
+              "41.3": "Connected THE SPECIAL LAND ACQUISITION OFFICER (SLAO) VERSUS NILAMMA AND ORS.",
+              "41.4": "Connected THE SPECIAL LAND ACQUISITION OFFICER AND VERSUS NAGAPPA",
+              "41.5": "Connected THE SPECIAL LAND ACQUISITION OFFICER AND VERSUS ISHWARAPPA",
+              "41.6": "Connected THE EXECUTIVE ENGINEER, KARNATAKA VERSUS VILAS AND ORS.",
+              "41.7": "Connected THE EXECUTIVE ENGINEER, KARANJA PROJECT VERSUS CHANDRAMMA AND ANR.",
+              "41.8": "Connected THE EXECUTIVE ENGINEER, (K.P.) VERSUS BHADRAPPA AND ORS.",
+              "41.9": "Connected THE EXECUTIVE ENGINEER, KNNL AND ANR. VERSUS DEVAJI AND ORS."
             },
             "advocates": {
               "1": {
@@ -12013,11 +12029,56 @@
               "39": {
                 "pet": "SRIRAM P",
                 "resp": "RAJESH KUMAR"
+              },
+              "40": {
+                "pet": "HETU ARORA SETHI"
+              },
+              "40.1": {
+                "pet": "SANCHIT GARGA"
+              },
+              "40.2": {
+                "pet": "SANCHIT GARGA"
+              },
+              "40.3": {
+                "pet": "HETU ARORA SETHI"
+              },
+              "40.4": {
+                "pet": "HETU ARORA SETHI"
+              },
+              "41": {
+                "pet": "HETU ARORA SETHI"
+              },
+              "41.1": {
+                "pet": "NISHANTH PATIL"
+              },
+              "41.2": {
+                "pet": "SANCHIT GARGA"
+              },
+              "41.3": {
+                "pet": "SANCHIT GARGA"
+              },
+              "41.4": {
+                "pet": "SANCHIT GARGA"
+              },
+              "41.5": {
+                "pet": "SANCHIT GARGA"
+              },
+              "41.6": {
+                "pet": "HETU ARORA SETHI"
+              },
+              "41.7": {
+                "pet": "HETU ARORA SETHI"
+              },
+              "41.8": {
+                "pet": "HETU ARORA SETHI"
+              },
+              "41.9": {
+                "pet": "HETU ARORA SETHI"
               }
             },
             "times": {},
             "main": 40,
-            "supp": 0
+            "supp": 2
           },
           "2": {
             "coram": "MS. GRACY L. BAWITLUNG, REGISTRAR",
@@ -24811,7 +24872,8 @@
       "M_C_2": 509090,
       "M_S_1": 518973,
       "M_S_2": 507038,
-      "M_R_1": 532720
+      "M_R_1": 532720,
+      "M_R_2": 509768
     },
     "2026-08-17": {
       "M_J_1": 940827,
