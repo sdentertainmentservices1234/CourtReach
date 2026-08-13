@@ -30,6 +30,17 @@ self.addEventListener("push", e => {
       silent: quiet,
       vibrate: quiet ? undefined : [160, 90, 160],
     });
+    // Number on the Home Screen icon while the app is CLOSED. The count is how many
+    // notifications are currently outstanding — tags mean one per conversation, so it reads
+    // as "threads waiting for you", not "messages", which is what a chat badge means anyway.
+    // Only set here, never cleared: the app clears it on open, because only the app knows
+    // what has actually been read.
+    try {
+      if ("setAppBadge" in self.navigator) {
+        const open = await self.registration.getNotifications();
+        if (open.length) await self.navigator.setAppBadge(open.length);
+      }
+    } catch (_) {}
   })());
 });
 // Tapping the notification focuses the app if it's already open somewhere, else opens it —

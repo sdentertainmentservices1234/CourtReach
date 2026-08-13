@@ -3264,11 +3264,24 @@ function threadPreview(t){
   const body=String(t.last.text||"").replace(/\s+/g," ").trim();
   return (who?who+": ":"")+body;
 }
+/* The number on the Home Screen icon itself, the way a mail or chat app carries one (owner:
+   "I want the app icon on homescreen to show badge for notifications"). Installed PWAs only —
+   a browser tab has no icon to badge — and silently absent where the platform doesn't support
+   it, which is why every call is guarded rather than feature-gated up front. The service
+   worker sets it too, so it appears while the app is closed; this is what CLEARS it, because
+   only the running app knows what has actually been read. */
+function setAppIconBadge(n){
+  try{
+    if(!("setAppBadge" in navigator)) return;
+    if(n>0) navigator.setAppBadge(n); else navigator.clearAppBadge();
+  }catch(e){}
+}
 function paintChatBadge(){
+  // the owner/senior is never badged for the team thread — that's the whole point of it
+  const n = inOrg() ? chatThreads().filter(t=>!(isOrgLeader()&&t.id==="team")).reduce((s,t)=>s+unreadCount(t.id),0) : 0;
+  setAppIconBadge(n);
   const b=$("chatBadge"); if(!b) return;
   if(!inOrg()){ b.classList.add("hidden"); return; }
-  // the owner/senior is never badged for the team thread — that's the whole point of it
-  const n=chatThreads().filter(t=>!(isOrgLeader()&&t.id==="team")).reduce((s,t)=>s+unreadCount(t.id),0);
   b.textContent=n>99?"99+":n; b.classList.toggle("hidden", n===0);
 }
 
@@ -3674,10 +3687,11 @@ function renderSettings(){
     <div class="stg-group">
       <div class="stg-gt">Alerts</div>
       <div class="stg-row">
-        <div><div class="stg-label">Case-reaching alerts</div>
-          <div class="stg-sub">A notification when a tracked case is about to reach — works even with the app closed or your phone locked.</div></div>
-        <button class="stg-switch" id="st_notifToggle" type="button" aria-label="Toggle case-reaching alerts"></button>
+        <div><div class="stg-label">Alerts on this device</div>
+          <div class="stg-sub">A notification when a tracked case is about to reach, and when a colleague messages you — with the app closed and the phone locked.</div></div>
+        <button class="stg-switch" id="st_notifToggle" type="button" aria-label="Toggle alerts"></button>
       </div>
+      <div class="stg-sub" style="padding:2px 2px 8px">${pushStatusLine()}</div>
     </div>`);
 
   /* ---- Security ---- */
@@ -4436,21 +4450,69 @@ function notifyChatPush(coll, id){
       body:JSON.stringify({idToken, coll, id})});
   }).catch(()=>{});
 }
+// Is an existing subscription bound to the key we now sign with? A push subscription carries
+// the applicationServerKey it was created with, and the push service checks every delivery
+// against it — so after a VAPID rotation an old subscription doesn't fail loudly, it just
+// silently rejects everything we send, forever, because getSubscription() keeps handing the
+// stale one back and we never look. That is exactly what happened when the pair was rotated
+// on 2026-08-14: devices that had subscribed under the old key went quiet with no error
+// anywhere. Compare the bytes and re-subscribe when they differ.
+function _subKeyMatches(sub, want){
+  try{
+    const got=sub && sub.options && sub.options.applicationServerKey;
+    if(!got) return false;
+    const u=new Uint8Array(got);
+    if(u.length!==want.length) return false;
+    for(let i=0;i<u.length;i++) if(u[i]!==want[i]) return false;
+    return true;
+  }catch(e){ return false; }
+}
 async function syncPushSub(){
   try{
     if(!VAPID_PUBLIC_KEY || !notifOn || !me?.uid) return;
     if(!("serviceWorker" in navigator) || !("PushManager" in window)) return;
     if(Notification.permission!=="granted") return;
     const reg=await navigator.serviceWorker.ready;
+    const want=_b64ToU8(VAPID_PUBLIC_KEY);
     let sub=await reg.pushManager.getSubscription();
-    if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:_b64ToU8(VAPID_PUBLIC_KEY)});
+    if(sub && !_subKeyMatches(sub, want)){ await sub.unsubscribe().catch(()=>{}); sub=null; }
+    if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:want});
     // The Worker no longer takes `uid` on trust — it verifies this token's signature and
     // uses the uid INSIDE it. Sending the uid as well is harmless and keeps the payload
     // self-describing, but it is the token that decides whose alerts this device gets.
     const idToken=await auth.idToken().catch(()=>"");
-    await fetch(BOARD_PROXY+"/cr-push-subscribe",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({idToken, uid:me.uid, name:me.name||"", sub:sub.toJSON()})}).catch(()=>{});
-  }catch(e){}
+    const r=await fetch(BOARD_PROXY+"/cr-push-subscribe",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({idToken, uid:me.uid, name:me.name||"", sub:sub.toJSON()})});
+    pushLast = r.ok ? {ok:true, err:""} : {ok:false, err:"server said "+r.status};
+  }catch(e){ pushLast={ok:false, err:(e&&e.message)||"failed"}; }
+  if(curTab==="settings") renderSettings();
+}
+/* Whether this device will actually receive anything, in words. Push fails silently by
+   design — a blocked permission, a browser that can't do it, an iPhone running the app in a
+   Safari tab and a registration that never reached the worker all look identical from the
+   inside: nothing arrives, no error anywhere. Without this line the only way to find out is
+   to sit and wait for a notification that was never coming. */
+let pushLast={ok:null, err:""};
+// Deliberately NOT a user-agent sniff for the Home Screen advice. "iPadOS pretends to be a
+// Mac" heuristics (platform MacIntel + touch points) match real Macs too, and telling a
+// desktop user to add the app to their Home Screen is worse than saying nothing. The
+// capability itself is the honest signal: iOS Safari does not expose PushManager or
+// Notification AT ALL until the app is installed, so their absence on a touch device IS the
+// "not installed yet" case, and their presence means we never reach this branch.
+const canPush = () => ("serviceWorker" in navigator) && ("PushManager" in window) && (typeof Notification!=="undefined");
+const looksTouch = () => (navigator.maxTouchPoints||0) > 0;
+function pushStatusLine(){
+  if(!canPush())
+    return looksTouch()
+      ? "⚠️ Add CourtReach to your Home Screen and open it from there — on iPhone and iPad, alerts only work for an installed app. Tap Share → Add to Home Screen."
+      : "This browser can't deliver alerts while the app is closed.";
+  if(Notification.permission==="denied")
+    return "⚠️ Blocked. Allow notifications for CourtReach in your browser or phone settings, then switch this on again.";
+  if(!notifOn) return "Off — you'll only see alerts while the app is open.";
+  if(Notification.permission!=="granted") return "Waiting for permission.";
+  if(pushLast.ok===true)  return "On — this device is registered for alerts.";
+  if(pushLast.ok===false) return "⚠️ On, but this device could not register"+(pushLast.err?" ("+esc(pushLast.err)+")":"")+". Switch it off and on again.";
+  return "On — registering this device…";
 }
 async function dropPushSub(){
   try{ const reg=await navigator.serviceWorker?.ready; const sub=await reg?.pushManager.getSubscription();
