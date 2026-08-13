@@ -258,12 +258,12 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px 12px;-webkit-over
 .cell.stk.mini .ourlab{font-size:10.5px}
 .cell.stk.mini .cell-ours.cnt3 .ourlab{font-size:9.5px}
 .cell.stk.mini .cell-ours.cnt4p .ourlab{font-size:8.5px}
-/* the Supreme Court's own remark column text, when it's saying something beyond plain
-   proximity — DISMISSED, LIST ON <date>, AFTER N WEEKS, PASS OVER, etc. */
-.ourremark{display:block;font-size:10px;font-weight:600;opacity:.85;margin-top:2px;text-transform:none;letter-spacing:0}
-.cell.stk.mini .ourremark{font-size:9px}
-/* Special Bench declared time — visually distinct from .ourremark (causelist fact, not a
-   live-board observation): gold rather than plain white-on-tint, clock icon. */
+/* The Supreme Court's remark column text (DISMISSED, LIST ON <date>, AFTER N WEEKS…) no
+   longer appears on an island at all — the item number is struck through instead, and the
+   words are spelled out in the court sheet, which is where there is room for them. */
+.cm-mine-it.struck{text-decoration:line-through;text-decoration-thickness:1.6px;opacity:.72}
+/* Special Bench declared time — a causelist fact, not a live-board observation: gold rather
+   than plain white-on-tint, clock icon. */
 .oursbtime{display:block;font-size:10px;font-weight:700;opacity:.96;margin-top:2px;
   text-transform:none;letter-spacing:0;color:var(--gold)}
 .oursbtime i{font-size:10px;margin-right:1px}
@@ -1786,6 +1786,22 @@ function classify(e){ const bc=boardByCourt()[String(e.courtNo)];
 // normalisation, as isOver()/isPassOver() use internally — this just surfaces the text itself
 // instead of only a yes/no.
 const remarkFor = (court,item) => ENG.detailRemark({remarksByCourt}, court, item);
+/* Does this remark mean the matter is FINISHED for today? "Over", "dismissed", "disposed",
+   "list on 12.09.2026", "after four weeks" all do — the court is not coming back to it, so
+   the case number is struck through. A PASS OVER emphatically does not: it will be recalled
+   later the same day, and striking it would say the opposite of what is true. Part-heard
+   likewise continues. Anything unrecognised is left alone rather than guessed at — an
+   unstruck case that turns out to be over is a small annoyance; a struck case that is
+   actually still coming up is the kind of mistake that makes somebody miss it. */
+const remarkEndsToday = rem => {
+  const s=String(rem||"").trim(); if(!s) return false;
+  if(/pass\s*over/i.test(s)) return false;
+  if(/part\s*heard/i.test(s)) return false;
+  return /^over$/i.test(s)
+      || /dismiss|dispos|allowed|withdraw|adjourn|deleted|deferred|not\s*press/i.test(s)
+      || /list(ed)?\s*(on|after)/i.test(s)
+      || /\bafter\b.*\bweek/i.test(s);
+};
 
 // Record passovers we see live (accumulated for the day) and each court's highest-seen item
 // (used to detect the Misc→Regular reset).
@@ -1950,9 +1966,27 @@ async function fetchRemarksFor(court,token){
   if(!token || !BOARD_PROXY) return; const now=Date.now();
   if(_remarkAt[court] && now-_remarkAt[court]<REMARK_TTL) return; _remarkAt[court]=now;
   try{ const r=await fetch(BOARD_PROXY+"?remarks="+encodeURIComponent(token),{cache:"no-store"});
-    if(!r.ok) return; const j=await r.json(); if(j&&j.items) remarksByCourt[String(court)]={at:now,items:j.items}; }catch(e){}
+    if(!r.ok) return; const j=await r.json(); if(j&&j.items) remarksByCourt[String(court)]={at:now,day:todayISO(),items:j.items}; }catch(e){}
+}
+/* Remarks used to be kept for the life of the session: `at` was recorded and never read, and
+   nothing dropped a court when we stopped tracking it or when the date rolled over. A remark
+   is a statement about ONE court on ONE day, and a stale one is not merely out of date — it
+   now strikes a case through, which asserts the matter is finished. So they expire.
+
+   Ten minutes is deliberately generous: a tracked court refreshes every REMARK_TTL (40s), so
+   this only bites when fetches have actually stopped — offline, or a court nobody is tracking
+   any more. Expiring in that case fails the safe way round, by going quiet rather than by
+   continuing to assert something we can no longer confirm. */
+const REMARK_STALE=10*60000;
+function purgeStaleRemarks(){
+  const today=todayISO(), cutoff=Date.now()-REMARK_STALE;
+  for(const c in remarksByCourt){
+    const r=remarksByCourt[c];
+    if(!r || r.day!==today || (r.at||0)<cutoff){ delete remarksByCourt[c]; delete _remarkAt[c]; }
+  }
 }
 function refreshRemarks(){
+  purgeStaleRemarks();
   const want=new Set(activeMatters().map(e=>String(e.courtNo)));
   for(const c of board){ if(want.has(String(c.court)) && c.token) fetchRemarksFor(c.court,c.token); }
 }
@@ -2174,7 +2208,13 @@ function boardCell(c, mini){
     // rest of the app's "passed" styling (island colour, sorting) is untouched — only the
     // literal strikethrough gets stricter. Same distinction the code already relies on
     // elsewhere (flashMatters()/notifyReaching() both check k.over, not k.tier).
-    const over=!!x.k.over;
+    // Two ways a matter is done for today: board-engine.js's own `over` (the board's OVER
+    // remark, or the user's own status mark), and any other remark that means the court has
+    // finished with it — dismissed, disposed, list on a date, after N weeks. The second kind
+    // used to be printed on the island as text; now it strikes the number instead and the
+    // words themselves live in the court sheet (owner: "just strikethrough the concerned case
+    // and show this remark in the list of cases that is shown once you click the court island").
+    const over=!!x.k.over || remarkEndsToday(remarkFor(c.court, x.e.itemNo));
     const off=!!overrides[strikeKey(c.court,x.e.itemNo)];
     const struck=over&&!off, shown=over&&off;
     return `<span class="oi-it${struck?" struck":""}${shown?" overridden":""}" data-strike-court="${esc(c.court)}" data-strike-item="${esc(x.e.itemNo)}">${esc(x.e.itemNo)}</span>`;
@@ -2182,16 +2222,13 @@ function boardCell(c, mini){
   // The island stays a pure court/item/proximity readout — no names. Who's appearing is
   // in My cases and in the court sheet (owner: "I don't want juniors' names coming on the
   // court islands. They are being shown in my cases").
-  // The Supreme Court's own remark column, when it says something beyond plain proximity —
-  // dismissed, list on a future date, after N weeks, passover, etc. (owner: "Sometimes the
-  // Supreme Court Display Board show information about what happened to a case ... I want that
-  // remark to be shown below our case number"). Shown for the same MOST URGENT item the rest of
-  // this card already summarises (best), not every tracked item here — the court sheet (tap the
-  // island) breaks it out per item for a multi-case court.
-  // Remark stays tied to `best` — the same one non-time-fixed case the "away" label already
-  // summarises. With several Special Bench items and no `best` to pick from, skip it here
-  // rather than guess whose remark to show; the court sheet breaks it out per item.
-  const remark = best ? remarkFor(c.court, best.e.itemNo) : "";
+  // The board's remark text is NOT printed here any more. An island is a glance — court,
+  // item, how far away — and a line of prose like "list on 12.09.2026" under the number
+  // crowded it and read as an alert in its own right (owner: "Instead of showing the remarks
+  // like Over, Dismissed, or disposed off, or list on ___ date ... just strikethrough the
+  // concerned case and show this remark in the list of cases"). The strikethrough above
+  // carries the fact at a glance; the words are in the court sheet, per item, where there is
+  // room for them and where a multi-case court can show a different remark for each.
   // Special Bench times — every DISTINCT (item, time) pair among the tracked items here,
   // deduped so two items sharing the same sitting don't repeat it. One tracked item shows its
   // time plainly ("2:00 PM"); more than one, ONLY if their times actually differ, gets an item
@@ -2206,8 +2243,7 @@ function boardCell(c, mini){
     ${mine?`<div class="mycase-rib"><i class="ti ti-star-filled"></i> Your case</div>`:""}
     ${head}
     <div class="cell-ours${cnt}"><span class="oi">${items}</span>${best?`<span class="ourlab">${esc(best.k.short||best.k.label||"—")}</span>`:""}
-      ${sbText?`<span class="oursbtime"><i class="ti ti-clock"></i> ${esc(sbText)}</span>`:""}
-      ${remark?`<span class="ourremark">${esc(remark)}</span>`:""}</div></div>`;
+      ${sbText?`<span class="oursbtime"><i class="ti ti-clock"></i> ${esc(sbText)}</span>`:""}</div></div>`;
 }
 
 /* ===== COURT DETAIL — tap an island for its coram, declared sequence, passovers ===== */
@@ -2306,7 +2342,11 @@ function openCourtModal(court,_refetched){
       // causelist already says exactly when it sits, and an item-number-derived distance would
       // just be noise next to that (owner: "When it is time fixed case remove how far it is.
       // That is not required.").
-      return `<div class="cm-mine"><span class="cm-mine-it">${esc(e.itemNo)}</span><span class="cm-mine-t">${esc(e.caseTitle||("item "+e.itemNo))}${who?` <span style="color:var(--mut)">· ${esc(who)}</span>`:""}${sbTime?`<span class="cm-mine-time"><i class="ti ti-clock"></i> ${esc(sbTime)}</span>`:""}${rmk?`<span class="cm-mine-rmk">${esc(rmk)}</span>`:""}</span>${sbTime?"":`<span class="cm-mine-s ${proxBandOf(k)}">${esc(k.short||"—")}</span>`}</div>`; }).join("")}`:""}
+      // Struck for the same reason the island strikes it, so the two can never disagree about
+      // whether a matter is finished. Here the remark is also spelled out — this sheet is
+      // where the words belong.
+      const done=!!k.over || remarkEndsToday(rmk);
+      return `<div class="cm-mine"><span class="cm-mine-it${done?" struck":""}">${esc(e.itemNo)}</span><span class="cm-mine-t">${esc(e.caseTitle||("item "+e.itemNo))}${who?` <span style="color:var(--mut)">· ${esc(who)}</span>`:""}${sbTime?`<span class="cm-mine-time"><i class="ti ti-clock"></i> ${esc(sbTime)}</span>`:""}${rmk?`<span class="cm-mine-rmk">${esc(rmk)}</span>`:""}</span>${(sbTime||done)?"":`<span class="cm-mine-s ${proxBandOf(k)}">${esc(k.short||"—")}</span>`}</div>`; }).join("")}`:""}
     <div class="cm-card"><div class="cm-h"><i class="ti ti-list-numbers"></i> Declared sequence</div>${seq.length
       ?`<div class="cm-body">${esc(seqRanges(seq))}, then the rest of the cases</div>`
       :`<div class="cm-none">Not declared yet.</div>`}</div>
