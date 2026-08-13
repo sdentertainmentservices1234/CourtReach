@@ -4040,6 +4040,19 @@ function applyGate(){
   paintTrialBanner(ent);
   if(!booted){ booted=true;
     const uid=me.uid;
+    /* Re-register this device for push on EVERY sign-in, not only at the moment somebody
+       flips the switch. syncPushSub() used to be reachable from toggleNotify() alone, which
+       meant the registration happened exactly once, ever, and any reason it failed that one
+       time was permanent and silent:
+         • the first attempts POSTed to sd-board, which had no /cr-push-* route at all, so
+           they were never registered anywhere and nothing ever tried again;
+         • rotating the VAPID pair invalidated existing subscriptions, and without a re-run
+           the stale one was never replaced;
+         • push services expire and rotate subscriptions on their own schedule, so a device
+           drops out eventually no matter what.
+       It is cheap and idempotent — one KV write when nothing has changed — so the fix is
+       simply to do it whenever the app starts. */
+    syncPushSub();
     unsub.push(db.watchDoc("usermatters/"+uid, d=>{ myOwn=(d&&d.matters)||[]; if(curTab!=="collab"&&!peerBoardUid) render(); }));
     // Status marks on your PERSONAL matters. The chamber's live in matterstatus/{orgId} and
     // are watched by watchOrg() instead, so leaving an organisation drops that half cleanly.
@@ -4457,6 +4470,10 @@ function notifyChatPush(coll, id){
 // stale one back and we never look. That is exactly what happened when the pair was rotated
 // on 2026-08-14: devices that had subscribed under the old key went quiet with no error
 // anywhere. Compare the bytes and re-subscribe when they differ.
+// Declared ABOVE syncPushSub on purpose. Function declarations hoist and `let` does not, and
+// syncPushSub now runs from boot() — if this binding were still below it, the first call
+// would land in the temporal dead zone and throw before ever reaching the network.
+let pushLast={ok:null, err:""};
 function _subKeyMatches(sub, want){
   try{
     const got=sub && sub.options && sub.options.applicationServerKey;
@@ -4492,7 +4509,6 @@ async function syncPushSub(){
    Safari tab and a registration that never reached the worker all look identical from the
    inside: nothing arrives, no error anywhere. Without this line the only way to find out is
    to sit and wait for a notification that was never coming. */
-let pushLast={ok:null, err:""};
 // Deliberately NOT a user-agent sniff for the Home Screen advice. "iPadOS pretends to be a
 // Mac" heuristics (platform MacIntel + touch points) match real Macs too, and telling a
 // desktop user to add the app to their Home Screen is worse than saying nothing. The
