@@ -1,0 +1,96 @@
+name: Build the public site
+
+# WHY THIS EXISTS
+# ---------------
+# GitHub Pages used to serve this repository's root directly. Making the repo private
+# stops people cloning it; it does NOT stop Pages serving the built site, so every tracked
+# file was still fetchable by name at courtreach.app — including fetch_causelist.py,
+# sync_daysheet.py and the setup docs, none of which a browser has ever needed. And
+# courtreach.html went out with every explanatory comment in it, which is a far better guide
+# to rebuilding this app than the code alone would be.
+#
+# So Pages is fed from a branch this workflow builds instead: only the files the app
+# actually loads, with comments stripped. `main` stays the full-comment source.
+#
+# HOW IT FAILS, so it isn't a surprise: if this workflow breaks, the LIVE SITE STOPS
+# UPDATING even though main has the fix. It does not go down — the last good build keeps
+# serving — but a push is no longer the same thing as a deploy. If the site looks stale,
+# look at the Actions tab first.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-pages
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Terser, in its most conservative mode: strip comments, touch NOTHING else.
+      # Deliberately no mangle and no compress. Renaming and rewriting are where a minifier
+      # earns its reputation for breaking things, and the entire benefit here comes from
+      # dropping comments — the app is a single file whose bytes are mostly prose.
+      - name: Install Terser
+        run: npm install --no-save terser@5
+
+      - name: Build the public tree
+        run: |
+          set -euo pipefail
+          rm -rf _site && mkdir -p _site
+
+          # Everything a browser actually asks for, and nothing else.
+          cp manifest.json sw.js CNAME court-updates.json _site/
+          cp icon-192-v2.png icon-512-v2.png favicon-32-v2.png apple-touch-icon-v2.png _site/
+
+          # board-engine.js is plain JS — Terser handles it directly.
+          npx terser board-engine.js --format comments=false -o _site/board-engine.js
+
+          # index.html is a single file with one <script type="module">. Pull that block out,
+          # strip its comments, put it back. Everything outside the block (markup, CSS) is
+          # copied through untouched — no HTML minifier, nothing clever.
+          python3 .github/strip-comments.py index.html _site/index.html
+
+          # courtreach.html ships too, and must: manifest.json's start_url is
+          # "./courtreach.html", so it is the URL every ALREADY-INSTALLED phone opens from
+          # its home screen. Dropping it would brick those installs. It is published from the
+          # same stripped build as index.html, which is the point — what was wrong before was
+          # that it went out with every comment in it, not that it existed.
+          cp _site/index.html _site/courtreach.html
+
+          # Prove the result still parses before it is allowed anywhere near the live site.
+          python3 - <<'EOF'
+          import re,sys
+          h=open('_site/index.html').read()
+          m=re.findall(r'<script type="module">(.*?)</script>', h, re.S)
+          assert len(m)==1, f"expected 1 module script, found {len(m)}"
+          open('/tmp/_built.mjs','w').write(m[0])
+          EOF
+          npx terser /tmp/_built.mjs -o /dev/null   # parses, or this step fails
+
+          ls -la _site
+
+      - name: Publish to the deploy branch
+        run: |
+          set -euo pipefail
+          cd _site
+          git init -q
+          git config user.name  "pages-bot"
+          git config user.email "actions@github.com"
+          git add -A
+          git commit -q -m "Build from ${GITHUB_SHA::7}"
+          git push -q --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:gh-pages

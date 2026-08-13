@@ -1157,12 +1157,33 @@ async function resolveOrgFor(uid, email, reg){
     if(rec && rec.active && rec.orgId) return {orgId:rec.orgId, orgRole:"member", joinedVia:code};
     return {orgId:null, orgRole:null, orgErr:"That invite code didn't match an organisation — you're set up as an individual for now. You can enter a code any time from Settings."};
   }
-  // no code given: were they pre-approved by a chamber owner who added their email?
-  if(email){
-    const inv=await db.get("orginvites/"+String(email).trim().toLowerCase()).catch(()=>null);
-    if(inv && inv.orgId) return {orgId:inv.orgId, orgRole:"member"};
-  }
+  // No code given. They may have been pre-approved by a chamber owner who added their email —
+  // but an orginvites doc is not consent: any account can create one against any address, so
+  // acting on it by itself would let a stranger pull a new registrant onto their board on
+  // day one. Flag it instead; offerPendingInvite() asks the person once the app is up.
+  if(email) pendingInviteEmail = String(email).trim().toLowerCase();
   return {orgId:null, orgRole:null};
+}
+// Set when a pre-approval MIGHT apply to this account. Nothing is joined off the back of it
+// until the person says yes — see offerPendingInvite().
+let pendingInviteEmail=null;
+const inviteDeclineKey = e => "cr_inv_no_"+e;
+async function offerPendingInvite(){
+  const em=pendingInviteEmail; pendingInviteEmail=null;
+  if(!em || !me || me.orgId) return;
+  try{
+    if(localStorage.getItem(inviteDeclineKey(em))) return;    // already said no on this device
+    const inv=await db.get("orginvites/"+em).catch(()=>null);
+    if(!inv || !inv.orgId || inv.orgId===me.uid) return;
+    const who=inv.orgName||"An organisation on CourtReach";
+    if(!confirm(`${who} has pre-approved your email address and is inviting you to their shared board.\n\nJoining means your cases become visible to that organisation's members, and you come under their subscription.\n\nJoin ${inv.orgName||"them"} now?`)){
+      try{ localStorage.setItem(inviteDeclineKey(em),"1"); }catch(_){}
+      return;
+    }
+    await keepExistingMattersPrivate(me.uid);
+    await db.set("users/"+me.uid,{orgId:inv.orgId, orgRole:"member"},true);
+    joinNotice="You're in. Your existing cases stayed private to you — use “Share with organisation” on any case to put it on the shared board.";
+  }catch(e){}
 }
 let joinNotice="", _joinNoticeTimer=null;   // shown on the Settings tab after a join attempt
 let leaderMsg="", _leaderMsgTimer=null;    // ditto, for "X is now the senior"
@@ -1189,14 +1210,11 @@ async function ensureUserDoc(uid, email, reg){
   try{ existing = await db.get("users/"+uid); }
   catch(e){ return; }
   if(existing){
-    // Already have a profile. Only thing to do is honour a pre-approval added after signup.
-    if(!existing.orgId && email){
-      const inv=await db.get("orginvites/"+String(email).trim().toLowerCase()).catch(()=>null);
-      if(inv && inv.orgId){
-        await keepExistingMattersPrivate(uid);
-        await db.set("users/"+uid,{orgId:inv.orgId, orgRole:"member"},true);
-      }
-    }
+    // Already have a profile. Only thing to do is NOTICE a pre-approval added after signup —
+    // and then ask. Joining a chamber puts your cases on someone else's board, so it is not
+    // something to do to a person silently on the strength of a document that any account
+    // can write against any email address. offerPendingInvite() shows it and waits.
+    if(!existing.orgId && email) pendingInviteEmail = String(email).trim().toLowerCase();
     return;
   }
   const org=await resolveOrgFor(uid, email, reg);
@@ -1211,6 +1229,11 @@ async function ensureUserDoc(uid, email, reg){
   // this line is ever reached with a profile actually present, it can only ADD fields — never
   // blank out an existing chamber membership, name or trial start date.
   await db.set("users/"+uid, base, true);
+  // ensureUserDoc() is deliberately not awaited before boot() (see the comment on the auth
+  // adapter), so the profile watcher may well have fired BEFORE pendingInviteEmail was set
+  // and missed its chance to ask. Ask here too — offerPendingInvite() clears the flag and
+  // no-ops if you already have a chamber, so the two callers can't double-prompt.
+  if(pendingInviteEmail && me) setTimeout(offerPendingInvite,0);
 }
 // Matters entered BEFORE joining were private work; joining an organisation must not
 // suddenly put them on the office board. Stamp them personal first, so there is never a
@@ -1295,7 +1318,19 @@ if(DEMO){
     async getUserBy(field,value){return rows("users").filter(u=>String(u[field]??"")===String(value));},
     watchDoc(path,cb){const s={path,cb,doc:true};subs.push(s);const[cp,id]=split(path);cb(exists(cp,id)?{id,...C(cp).get(id)}:null);return()=>subs.splice(subs.indexOf(s),1);},
     async get(path){const[cp,id]=split(path);return exists(cp,id)?{id,...C(cp).get(id)}:null;},
-    async set(path,data,merge){const[cp,id]=split(path);const m=C(cp);m.set(id,merge?{...(m.get(id)||{}),...data}:{...data});emitC(cp);emitD(path);},
+    async set(path,data,merge){
+      // Mirror validCodeRedemption() from firestore.rules. The demo store has no rules, so
+      // without this a wrong access code would appear to WORK here and only fail in
+      // production — the one divergence that would make the demo actively misleading about
+      // the thing it is most useful for testing.
+      const ov=data&&data.entitlementOverride;
+      if(ov&&ov.grantedVia==="code"){
+        const cfg=C("config").get("accessCode")||{};
+        if(!(cfg.active && String(cfg.code||"").trim().toLowerCase()===String(ov.code||"").trim().toLowerCase())){
+          const err=new Error("Missing or insufficient permissions."); err.code="permission-denied"; throw err;
+        }
+      }
+      const[cp,id]=split(path);const m=C(cp);m.set(id,merge?{...(m.get(id)||{}),...data}:{...data});emitC(cp);emitD(path);},
     async add(path,data){const id=gid();C(path).set(id,{...data});emitC(path);return id;},
     async update(path,data){const[cp,id]=split(path);const m=C(cp);m.set(id,{...(m.get(id)||{}),...data});emitC(cp);emitD(path);},
     async remove(path){const[cp,id]=split(path);C(cp).delete(id);emitC(cp);}, now };
@@ -1308,13 +1343,14 @@ if(DEMO){
     signUp(email,pass,reg){ pendingReg=reg; cur={uid:"u_"+(idc++),email}; setTimeout(()=>authCb&&authCb(cur),0); return Promise.resolve(); },
     changePassword(){ return Promise.resolve(); },
     reauthenticate(){ return Promise.resolve(); },
+    idToken(){ return Promise.resolve(""); },
     deleteAccount(){ cur=null; authCb&&authCb(null); return Promise.resolve(); },
     resetPassword(){return Promise.resolve();}, signOut(){cur=null;authCb&&authCb(null);} };
   window.__demoSetUser=uid=>{ const u=C("users").get(uid)||{}; cur={uid,email:u.email||""}; authCb&&authCb(cur); };
   seedDemo(db);
 } else {
   const [{initializeApp},{getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,onAuthStateChanged,signOut,sendPasswordResetEmail,updatePassword,EmailAuthProvider,reauthenticateWithCredential,deleteUser},
-    {getFirestore,collection,doc,getDoc,setDoc,addDoc,updateDoc,deleteDoc,onSnapshot,query,where,getDocs}] = await Promise.all([
+    {getFirestore,collection,doc,getDoc,setDoc,addDoc,updateDoc,deleteDoc,onSnapshot,query,where,getDocs,limit}] = await Promise.all([
       import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
       import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"),
       import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js")]);
@@ -1328,14 +1364,22 @@ if(DEMO){
   // the message (owner: "A watch keeps on showing... No one else is able to see my messages").
   // A dead listener is now reported instead of silently swallowed — see listenerDied().
   db={ watchCollection(path,cb){const c=collection(fs,...path.split("/")); return onSnapshot(c,s=>{const r=[];s.forEach(d=>r.push({id:d.id,...d.data()}));cb(r);},e=>listenerDied(path,e));},
-    watchQuery(path,field,value,cb){const q=query(collection(fs,...path.split("/")),where(field,"==",value));
+    // lim is optional and exists for one reason: the users collection is capped by the rules
+    // (allow list: request.query.limit <= 50), because `read` covering `list` meant one
+    // getDocs() could lift the entire subscriber base. A query with no limit clause does not
+    // satisfy that condition, so the users listener has to declare one — see watchOrgMembers.
+    watchQuery(path,field,value,cb,lim){const parts=[collection(fs,...path.split("/")),where(field,"==",value)]; if(lim) parts.push(limit(lim));
+      const q=query(...parts);
       return onSnapshot(q,s=>{const r=[];s.forEach(d=>r.push({id:d.id,...d.data()}));cb(r);},e=>listenerDied(path,e));},
     // "this array field contains me" — a SINGLE-field condition, so Firestore's automatic
     // indexes cover it and no composite index has to be created by hand. That matters: it's
     // what lets the DM listener below be provably rule-safe without a console step.
     watchArrayQuery(path,field,value,cb){const q=query(collection(fs,...path.split("/")),where(field,"array-contains",value));
       return onSnapshot(q,s=>{const r=[];s.forEach(d=>r.push({id:d.id,...d.data()}));cb(r);},e=>listenerDied(path,e));},
-    async getUserBy(field,value){const q=query(collection(fs,"users"),where(field,"==",value)); const s=await getDocs(q); return s.docs.map(d=>({id:d.id,...d.data()}));},
+    // Looking someone up is looking ONE person up — a phone number or an email address you
+    // already have. The limit is what the users list rule requires, and it is also the honest
+    // shape of the feature: this was never meant to be a way to page through the directory.
+    async getUserBy(field,value){const q=query(collection(fs,"users"),where(field,"==",value),limit(5)); const s=await getDocs(q); return s.docs.map(d=>({id:d.id,...d.data()}));},
     watchDoc(path,cb){return onSnapshot(doc(fs,...path.split("/")),s=>cb(s.exists()?{id:s.id,...s.data()}:null),e=>listenerDied(path,e));},
     async get(path){const s=await getDoc(doc(fs,...path.split("/"))); return s.exists()?{id:s.id,...s.data()}:null;},
     async set(path,data,merge){await setDoc(doc(fs,...path.split("/")),data,{merge:!!merge});},
@@ -1376,6 +1420,12 @@ if(DEMO){
       const u=fa.currentUser; if(!u) throw new Error("Not signed in.");
       await deleteUser(u);
     },
+    // A signed assertion of who this session is, for the one place outside Firestore that
+    // needs to be sure: the push Worker. It used to take the uid on trust from the request
+    // body, which meant anyone could register their own phone against someone else's uid and
+    // start receiving that person's court alerts. Firebase refreshes this automatically; the
+    // Worker verifies the signature itself.
+    async idToken(){ const u=fa.currentUser; return u ? await u.getIdToken() : ""; },
     signOut(){return signOut(fa);} };
 }
 
@@ -3499,16 +3549,18 @@ function renderSettings(){
     const val=($("st_code").value||"").trim(), msg=$("st_codeMsg"); msg.textContent="";
     if(!val){ msg.textContent="Enter a code."; return; }
     rd.disabled=true;
+    // Same as the paywall's own redeem button: the code is never read back to the client,
+    // it is presented and adjudicated by validCodeRedemption() in the rules.
     try{
-      const cfg=await db.get("config/accessCode");
-      if(cfg && cfg.active && String(cfg.code||"").trim().toLowerCase()===val.toLowerCase()){
-        // a chamber owner redeems ON BEHALF OF the chamber, so every member is covered
-        const path = isOrgOwner() ? "orgs/"+me.orgId : "users/"+me.uid;
-        await db.set(path,{entitlementOverride:{type:"comp", code:cfg.code, grantedAt:db.now(), grantedVia:"code"}}, true);
-        renderSettings();                      // re-render to show the new status; skip the disabled reset below
-        return;
-      } else { msg.textContent="Invalid or inactive code."; }
-    }catch(e){ msg.textContent="Couldn't verify that code — check your connection."; }
+      // a chamber owner redeems ON BEHALF OF the chamber, so every member is covered
+      const path = isOrgOwner() ? "orgs/"+me.orgId : "users/"+me.uid;
+      await db.set(path,{entitlementOverride:{type:"comp", code:val, grantedAt:db.now(), grantedVia:"code"}}, true);
+      renderSettings();                        // re-render to show the new status; skip the disabled reset below
+      return;
+    }catch(e){
+      msg.textContent = (e && (e.code==="permission-denied" || /permission/i.test(e.message||"")))
+        ? "Invalid or inactive code." : "Couldn't check that code — check your connection.";
+    }
     rd.disabled=false;
   };
   paintNotify();
@@ -3551,7 +3603,13 @@ function deleteMyAccountFlow(){
     try{
       await auth.reauthenticate(pass);          // proves it's really them before anything is touched
       await db.remove("usermatters/"+me.uid).catch(()=>{});
-      await db.remove("users/"+me.uid);
+      // TOMBSTONE, not delete. Removing the profile document and writing a fresh one was a
+      // free trial reset — createdAt is pinned on update, but a brand-new document starts a
+      // brand-new clock, and the account behind it never changed. So the rules no longer
+      // allow deleting users/{uid} at all; closing an account marks it closed and empties it
+      // of everything except what has to survive (createdAt, so the clock stays put).
+      await db.set("users/"+me.uid,{deleted:true, deletedAt:db.now(), deletedSelf:true,
+        orgId:null, orgRole:null, active:false, name:"", phone:"", designation:"", office:""}, true);
       await auth.deleteAccount();                // drops the Firebase Auth credential itself
       closeModal();
     }catch(e){
@@ -3606,11 +3664,13 @@ function wireOrgSettings(){
     add.disabled=true; msg("Adding…");
     try{
       await db.set("orginvites/"+em,{orgId:me.orgId, orgName:myOrg?.name||"", addedBy:me.uid, at:db.now()});
-      // already has an account? link them now rather than making them re-register
-      const found=(await db.getUserBy("email",em))||[];
-      for(const u of found) if(!u.orgId) await db.set("users/"+u.id,{orgId:me.orgId, orgRole:"member"},true);
+      // Deliberately no write onto their users/{uid} here any more. Stamping your own orgId
+      // onto another person's profile is what let ANY account conscript ANY user into its
+      // chamber — reading their whole case list and knocking them out of the chamber they
+      // were really in. The rules now refuse it outright. An invitation is an invitation:
+      // they see it next time they open CourtReach and decide for themselves.
       $("st_invEmail").value="";
-      msg(found.length?"Added — they're in your chamber now.":"Added — they'll join automatically when they register.");
+      msg("Invitation sent — they'll be asked to join next time they open CourtReach.");
     }catch(e){ msg("Couldn't add that email."); }
     add.disabled=false;
   };
@@ -3705,6 +3765,9 @@ function watchOrg(orgId){
   myOrg=null; orgMembers=[]; orgMatters={};
   if(!orgId){ applyGate(); return; }
   orgDocUnsub=db.watchDoc("orgs/"+orgId, d=>{ myOrg=d; applyGate(); });
+  // The explicit 50 is not a product decision about chamber size — it is what the users list
+  // rule requires (a query with no limit clause fails request.query.limit <= 50). A chamber
+  // that ever outgrows it needs the cap raised in BOTH places, here and in firestore.rules.
   orgMembersUnsub=db.watchQuery("users","orgId",orgId, rows=>{
     orgMembers=rows||[];
     // follow every colleague's matters so the chamber board can pool them. My own come
@@ -3721,7 +3784,7 @@ function watchOrg(orgId){
       });
     });
     if(curTab==="chat"||curTab==="settings") render();
-  });
+  }, 50);
 }
 // The entitlement gate + first-run subscriptions. Called from the profile watcher AND the
 // org watcher, because for a chamber member the answer depends on the org doc arriving.
@@ -3848,6 +3911,9 @@ function boot(user){
     me = u ? {uid,email:user.email,...u} : {uid, email:user.email, name:(user.email||"").split("@")[0], role:"user"};
     watchOrg(me.orgId||null);
     applyGate();
+    // A chamber pre-approval, if there is one, is offered here rather than applied silently
+    // at sign-in. Deferred to a task so it can't block the first paint.
+    if(pendingInviteEmail) setTimeout(offerPendingInvite,0);
   });
 }
 auth.onChange(boot);
@@ -3857,15 +3923,19 @@ $("pwGo").onclick=async()=>{
   const val=($("pwCode").value||"").trim();
   if(!val){ $("pwErr").textContent="Enter a code."; return; }
   $("pwGo").disabled=true;
+  // Note what is NOT here: a read of config/accessCode. Comparing the typed code against a
+  // document the client had fetched meant the live code was one getDoc() away from every
+  // signed-in account — free access for them and for anyone they passed it on to. So the
+  // write simply goes in carrying the typed code, and validCodeRedemption() in the rules
+  // decides: a wrong code comes back permission-denied and never learns what the right one
+  // was. The check now happens where it can't be read off.
   try{
-    const cfg=await db.get("config/accessCode");
-    if(cfg && cfg.active && String(cfg.code||"").trim().toLowerCase()===val.toLowerCase()){
-      await db.set("users/"+me.uid, {entitlementOverride:{type:"comp", code:cfg.code, grantedAt:db.now(), grantedVia:"code"}}, true);
-      // the users/{uid} watchDoc above picks this up and un-gates the app automatically
-    } else {
-      $("pwErr").textContent="Invalid or inactive code.";
-    }
-  }catch(e){ $("pwErr").textContent="Couldn't verify that code — check your connection and try again."; }
+    await db.set("users/"+me.uid, {entitlementOverride:{type:"comp", code:val, grantedAt:db.now(), grantedVia:"code"}}, true);
+    // the users/{uid} watchDoc above picks this up and un-gates the app automatically
+  }catch(e){
+    $("pwErr").textContent = (e && (e.code==="permission-denied" || /permission/i.test(e.message||"")))
+      ? "Invalid or inactive code." : "Couldn't check that code — check your connection and try again.";
+  }
   $("pwGo").disabled=false;
 };
 $("pwCode").addEventListener("keydown",e=>{ if(e.key==="Enter") $("pwGo").click(); });
@@ -4131,14 +4201,19 @@ async function syncPushSub(){
     const reg=await navigator.serviceWorker.ready;
     let sub=await reg.pushManager.getSubscription();
     if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:_b64ToU8(VAPID_PUBLIC_KEY)});
+    // The Worker no longer takes `uid` on trust — it verifies this token's signature and
+    // uses the uid INSIDE it. Sending the uid as well is harmless and keeps the payload
+    // self-describing, but it is the token that decides whose alerts this device gets.
+    const idToken=await auth.idToken().catch(()=>"");
     await fetch(BOARD_PROXY+"/cr-push-subscribe",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({uid:me.uid, name:me.name||"", sub:sub.toJSON()})}).catch(()=>{});
+      body:JSON.stringify({idToken, uid:me.uid, name:me.name||"", sub:sub.toJSON()})}).catch(()=>{});
   }catch(e){}
 }
 async function dropPushSub(){
   try{ const reg=await navigator.serviceWorker?.ready; const sub=await reg?.pushManager.getSubscription();
+    const idToken=await auth.idToken().catch(()=>"");
     if(sub){ await fetch(BOARD_PROXY+"/cr-push-unsubscribe",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({uid:me?.uid, endpoint:sub.endpoint})}).catch(()=>{}); await sub.unsubscribe().catch(()=>{}); }
+      body:JSON.stringify({idToken, uid:me?.uid, endpoint:sub.endpoint})}).catch(()=>{}); await sub.unsubscribe().catch(()=>{}); }
   }catch(e){}
 }
 
