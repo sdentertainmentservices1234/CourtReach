@@ -51,7 +51,7 @@ OUTPUT_FILE = "court-updates.json"
 # based change-detection reuses a cached parse when the PDF is unchanged; without
 # this, a parser FIX never reaches already-cached dates (their PDFs don't change).
 # A version mismatch forces a full re-parse of every date in the window.
-PARSER_VERSION = 8   # bumped: skip page-header boilerplate (was leaking as respondent)
+PARSER_VERSION = 9   # bumped: capture Special Bench (300-series) declared sitting time
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; courtreach-causelist-bot/1.0)"}
 
 COURT_RE = re.compile(r"COURT\s*NO\.?\s*[:\-]?\s*([0-9]+)", re.I)
@@ -67,6 +67,27 @@ TOTAL_RE = re.compile(r"total\s*(?:matters)?\s*[:\-]?\s*([0-9]+)", re.I)
 FRESH_RE = re.compile(r"fresh\s*(?:matters)?\s*[:\-]?\s*([0-9]+)", re.I)
 ITEM_RE  = re.compile(r"^\s*([0-9]{1,4})\b")
 SKIP_CORAM = re.compile(r"NOTE|APPRECIATED|ADJOURNMENT|ASSEMBLE|WILL SIT|NORMAL", re.I)
+
+# --- Special Bench time (300-series) --------------------------------------------
+# A "SPECIAL BENCH" section (item numbers 301, 302, ... — owner: "300 series is
+# for Special Bench cases which are usually time fixed cases") declares its
+# sitting time ONCE, right under the judges' names, not per item — real example
+# (13-08-2026 list, Court 4): "(TIME : 2:00 PM)" followed later by item 301. A
+# court can sit MORE THAN ONE special bench in a day (same list, same court, a
+# second bench composition on the next page) and the second one may have no
+# clock time at all, only a relative note — real example, same day, same court,
+# second bench: "[ THIS SPECIAL BENCH WILL SIT IMMEDIATELY AFTER THE HEARING OF
+# SPECIAL BENCH MATTER LISTED AT 2:00 P.M. IN THIS COURT, IS OVER ]" — captured
+# and shown verbatim rather than guessed into a computed clock time, since it
+# genuinely depends on when the first bench finishes.
+SPECIAL_BENCH_RE = re.compile(r"SPECIAL\s+BENCH", re.I)
+TIME_RE = re.compile(r"\(\s*TIME\s*:\s*([\d.:]+\s*[AP]\.?M\.?)\s*\)", re.I)
+# The relative-timing note is bracketed but the bracket does NOT reliably close on
+# the same line — real example wraps "...LISTED AT 2:00" / "P.M. IN THIS COURT,
+# IS OVER ]" across two lines of the extracted text. Matched in two steps: does
+# this line OPEN the note (with or without also closing it), and — while one is
+# open — does a later line CLOSE it.
+BRACKET_NOTE_START_RE = re.compile(r"\[\s*(THIS SPECIAL BENCH WILL SIT.*)$", re.I)
 # Page-header boilerplate repeated at the top of every page. When an item's
 # "Versus" sits at the foot of a page, this line is the first thing after it and
 # was wrongly captured as the respondent ("… VERSUS DAILY CAUSE LIST FOR DATED …").
@@ -189,15 +210,21 @@ SUBINDEX_RE = re.compile(r"^([0-9]{1,3})\b\s*(.*)$")
 
 def parse_courts(text):
     """Text of one list PDF ->
-       {court(str): {coram, total, fresh, items:{item(str): case-line}}}.
+       {court(str): {coram, total, fresh, items:{item(str): case-line},
+                      times:{item(str): time-or-note-text}}}.
     The item line carries the case number + parties, so the app can auto-fill a
-    matter's title from just court + item."""
+    matter's title from just court + item. `times` is only ever populated for
+    items inside a declared SPECIAL BENCH section (see SPECIAL_BENCH_RE above)."""
     courts = {}
     cur = None
     in_header = False
     pending = None      # (court, item) awaiting a "Versus" respondent
     await_resp = False
     pending_conn = None # a "N. Connected <party>" awaiting its sub-index next line
+    in_special_bench = False   # currently inside a SPECIAL BENCH section
+    cur_time = ""              # that section's declared time (clock time, or a
+                                # verbatim relative-timing note) — "" if undeclared
+    note_acc = None            # mid-accumulation of a bracketed note split across lines
     for raw in text.splitlines():
         line = raw.strip()
         if not line:
@@ -212,13 +239,54 @@ def parse_courts(text):
             court = "1"
         if court is not None:
             cur = court
-            courts.setdefault(cur, {"coram": "", "total": "", "fresh": "", "items": {}})
+            courts.setdefault(cur, {"coram": "", "total": "", "fresh": "", "items": {}, "times": {}})
             # collect the bench only until we have it; page headers repeat the
             # court + coram on every page, so re-collecting would duplicate it.
             in_header = not courts[cur]["coram"]
+            # A repeated court header can be a genuinely NEW bench sitting (same
+            # court, later in the day, different judges/time) — real example:
+            # Court 4's page 2 has Justice Kotiswar Singh in place of Justice
+            # Sanjay Kumar. Reset special-bench scope and the time so the new
+            # section's own signals (or lack of one) are what items get tagged
+            # with, never a stale value carried over from the previous page.
+            in_special_bench = False
+            cur_time = ""
+            note_acc = None
             continue
         if cur is None:
             continue
+        # Finish a bracketed relative-timing note that opened on an earlier line —
+        # takes priority over everything else until its closing "]" shows up.
+        if note_acc is not None:
+            close = line.find("]")
+            if close >= 0:
+                note_acc += " " + line[:close]
+                cur_time = re.sub(r"\s+", " ", note_acc).strip().rstrip(",")
+                note_acc = None
+            else:
+                note_acc += " " + line
+            continue
+        if SPECIAL_BENCH_RE.search(line):
+            in_special_bench = True
+        # The declared TIME is captured regardless of in_special_bench — real
+        # example: "(TIME : 2:00 PM)" prints right under the judges' names,
+        # BEFORE the "SPECIAL BENCH" label appears at all. Only tagging items
+        # (further below) is gated on in_special_bench, which by then is
+        # correctly set, since items always come after both.
+        if not cur_time:
+            tm2 = TIME_RE.search(line)
+            if tm2:
+                cur_time = re.sub(r"\s+", " ", tm2.group(1)).strip().upper()
+            else:
+                bs = BRACKET_NOTE_START_RE.search(line)
+                if bs:
+                    frag = bs.group(1)
+                    close = frag.find("]")
+                    if close >= 0:
+                        cur_time = re.sub(r"\s+", " ", frag[:close]).strip().rstrip(",")
+                    else:
+                        note_acc = frag   # unclosed — keep building on the next line(s)
+                    continue
         tm = TOTAL_RE.search(line)
         if tm and not courts[cur]["total"]:
             courts[cur]["total"] = tm.group(1)
@@ -239,6 +307,8 @@ def parse_courts(text):
                 caseline = (sm.group(2).strip() + " " + pending_conn["party"]).strip()
                 if key not in courts[cur]["items"]:
                     courts[cur]["items"][key] = re.sub(r"\s+", " ", caseline).strip()[:70]
+                    if cur_time and in_special_bench:
+                        courts[cur]["times"][key] = cur_time
                     pending = (cur, key); await_resp = False
                 pending_conn = None
                 continue
@@ -252,6 +322,8 @@ def parse_courts(text):
             it = im.group(1)
             if it not in courts[cur]["items"]:
                 courts[cur]["items"][it] = re.sub(r"\s+", " ", im.group(2)).strip()[:70]
+                if cur_time and in_special_bench:
+                    courts[cur]["times"][it] = cur_time
                 pending = (cur, it); await_resp = False
             else:
                 pending = None
@@ -449,9 +521,10 @@ def build_for_date(date_str, prev_day=None, prev_sizes=None):
                 # Track how many of the court's matters came from main vs supp so the
                 # printout can show the breakup ("Main 50 · Supp 10").
                 ex = merged.setdefault(court, {"coram": "", "total": "", "fresh": "",
-                                               "items": {}, "advocates": {}, "main": 0, "supp": 0})
+                                               "items": {}, "advocates": {}, "times": {}, "main": 0, "supp": 0})
                 before = n_matters(ex["items"])
                 ex["items"].update(info.get("items", {}))
+                ex["times"].update(info.get("times", {}))
                 # count only the NEW serial matters this list added (not sub-items)
                 ex[variant] = ex.get(variant, 0) + (n_matters(ex["items"]) - before)
                 # merge the AoR names for this court's items (don't overwrite a name
