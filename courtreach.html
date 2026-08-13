@@ -1967,10 +1967,19 @@ function boardCell(c, mini){
   if(!ours.length && !mine){ return `<div class="cell${stk}${mini?" mini":""}${idle?" idle":""}" ${dc}>${head}</div>`; }
   // in a "your case" court, track MY item(s); otherwise the peer's / my own tracked matters
   const src = mine ? myCaseItemsIn(c.court).map(it=>({courtNo:c.court,itemNo:it})) : ours;
-  const ks=src.map(e=>({e,k:classify(e)}));
-  // colour/status label follow the MOST URGENT case; display order is always by item
-  // number so it never reshuffles as the court progresses (owner: "constant order").
-  const best=ks.slice().sort((a,b)=>(TIER_RANK[a.k.tier]-TIER_RANK[b.k.tier])||((a.k.gap??999)-(b.k.gap??999)))[0];
+  const ks=src.map(e=>({e,k:classify(e), sbTime:specialBenchTimeFor(c.court,e.itemNo,todayISO())}));
+  // A time-fixed Special Bench matter doesn't have a meaningful "N away" — the causelist
+  // already says exactly when it sits, and computing one from its raw item number would be
+  // actively misleading, not just redundant (owner: "When it is time fixed case remove how
+  // far it is. That is not required."). So "away" is calculated from the NON-special-bench
+  // items at this court only — normalKs — never from a time-fixed one. When multiple cases
+  // share a court, the OTHER (non-time-fixed) cases still get their own distance, exactly as
+  // before (owner: "when there are multiple cases in that court calculate how far away other
+  // cases are and provide at what time the special bench case is at").
+  const normalKs = ks.filter(x=>!x.sbTime);
+  // colour/status label follow the MOST URGENT non-time-fixed case; display order is always
+  // by item number so it never reshuffles as the court progresses (owner: "constant order").
+  const best=normalKs.slice().sort((a,b)=>(TIER_RANK[a.k.tier]-TIER_RANK[b.k.tier])||((a.k.gap??999)-(b.k.gap??999)))[0];
   const tier=best?.k.tier||"idle";
   // The island's colour runs its OWN bands, tighter than classify()'s own tier boundaries
   // (owner: "The Court island should become red as soon as the case is 3 away" / "Court island
@@ -1980,6 +1989,9 @@ function boardCell(c, mini){
   // tier (labels, TIER_RANK sorting, My cases' proximity chip, flash's own colour bands) is
   // untouched, so "3 away" or "6 away" still reads as exactly that everywhere, it just paints
   // the island a color keyed to these tighter thresholds instead of the engine's own.
+  // With no non-time-fixed case to band by (every tracked item here is a Special Bench
+  // matter), fall back to the engine's own unbanded tier rather than inventing an "away"-based
+  // colour for something that isn't one.
   const g = best?.k.gap;
   const cellTier = (best && g!=null && (tier==="now"||tier==="soon"||tier==="later"))
     ? (g<=3 ? "now" : g<=7 ? "soon" : "later")
@@ -2016,16 +2028,25 @@ function boardCell(c, mini){
   // remark to be shown below our case number"). Shown for the same MOST URGENT item the rest of
   // this card already summarises (best), not every tracked item here — the court sheet (tap the
   // island) breaks it out per item for a multi-case court.
+  // Remark stays tied to `best` — the same one non-time-fixed case the "away" label already
+  // summarises. With several Special Bench items and no `best` to pick from, skip it here
+  // rather than guess whose remark to show; the court sheet breaks it out per item.
   const remark = best ? remarkFor(c.court, best.e.itemNo) : "";
-  // Special Bench (300-series) declared sitting time, from the causelist — see
-  // specialBenchTimeFor()'s own comment. Same "most urgent tracked item" scope as
-  // `remark` above.
-  const sbTime = best ? specialBenchTimeFor(c.court, best.e.itemNo, todayISO()) : "";
+  // Special Bench times — every DISTINCT (item, time) pair among the tracked items here,
+  // deduped so two items sharing the same sitting don't repeat it. One tracked item shows its
+  // time plainly ("2:00 PM"); more than one, ONLY if their times actually differ, gets an item
+  // prefix so it's unambiguous which is which ("301: 2:00 PM · 302: (relative note)") —
+  // (owner: "provide at what time the special bench case is at ... There will be lot of
+  // crowding of information in that court island. Handle it properly").
+  const sbList = []; const sbSeen = new Set();
+  ks.forEach(x=>{ if(x.sbTime && !sbSeen.has(x.sbTime)){ sbSeen.add(x.sbTime); sbList.push({item:x.e.itemNo, time:x.sbTime}); } });
+  const sbMulti = new Set(ks.filter(x=>x.sbTime).map(x=>x.sbTime)).size > 1;
+  const sbText = sbList.map(s=>sbMulti?`${s.item}: ${s.time}`:s.time).join(" · ");
   return `<div class="cell${stk} ours ${cellTier} ${idle?"idle":""}${mine?" mycase":""}" ${dc}>
     ${mine?`<div class="mycase-rib"><i class="ti ti-star-filled"></i> Your case</div>`:""}
     ${head}
-    <div class="cell-ours${cnt}"><span class="oi">${items}</span><span class="ourlab">${esc(best?.k.short||best?.k.label||"—")}</span>
-      ${sbTime?`<span class="oursbtime"><i class="ti ti-clock"></i> ${esc(sbTime)}</span>`:""}
+    <div class="cell-ours${cnt}"><span class="oi">${items}</span>${best?`<span class="ourlab">${esc(best.k.short||best.k.label||"—")}</span>`:""}
+      ${sbText?`<span class="oursbtime"><i class="ti ti-clock"></i> ${esc(sbText)}</span>`:""}
       ${remark?`<span class="ourremark">${esc(remark)}</span>`:""}</div></div>`;
 }
 
@@ -2121,7 +2142,11 @@ function openCourtModal(court,_refetched){
       // after clicking the court island").
       const rmk=remarkFor(court, e.itemNo);
       const sbTime=specialBenchTimeFor(court, e.itemNo, todayISO());
-      return `<div class="cm-mine"><span class="cm-mine-it">${esc(e.itemNo)}</span><span class="cm-mine-t">${esc(e.caseTitle||("item "+e.itemNo))}${who?` <span style="color:var(--mut)">· ${esc(who)}</span>`:""}${sbTime?`<span class="cm-mine-time"><i class="ti ti-clock"></i> ${esc(sbTime)}</span>`:""}${rmk?`<span class="cm-mine-rmk">${esc(rmk)}</span>`:""}</span><span class="cm-mine-s ${proxBandOf(k)}">${esc(k.short||"—")}</span></div>`; }).join("")}`:""}
+      // Same rule as the island: a time-fixed item's "away" badge is not shown at all — the
+      // causelist already says exactly when it sits, and an item-number-derived distance would
+      // just be noise next to that (owner: "When it is time fixed case remove how far it is.
+      // That is not required.").
+      return `<div class="cm-mine"><span class="cm-mine-it">${esc(e.itemNo)}</span><span class="cm-mine-t">${esc(e.caseTitle||("item "+e.itemNo))}${who?` <span style="color:var(--mut)">· ${esc(who)}</span>`:""}${sbTime?`<span class="cm-mine-time"><i class="ti ti-clock"></i> ${esc(sbTime)}</span>`:""}${rmk?`<span class="cm-mine-rmk">${esc(rmk)}</span>`:""}</span>${sbTime?"":`<span class="cm-mine-s ${proxBandOf(k)}">${esc(k.short||"—")}</span>`}</div>`; }).join("")}`:""}
     <div class="cm-card"><div class="cm-h"><i class="ti ti-list-numbers"></i> Declared sequence</div>${seq.length
       ?`<div class="cm-body">${esc(seqRanges(seq))}, then the rest of the cases</div>`
       :`<div class="cm-none">Not declared yet.</div>`}</div>
