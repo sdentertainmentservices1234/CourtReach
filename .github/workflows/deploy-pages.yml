@@ -20,6 +20,18 @@ name: Build the public site
 on:
   push:
     branches: [main]
+  # The cause-list fetcher commits court-updates.json with the default GITHUB_TOKEN, and
+  # GitHub deliberately does not let a GITHUB_TOKEN push trigger another workflow (it is how
+  # they stop workflows looping forever). So the `push` trigger above never fires for the
+  # bot, and without this the live site's cause-list data would silently freeze at whatever
+  # the last human push happened to build. workflow_run is the supported way back in.
+  workflow_run:
+    workflows: ["Supreme Court cause-list fetch (multi-wave)"]
+    types: [completed]
+  # Backstop, in case workflow_run itself is ever missed. Cheap: the publish step below
+  # compares trees and does nothing at all when the build is identical, which it usually is.
+  schedule:
+    - cron: "15 */3 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -89,10 +101,22 @@ jobs:
       - name: Publish to the deploy branch
         run: |
           set -euo pipefail
+          REMOTE="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
           cd _site
           git init -q
           git config user.name  "pages-bot"
           git config user.email "actions@github.com"
           git add -A
           git commit -q -m "Build from ${GITHUB_SHA::7}"
-          git push -q --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:gh-pages
+
+          # Terser's output is deterministic, so an unchanged source builds an identical
+          # tree. Compare and skip: the 3-hourly backstop above then costs nothing, and
+          # gh-pages history stays a record of real changes rather than of cron ticks.
+          git remote add origin "$REMOTE"
+          if git fetch -q --depth=1 origin gh-pages 2>/dev/null \
+             && [ "$(git rev-parse HEAD^{tree})" = "$(git rev-parse FETCH_HEAD^{tree})" ]; then
+            echo "Built tree is identical to what is already published — nothing to do."
+            exit 0
+          fi
+          git push -q --force "$REMOTE" HEAD:gh-pages
+          echo "Published."
