@@ -967,7 +967,11 @@ main#main.chatmode{overflow:hidden;display:flex;flex-direction:column}
    and the SC board relay. Firebase = its OWN project (config below).
    ============================================================ */
 const DEMO = false;
-const BOARD_PROXY = "https://sd-board.sdentertainmentservices.workers.dev";   // shared SC-board relay (public data)
+// CourtReach's OWN worker (source: worker.js in this repo). It used to be SD-Chamber's
+// sd-board, on the reasoning that the relay was stateless public-data plumbing — true until
+// the push watcher put a KV namespace, VAPID keys and a Firebase service-account key in
+// there. See worker.js's header for why they were separated.
+const BOARD_PROXY = "https://courtreach.sdentertainmentservices.workers.dev";   // SC-board relay (public data) + push
 // Closed-phone push (Web Push, RFC 8291/8292) — same worker as BOARD_PROXY, CourtReach's own
 // /cr-push-* endpoints and VAPID keys (kept separate from SD-Chamber's own push feature, which
 // shares the worker but not the keys/subscriber list). Public key only — safe to ship, it's
