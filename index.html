@@ -3808,16 +3808,7 @@ function renderSettings(){
           <div class="stg-sub">A notification when a tracked case is about to reach, and when a colleague messages you — with the app closed and the phone locked.</div></div>
         <button class="stg-switch" id="st_notifToggle" type="button" aria-label="Toggle alerts"></button>
       </div>
-      <div class="stg-sub" style="padding:2px 2px 6px">${pushStatusLine()}</div>
-      <div class="stg-row">
-        <div><div class="stg-label">Send a test alert</div>
-          <div class="stg-sub">Sends one to this device only, and reports exactly what happened.</div></div>
-        <button class="sh-btn" id="st_pushTest" type="button" style="flex:none;width:auto;padding:8px 14px;margin:0">Test</button>
-      </div>
-      ${pushTestMsg?`<div class="stg-sub" style="padding:0 2px 6px">${pushTestMsg}</div>`:""}
-      ${lastChatPush?`<div class="stg-sub" style="padding:0 2px 8px">${lastChatPush.err
-        ?`⚠️ Last message you sent: the alert could not be processed — ${esc(lastChatPush.err)}.${/firestore/i.test(lastChatPush.err)?" The worker's CR_FIRESTORE_SA_KEY secret is bad — re-paste it.":""}`
-        :`Last message you sent: ${lastChatPush.recipients} ${lastChatPush.recipients===1?"person":"people"} in that conversation, ${lastChatPush.devices} registered ${lastChatPush.devices===1?"device":"devices"}, ${lastChatPush.sent} notified.`}</div>`:""}
+      <div class="stg-sub" style="padding:2px 2px 8px">${pushStatusLine()}</div>
     </div>`);
 
   /* ---- Security ---- */
@@ -3904,31 +3895,6 @@ function renderSettings(){
   };
   paintNotify();
   const nt=$("st_notifToggle"); if(nt) nt.onclick=toggleNotify;
-  const pt=$("st_pushTest");
-  if(pt) pt.onclick=async()=>{
-    pt.disabled=true; pushTestMsg="Sending…"; renderSettings();
-    try{
-      // Register first: if this device fell out (an expired subscription, a rotated key), the
-      // test would otherwise report "0 devices" and look like a worker fault rather than a
-      // subscription that just needed remaking.
-      await syncPushSub();
-      const idToken=await auth.idToken().catch(()=>"");
-      const r=await fetch(BOARD_PROXY+"/cr-push-test",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({idToken})});
-      const j=await r.json().catch(()=>null);
-      if(!r.ok || !j) pushTestMsg="Couldn't reach the alert service"+(j&&j.error?" — "+esc(j.error):"")+".";
-      else if(!j.devices) pushTestMsg="⚠️ No device is registered for your account. Switch the toggle above off and on, then test again.";
-      else {
-        const good=(j.results||[]).filter(x=>+x.status>=200 && +x.status<300).length;
-        pushTestMsg = good
-          ? `Sent to ${good} of ${j.devices} device${j.devices===1?"":"s"}. If nothing appears, the phone is blocking it — check CourtReach's notification settings there.`
-          : `⚠️ The push service refused it: ${esc((j.results||[]).map(x=>x.status+(x.detail?" — "+x.detail:"")).join("; "))}. `+
-            `403 means the worker's VAPID keys don't match this app's; 404 or 410 means the subscription had expired and has been cleared — test again; `+
-            `"error — DataError" means a VAPID secret on the worker is malformed or the two halves aren't a pair — re-paste both.`;
-      }
-    }catch(e){ pushTestMsg="Couldn't reach the alert service — "+esc((e&&e.message)||"failed")+"."; }
-    pt.disabled=false; renderSettings();
-  };
   const lockBtn=$("st_lock"); if(lockBtn) lockBtn.onclick=()=>showPinLock(me.uid);
   $("st_signout").onclick=()=>{
     // the PIN survives sign-out on purpose: it only ever unlocks a session, so keeping the
@@ -4612,18 +4578,8 @@ function notifyChatPush(coll, id){
     if(!idToken) return;
     return fetch(BOARD_PROXY+"/cr-push-chat",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({idToken, coll, id})});
-  }).then(r=>r&&r.json()).then(j=>{
-    // Kept only so Settings can say what the last message actually did. "Nobody in this
-    // conversation" and "somebody was, but no device of theirs is registered" are different
-    // problems with the same symptom — silence — and this is what tells them apart.
-    // An ERROR reply is kept as its own thing — storing it as if it were counts is how the
-    // line once read "undefined people, undefined devices": the worker had answered
-    // {"error": ...} and the counts were printed anyway, burying the one fact that mattered.
-    if(j && j.ok) lastChatPush={at:Date.now(), recipients:j.recipients, devices:j.devices, sent:j.sent};
-    else if(j) lastChatPush={at:Date.now(), err:String(j.error||"failed")};
   }).catch(()=>{});
 }
-let lastChatPush=null;
 // Is an existing subscription bound to the key we now sign with? A push subscription carries
 // the applicationServerKey it was created with, and the push service checks every delivery
 // against it — so after a VAPID rotation an old subscription doesn't fail loudly, it just
@@ -4634,7 +4590,7 @@ let lastChatPush=null;
 // Declared ABOVE syncPushSub on purpose. Function declarations hoist and `let` does not, and
 // syncPushSub now runs from boot() — if this binding were still below it, the first call
 // would land in the temporal dead zone and throw before ever reaching the network.
-let pushLast={ok:null, err:""}, pushTestMsg="";
+let pushLast={ok:null, err:""};
 function _subKeyMatches(sub, want){
   try{
     const got=sub && sub.options && sub.options.applicationServerKey;
