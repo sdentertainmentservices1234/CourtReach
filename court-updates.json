@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-15T14:23:44.115414Z",
+  "generated_at": "2026-08-15T14:48:35.897068Z",
   "parser_version": 9,
   "window": [
     "2026-08-17",
@@ -24,7 +24,8 @@
         "Chamber (supp)",
         "Single Judge (main)",
         "Single Judge (supp)",
-        "Registrar (main)"
+        "Registrar (main)",
+        "Registrar (supp)"
       ],
       "lists": {
         "Miscellaneous": {
@@ -6263,7 +6264,7 @@
           },
           "2": {
             "coram": "MS. GRACY L. BAWITLUNG, REGISTRAR",
-            "total": "35",
+            "total": "37",
             "fresh": "",
             "items": {
               "1": "Diary No. 10628-2026 THE STATE OF ODISHA AND ORS. VERSUS BIPINI BIHARI SAMAL",
@@ -6303,7 +6304,10 @@
               "32": "SLP(Crl) No. PREETI VARMA VERSUS SHARATHU RAJU AND ORS.",
               "33": "T.P.(C) No. 1843/2026 DEEPA RISHABHA MISHRA@ DEEPA ALOK KUMAR VERSUS RISHABHA RAMESH MISHRA AND ANR.",
               "34": "T.P.(C) No. 1834/2026 DOLON CHAUDHURY VERSUS ABHISHEK PATRA",
-              "35": "SLP(C) No. 24361/2026 E. SENTHIL ANAND AND ANR. VERSUS SELVI. S. DHIVYA AND ANR."
+              "35": "SLP(C) No. 24361/2026 E. SENTHIL ANAND AND ANR. VERSUS SELVI. S. DHIVYA AND ANR.",
+              "36": "Crl.A. No. STEPHENRAJ AND ANR. VERSUS STATE REPRESENTED BY THE INPSECTOR OF",
+              "3087": "- 3089/2026 ARE LISTED",
+              "36.1": "Connected SELVI VERSUS STATE OF TAMIL NADU AND ORS."
             },
             "advocates": {
               "1": {
@@ -6436,11 +6440,19 @@
               },
               "35": {
                 "pet": "M.P. PARTHIBAN"
+              },
+              "36": {
+                "pet": "R. SHASE",
+                "resp": "B. KARUNAKARAN"
+              },
+              "36.1": {
+                "pet": "S. GOWTHAMAN",
+                "resp": "B. KARUNAKARAN"
               }
             },
             "times": {},
             "main": 35,
-            "supp": 0
+            "supp": 2
           }
         }
       }
@@ -16662,7 +16674,8 @@
       "M_C_2": 509129,
       "M_S_1": 523418,
       "M_S_2": 514043,
-      "M_R_1": 524308
+      "M_R_1": 524308,
+      "M_R_2": 505114
     },
     "2026-08-18": {
       "M_J_1": 1225523,
