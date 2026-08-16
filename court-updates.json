@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-15T19:47:04.756808Z",
+  "generated_at": "2026-08-16T03:28:09.793479Z",
   "parser_version": 9,
   "window": [
     "2026-08-17",
@@ -21,6 +21,7 @@
         "Miscellaneous (main)",
         "Miscellaneous (supp)",
         "Chamber (main)",
+        "Chamber (supp)",
         "Single Judge (main)",
         "Single Judge (supp)",
         "Registrar (main)",
@@ -5281,7 +5282,7 @@
         "Chamber": {
           "5": {
             "coram": "HON'BLE MR. JUSTICE ALOK ARADHE",
-            "total": "22",
+            "total": "23",
             "fresh": "",
             "items": {
               "1701": "SLP(C) No. MEHAR SINGH (D) THR. LRS. VERSUS DIAL SINGH (D) AND ANR.",
@@ -5305,7 +5306,8 @@
               "1718": "SLP(C) No. 21197/2025 KRISHAN KANT DUBEY VERSUS STATE OF M.P. AND ORS. YASHRAJ SINGH BUNDELA",
               "1719": "SLP(C) No. 27118/2025 THE KARNATAKA LOKAYUKTA VERSUS H.N. SHIVEGOWDA AND ANR.",
               "1720": "SLP(C) No. 32389/2025 MUNICIPAL CORPORATION OF DELHI VERSUS DESH DEEPAK AND ANR.",
-              "1721": "SLP(C) No. 30467/2025 PUSHPA DEVI SHARMA AND ANR. VERSUS ROSHAN LAL HABLANI AND ORS."
+              "1721": "SLP(C) No. 30467/2025 PUSHPA DEVI SHARMA AND ANR. VERSUS ROSHAN LAL HABLANI AND ORS.",
+              "1725": "Diary No. 48484-2026 AJAY PRATAP SINGH VERSUS STATE OF KERALA"
             },
             "advocates": {
               "1701": {
@@ -5382,11 +5384,14 @@
               "1721": {
                 "pet": "ALPANA SHARMA",
                 "resp": "ARVIND GUPTA"
+              },
+              "1725": {
+                "pet": "DEBOPRIYO SUDIP MOULIK"
               }
             },
             "times": {},
             "main": 22,
-            "supp": 0
+            "supp": 1
           },
           "7": {
             "coram": "HON'BLE MR. JUSTICE SHEEL NAGU",
@@ -5504,7 +5509,7 @@
           },
           "11": {
             "coram": "HON'BLE MR. JUSTICE VIPUL M. PANCHOLI",
-            "total": "23",
+            "total": "24",
             "fresh": "",
             "items": {
               "1701": "Diary No. 38603-2026 ABHIJEET ANANT DHARGALKAR VERSUS DATTARAM N SALKAR AND ANR.",
@@ -5529,7 +5534,8 @@
               "1720": "Diary No. 29863-2026 KANGRA CENTRAL COOPERATIVE BANK LIMITED VERSUS THE KANGRA CENTRAL COOPERATIVE BANK",
               "1721": "SLP(C) No. 8842/2025 ANUMULA INDIRAMMA AND ORS. VERSUS ERUKONDA PRAKASH AND ORS.",
               "1722": "SLP(C) No. 26857/2025 STATE OF U.P. AND ORS. VERSUS SHIV PYARE",
-              "1723": "T.P.(C) No. 3023/2025 JELLA SRI BHAVANI @ BHAVANI VERSUS JELLA VEERAIAH"
+              "1723": "T.P.(C) No. 3023/2025 JELLA SRI BHAVANI @ BHAVANI VERSUS JELLA VEERAIAH",
+              "1724": "Diary No. 33427-2026 SRI HARINATH VERSUS K.E. KANTESH"
             },
             "advocates": {
               "1701": {
@@ -5613,11 +5619,14 @@
               },
               "1723": {
                 "pet": "M. A. CHINNASAMY"
+              },
+              "1724": {
+                "pet": "SMITA AMRATLAL VORA"
               }
             },
             "times": {},
             "main": 23,
-            "supp": 0
+            "supp": 1
           },
           "14": {
             "coram": "HON'BLE MR. JUSTICE ATUL S. CHANDURKAR",
@@ -5732,6 +5741,21 @@
             "times": {},
             "main": 24,
             "supp": 0
+          },
+          "22": {
+            "coram": "",
+            "total": "4",
+            "fresh": "",
+            "items": {
+              "1712": "STATE REPRESENTED BY THE",
+              "1722": "Diary No. 41564-2026 KANNAN @ MADANKUMAR @ UMAI KANNAN VERSUS STATE",
+              "1723": "Diary No. 47646-2026 ALPESHBHAI HARSHADBHAI PATEL VERSUS STATE OF GUJARAT AND ANR.",
+              "1724": "Diary No. 48360-2026 IDRESS HASSASN VERSUS PATAKOTA MUNI SUDHARA REDDY AND ANR."
+            },
+            "advocates": {},
+            "times": {},
+            "main": 0,
+            "supp": 4
           }
         },
         "Single Judge": {
@@ -16647,6 +16671,7 @@
       "M_J_1": 942330,
       "M_J_2": 642146,
       "M_C_1": 541810,
+      "M_C_2": 509129,
       "M_S_1": 523418,
       "M_S_2": 514043,
       "M_R_1": 524308,
