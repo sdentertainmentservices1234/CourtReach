@@ -108,6 +108,24 @@
   }
   const isOver = (ctx, court, item) => /^over$/i.test(detailRemark(ctx, court, item));
   const isPassOver = (ctx, court, item) => /pass\s*over/i.test(detailRemark(ctx, court, item));
+  /* Does a board remark mean the court is FINISHED with a matter today? "Over", "dismissed",
+     "disposed", "list on 12.09.2026", "after four weeks" all do. A PASS OVER emphatically
+     does not — it is recalled later the same day — and part-heard continues. Anything
+     unrecognised is left alone rather than guessed at.
+     Lives HERE, in the engine, rather than in courtreach.html where it started: the app and
+     the push watcher both have to agree about what counts as finished, and a second copy of
+     these rules is precisely how the worker's classify() drifted three fixes behind once
+     before. Exported through the public API so there is one set of words, in one place. */
+  function remarkEndsToday(rem) {
+    const s = String(rem || "").trim();
+    if (!s) return false;
+    if (/pass\s*over/i.test(s)) return false;
+    if (/part\s*heard/i.test(s)) return false;
+    return /^over$/i.test(s)
+      || /dismiss|dispos|allowed|withdraw|adjourn|deleted|deferred|not\s*press/i.test(s)
+      || /list(ed)?\s*(on|after)/i.test(s)
+      || /\bafter\b.*\bweek/i.test(s);
+  }
 
   function overAhead(ctx, court, curItem, ours) {
     const r = (ctx.remarksByCourt || {})[String(court)]; if (!r || !r.items) return 0;
@@ -223,7 +241,7 @@
       const inPhase = (oursSingle && curBoardNum >= 1600 && curBoardNum < 1700) || (oursChamber && curBoardNum >= 1700 && curBoardNum < 1800);
       if (inPhase) {
         const g = Math.floor(oursNum) - Math.floor(curBoardNum);
-        if (g < 0) return { tier: "passed", label: "board has moved past this item — no result posted", short: "no result", gap: g };
+        if (g < 0) return { tier: "passed", label: "matter is over", short: "over", over: true, gap: g };
         if (g <= 1) return { tier: "now", label: g === 0 ? "ITEM ON NOW" : "NEXT — get in", short: g === 0 ? "NOW" : "NEXT", gap: g };
         if (g <= 4) return { tier: "soon", label: "~" + g + " items away", short: g + " away", gap: g };
         return { tier: "later", label: g + " items away", short: g + " away", gap: g };
@@ -234,7 +252,15 @@
     if (curBoardNum >= 1500 && curBoardNum < 1600) return { tier: "soon", label: "pronouncement is on", short: "pronouncement" };
     if (curBoardNum >= 1600 && curBoardNum < 1700) return { tier: "soon", label: "Single Judge matters on", short: "single judge" };
     if (curBoardNum >= 1700 && curBoardNum < 1800) return { tier: "soon", label: "Chamber Judge matters on", short: "chamber" };
-    if (isOver(ctx, e.courtNo, ours)) return { tier: "passed", label: "matter is over", short: "over", over: true };
+    // What the board itself says wins, and is quoted rather than flattened to "over" — a
+    // DISMISSED is not the same fact as an OVER, and the court sheet was the only place that
+    // distinction survived. Only the ISLAND has to abbreviate, so a long remark ("list on
+    // 12.09.2026") still collapses to "over" there; the full wording travels in `label` and
+    // is spelled out in the sheet.
+    const remNow = detailRemark(ctx, e.courtNo, ours);
+    if (remarkEndsToday(remNow))
+      return { tier: "passed", label: "board: " + remNow,
+               short: remNow.length <= 12 ? remNow.toLowerCase() : "over", over: true };
     const { seq, passIdx } = seqInfo(seqTxt);
     const curPos = seq.length ? seq.indexOf(parseInt(bc.item, 10)) : -1;
     const mark = poFor(ctx, e.courtNo, ours)
@@ -346,20 +372,22 @@
     if (gap != null) { const pa = poAdjust(ctx, e.courtNo, bc.item, ours, seq, passIdx); if (pa) { gap = Math.max(0, gap + pa); poNote = pa < 0 ? " · " + (-pa) + " passed over ahead" : " · " + pa + " recalled first"; } }
     if (gap == null) { const pg = preStartGap(seqTxt, ours); if (pg != null) return preStartResult(pg); }
     if (gap == null) return { tier: "unknown", label: "position unclear", short: "—" };
-    // The board's current item number is past ours. That is ALL it means. The matter may be
-    // over, or passed over and not yet recalled, or skipped — the board has said none of
-    // those. Claiming "over" here is what put "over" on Court 12's item 9 with no remark and
-    // no status mark anywhere (owner: "Do not mark any cases as over unless you see a remark
-    // on the Supreme Court Display Board that it is over or someone using the app marks the
-    // status"). `over` is deliberately NOT set, so nothing downstream — strikethrough,
-    // alerts, the push watcher — treats this as a disposal.
-    if (gap < 0) return { tier: "passed", label: "board has moved past this item — no result posted", short: "no result", gap, approx };
+    // Nothing posted, and the court is past this item in the TRUE call order — so it is over
+    // (owner: "if nothing is forthcoming and in terms of sequence the court is past that case
+    // then show it as over"). This branch briefly reported "no result" instead, after it put a
+    // false "over" on Court 12's item 9 — but the real fault there was the sequence parser
+    // dropping items 1-3, which made a case 13 AHEAD of the court look 48 behind it. With the
+    // order computed correctly, being past it in sequence is a sound basis for calling it
+    // over, and `over` is set so the label, the strikethrough and the alerts all agree.
+    // `approx` still marks the weaker case where no sequence was published at all and this is
+    // raw item numbers; the tap-to-unstrike override remains for when the board is wrong.
+    if (gap < 0) return { tier: "passed", label: "matter is over", short: "over", over: true, gap, approx };
     if (gap <= 1) return { tier: "now", label: gap === 0 ? "ITEM ON NOW" : "NEXT — get in", short: gap === 0 ? "NOW" : "NEXT", gap, approx, poNote };
     if (gap <= 4) return { tier: "soon", label: "~" + gap + " items away" + poNote, short: gap + " away", gap, approx, poNote };
     return { tier: "later", label: gap + " items away" + poNote, short: gap + " away", gap, approx, poNote };
   }
 
-  const API = { classify, seqInfo, orderPos, parseSequenceLine, preStartGap, preStartResult, isMentioning, MENT_END, REG_BASE, passoverItemsFor, detailRemark };
+  const API = { classify, seqInfo, orderPos, parseSequenceLine, preStartGap, preStartResult, isMentioning, MENT_END, REG_BASE, passoverItemsFor, detailRemark, remarkEndsToday };
   root.BoardEngine = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
 })(typeof self !== "undefined" ? self : (typeof globalThis !== "undefined" ? globalThis : this));

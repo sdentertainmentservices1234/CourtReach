@@ -1829,15 +1829,10 @@ const remarkFor = (court,item) => ENG.detailRemark({remarksByCourt}, court, item
    likewise continues. Anything unrecognised is left alone rather than guessed at — an
    unstruck case that turns out to be over is a small annoyance; a struck case that is
    actually still coming up is the kind of mistake that makes somebody miss it. */
-const remarkEndsToday = rem => {
-  const s=String(rem||"").trim(); if(!s) return false;
-  if(/pass\s*over/i.test(s)) return false;
-  if(/part\s*heard/i.test(s)) return false;
-  return /^over$/i.test(s)
-      || /dismiss|dispos|allowed|withdraw|adjourn|deleted|deferred|not\s*press/i.test(s)
-      || /list(ed)?\s*(on|after)/i.test(s)
-      || /\bafter\b.*\bweek/i.test(s);
-};
+// The engine owns this now — the app and the push watcher must agree on what counts as
+// finished, and a second copy of these words here is exactly how the worker's engine drifted
+// behind once before.
+const remarkEndsToday = rem => ENG.remarkEndsToday(rem);
 
 // Record passovers we see live (accumulated for the day) and each court's highest-seen item
 // (used to detect the Misc→Regular reset).
