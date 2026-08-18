@@ -35,7 +35,19 @@
 
   function seqInfo(text) {
     if (!text) return { seq: [], passIdx: null };
-    const norm = String(text).replace(/(\d)\s*[-–—]\s*(\d)/g, "$1 TO $2");
+    // A number written hard against the word before it — "Item Nos.1 to 4", "item no.6
+    // onwards" — is how the Supreme Court actually writes these lines, and it used to cost us
+    // the number entirely: "NOS.1" matches nothing numeric, so the token was skipped, and
+    // with the 1 gone "1 TO 4" degraded to a bare "TO 4". Court 12's real line, "Seq. Item
+    // Nos.1 to 4 51 to 55 5 to 50...", therefore parsed with items 1, 2 and 3 missing. The
+    // court was ON item 1, so item 1 fell into the unlisted "rest of the matters" tail at
+    // position 58 while our item 9 sat at position 10 — a gap of MINUS 48, which the board
+    // then reported as the matter being behind the court. It was 13 away.
+    // Split only a digit that follows a LETTER (optionally through a full stop). A digit
+    // after a digit is a sub-item — 62.1 — and must survive untouched.
+    const norm = String(text)
+      .replace(/(\d)\s*[-–—]\s*(\d)/g, "$1 TO $2")
+      .replace(/([A-Za-z])\.?(\d)/g, "$1 $2");
     const toks = norm.toUpperCase().replace(/[^0-9A-Z. ]/g, " ").split(/\s+/).filter(Boolean);
     const out = [], seen = new Set(); let passIdx = null;
     const push = n => { if (!seen.has(n)) { seen.add(n); out.push(n); } };
