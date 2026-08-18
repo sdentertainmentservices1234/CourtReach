@@ -38,15 +38,21 @@ self.addEventListener("push", e => {
       silent: quiet,
       vibrate: quiet ? undefined : [160, 90, 160],
     });
-    // Number on the Home Screen icon while the app is CLOSED. The count is how many
-    // notifications are currently outstanding — tags mean one per conversation, so it reads
-    // as "threads waiting for you", not "messages", which is what a chat badge means anyway.
+    // Number on the Home Screen icon while the app is CLOSED — MESSAGES ONLY (owner:
+    // "should only show the messages notification and not any other notification"). A case
+    // alert is a moment, not an item waiting to be dealt with: it is about to be true, then
+    // it isn't, and there is nothing to clear by reading it. Counting those made the badge a
+    // number nobody could act on or get rid of. Chat is the opposite, and is what the badge
+    // in the app already counts, so the two now agree.
+    // Filtered by tag rather than by the count of everything on screen, since a case alert
+    // may well be sitting there beside the messages.
     // Only set here, never cleared: the app clears it on open, because only the app knows
     // what has actually been read.
     try {
-      if ("setAppBadge" in self.navigator) {
+      if (d.kind === "chat" && "setAppBadge" in self.navigator) {
         const open = await self.registration.getNotifications();
-        if (open.length) await self.navigator.setAppBadge(open.length);
+        const chats = open.filter(n => String(n.tag || "").startsWith("cr-chat:"));
+        if (chats.length) await self.navigator.setAppBadge(chats.length);
       }
     } catch (_) {}
   })());

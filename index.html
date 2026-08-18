@@ -1793,6 +1793,12 @@ function statusMarks(){
     const key=String(e.courtNo)+"_"+String(e.itemNo);
     if(e.status==="over_att") done[key]={v:"att"};
     else if(e.status==="over_absent") done[key]={v:"abs"};
+    // "Not taken up" is now a done-mark too (owner: "unless ... someone using the app marks
+    // the status as over or not taken up"). It was previously left out on the reasoning that
+    // the court never reached the item, so it was the owner's private record and no board
+    // fact — but the owner is the one saying the court is finished with it, and that is
+    // exactly the authority the other two marks carry.
+    else if(e.status==="not_taken") done[key]={v:"nt"};
     else if(e.status==="passover") po[key]={mode:"detail"};
   };
   flashMatters().forEach(add);

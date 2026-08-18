@@ -187,7 +187,10 @@
     ctx = ctx || {};
     const ours = e.itemNo;
     const dn = doneOf(ctx, e.courtNo, ours);
-    if (dn) return { tier: "passed", label: dn.v === "att" ? "over — attended" : "over — not attended", short: dn.v === "att" ? "over ✓" : "over ✗", over: true, done: true };
+    if (dn) return { tier: "passed",
+      label: dn.v === "att" ? "over — attended" : dn.v === "abs" ? "over — not attended" : "not taken up",
+      short: dn.v === "att" ? "over ✓" : dn.v === "abs" ? "over ✗" : "not taken",
+      over: true, done: true };
     if (!bc) return { tier: "unknown", label: "court not on the board", short: "—" };
     const seqTxt = (bc.sequence && bc.sequence.trim()) ? bc.sequence : ((ctx.seqByCourt || {})[String(e.courtNo)] || "");
     if (/not in session/i.test(bc.status || "")) {
@@ -196,7 +199,9 @@
       return { tier: "idle", label: "court not sitting", short: "not sitting" };
     }
     if (isMentioning(ours)) {
-      if ((ctx.nowMins || 0) > MENT_END) return { tier: "passed", label: "mentioning — over", short: "over", ment: true };
+      // The mentioning WINDOW has closed — which says nothing about what happened to the
+      // matter. It used to read "over", and a phase ending is not a disposal.
+      if ((ctx.nowMins || 0) > MENT_END) return { tier: "passed", label: "mentioning window has closed", short: "closed", ment: true };
       return { tier: "soon", label: "mentioning — watch", short: "watch", gap: 0, ment: true };
     }
     const curBoardNum = parseInt(bc.item, 10);
@@ -206,7 +211,7 @@
       const inPhase = (oursSingle && curBoardNum >= 1600 && curBoardNum < 1700) || (oursChamber && curBoardNum >= 1700 && curBoardNum < 1800);
       if (inPhase) {
         const g = Math.floor(oursNum) - Math.floor(curBoardNum);
-        if (g < 0) return { tier: "passed", label: "matter is over", short: "over", gap: g };
+        if (g < 0) return { tier: "passed", label: "board has moved past this item — no result posted", short: "no result", gap: g };
         if (g <= 1) return { tier: "now", label: g === 0 ? "ITEM ON NOW" : "NEXT — get in", short: g === 0 ? "NOW" : "NEXT", gap: g };
         if (g <= 4) return { tier: "soon", label: "~" + g + " items away", short: g + " away", gap: g };
         return { tier: "later", label: g + " items away", short: g + " away", gap: g };
@@ -329,7 +334,14 @@
     if (gap != null) { const pa = poAdjust(ctx, e.courtNo, bc.item, ours, seq, passIdx); if (pa) { gap = Math.max(0, gap + pa); poNote = pa < 0 ? " · " + (-pa) + " passed over ahead" : " · " + pa + " recalled first"; } }
     if (gap == null) { const pg = preStartGap(seqTxt, ours); if (pg != null) return preStartResult(pg); }
     if (gap == null) return { tier: "unknown", label: "position unclear", short: "—" };
-    if (gap < 0) return { tier: "passed", label: "matter is over", short: "over", gap, approx };
+    // The board's current item number is past ours. That is ALL it means. The matter may be
+    // over, or passed over and not yet recalled, or skipped — the board has said none of
+    // those. Claiming "over" here is what put "over" on Court 12's item 9 with no remark and
+    // no status mark anywhere (owner: "Do not mark any cases as over unless you see a remark
+    // on the Supreme Court Display Board that it is over or someone using the app marks the
+    // status"). `over` is deliberately NOT set, so nothing downstream — strikethrough,
+    // alerts, the push watcher — treats this as a disposal.
+    if (gap < 0) return { tier: "passed", label: "board has moved past this item — no result posted", short: "no result", gap, approx };
     if (gap <= 1) return { tier: "now", label: gap === 0 ? "ITEM ON NOW" : "NEXT — get in", short: gap === 0 ? "NOW" : "NEXT", gap, approx, poNote };
     if (gap <= 4) return { tier: "soon", label: "~" + gap + " items away" + poNote, short: gap + " away", gap, approx, poNote };
     return { tier: "later", label: gap + " items away" + poNote, short: gap + " away", gap, approx, poNote };
