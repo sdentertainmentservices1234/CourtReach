@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-18T16:33:56.664218Z",
+  "generated_at": "2026-08-18T16:59:15.694105Z",
   "parser_version": 9,
   "window": [
     "2026-08-18",
@@ -8547,8 +8547,7 @@
         "Miscellaneous (supp)",
         "Regular (main)",
         "Regular (supp)",
-        "Registrar (main)",
-        "Curative & Review (main)"
+        "Registrar (main)"
       ],
       "lists": {
         "Miscellaneous": {
@@ -20378,8 +20377,7 @@
       "M_J_2": 648595,
       "F_J_1": 1025088,
       "F_J_2": 658436,
-      "M_R_1": 539500,
-      "M_CC_1": 514940
+      "M_R_1": 539500
     },
     "2026-08-20": {
       "M_J_1": 797988,
