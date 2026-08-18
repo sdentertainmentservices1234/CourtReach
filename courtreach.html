@@ -1119,10 +1119,26 @@ const $ = id => document.getElementById(id);
    that way. Re-measuring on load and re-applying #app's height explicitly (inline style
    beats the CSS dvh rule) self-heals it, and doing the same on every resize/orientation/
    visibility change keeps it correct instead of trusting one snapshot to be right forever. */
+/* Is a text field actually focused? Everything below hangs on this.
+   visualViewport.height is the screen MINUS the keyboard, and that is the right measurement
+   only while somebody is typing. Taking it unconditionally is what left the app half-height
+   on reopening (owner: "the app upon reopening throws the bottom panel up at midway screen
+   and gives blank screen for the bottom half"): background the app with the keyboard up — or
+   come back to a phone that reports the shrunken viewport for a moment on resume — and the
+   app is sized to half the screen and STAYS there, because no further resize event ever
+   arrives to correct it. The nav bar sits mid-screen with nothing under it and there is no
+   gesture that puts it back.
+   So: trust the shrunken viewport only while a field has focus. Otherwise take the LARGER of
+   the two measurements, which also preserves the reason this function exists — a standalone
+   launch can report innerHeight short, and vv.height is then the truthful one. */
+const _typingNow = () => { const a=document.activeElement;
+  return !!(a && (a.tagName==="INPUT" || a.tagName==="TEXTAREA" || a.isContentEditable)); };
 function fitAppHeight(){
   const el=$("app"); if(!el) return;
   const vv=window.visualViewport;
-  const h=(vv && vv.height) || window.innerHeight;
+  const typing=_typingNow();
+  let h = window.innerHeight;
+  if(vv) h = typing ? vv.height : Math.max(vv.height, window.innerHeight);
   if(h>0) el.style.height=h+"px";
   /* Sizing alone is not enough on iOS. Opening the keyboard there does not shrink the layout
      viewport — it SCROLLS it, sliding the page up behind the keyboard. So an app that is
@@ -1134,8 +1150,11 @@ function fitAppHeight(){
      amount puts it back over the visible area. Any document scroll from the same gesture is
      undone too, or the two corrections fight each other. Everywhere else offsetTop is 0 and
      this does nothing at all. */
+  // Gated on `typing` for the same reason as the height: a stale non-zero offsetTop reported
+  // on resume would otherwise push the whole app down the screen with nobody typing, which is
+  // the other half of the same complaint. With no field focused the offset is always cleared.
   if(vv){
-    const top=Math.max(0, Math.round(vv.offsetTop||0));
+    const top = typing ? Math.max(0, Math.round(vv.offsetTop||0)) : 0;
     el.style.transform = top ? "translateY("+top+"px)" : "";
     const se=document.scrollingElement;
     if(se && se.scrollTop) se.scrollTop=0;
@@ -1144,7 +1163,14 @@ function fitAppHeight(){
 fitAppHeight();
 window.addEventListener("resize", fitAppHeight);
 window.addEventListener("orientationchange", ()=>setTimeout(fitAppHeight,60));
-document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) setTimeout(fitAppHeight,60); });
+// Re-measure TWICE on resume. iOS can still be reporting the backgrounded viewport at the
+// moment visibilitychange fires, so a single measurement can lock in the wrong height for the
+// rest of the session — which is precisely the failure this is here to prevent.
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden){ setTimeout(fitAppHeight,60); setTimeout(fitAppHeight,400); } });
+// Restoring from the back/forward cache does not fire visibilitychange at all.
+window.addEventListener("pageshow", ()=>{ setTimeout(fitAppHeight,60); setTimeout(fitAppHeight,400); });
+// The keyboard closing is the other moment the height must be handed back.
+window.addEventListener("focusout", ()=>setTimeout(fitAppHeight,60), true);
 if(window.visualViewport){
   window.visualViewport.addEventListener("resize", fitAppHeight);
   // The keyboard slides the viewport without ever firing `resize` on iOS, so this one is not
@@ -2313,9 +2339,26 @@ function courtCoram(court){
   for(const t of CAUSELIST_TYPES){ const rec=lists[t]?.[String(court)]; if(rec&&rec.coram) return cleanCoram(rec.coram); }
   return "";
 }
+/* Cases listed before this court today, per list type, with the MAIN and SUPPLEMENTARY split
+   spelled out (owner: "The app is not showing the total miscellaneous matters from both the
+   main and supplementary lists. Same with the Regular lists").
+   The figure always did include both — Court 5's Miscellaneous today is 107, which is 64 main
+   plus 43 supplementary — but printed as a single number there was no way to tell whether the
+   supplementary had been counted at all, so it read as if it hadn't. Showing the split is the
+   answer: nothing about the arithmetic changes, it just stops being invisible.
+   Falls back to main+supp when the court's own printed total is missing, so a list the PDF
+   never headed with a total still reports a real figure instead of vanishing. */
 function courtTotals(court){
   const lists=courtUpdates?.by_date?.[todayISO()]?.lists||{}, out=[];
-  for(const t of CAUSELIST_TYPES){ const rec=lists[t]?.[String(court)]; if(rec&&rec.total) out.push(t+": "+rec.total); }
+  for(const t of CAUSELIST_TYPES){
+    const rec=lists[t]?.[String(court)]; if(!rec) continue;
+    const main=parseInt(rec.main,10), supp=parseInt(rec.supp,10);
+    let n=parseInt(rec.total,10);
+    if(isNaN(n)||n<=0) n = isNaN(main) ? NaN : (main + (isNaN(supp)?0:supp));
+    if(isNaN(n)||n<=0) continue;
+    const split = (!isNaN(main) && !isNaN(supp) && supp>0) ? ` (${main} main + ${supp} supp.)` : "";
+    out.push(t+": "+n+split);
+  }
   return out;
 }
 // A Special Bench (item 300+) sitting's declared time — from the causelist, not
