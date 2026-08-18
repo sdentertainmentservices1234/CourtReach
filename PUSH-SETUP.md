@@ -4,7 +4,8 @@ Pops a notification on your phone **even when the app is closed and the phone is
 locked** — the moment a case you're tracking (your own, or your chamber's) gets close.
 
 Built on **Web Push (VAPID)**, delivered by **CourtReach's own Cloudflare worker**
-(`worker.js` in this repo), which also serves the board relay (`BOARD_PROXY`).
+(`worker.js`, kept on the owner's machine and deliberately not committed — see below),
+which also serves the board relay (`BOARD_PROXY`).
 
 **This used to run inside SD-Chamber's `sd-board` worker and no longer does.** That was
 defensible while the worker was only a stateless relay for public board data. It stopped
@@ -82,7 +83,7 @@ be replaced together — `VAPID_PUBLIC_KEY` in `courtreach.html` and `CR_VAPID_P
 
 Dashboard → **Workers & Pages → Create → Worker**. Name it **`courtreach`** (the name
 becomes the hostname, so it ends up at `courtreach.<your-subdomain>.workers.dev`). Paste
-this repo's `worker.js` into the editor and **Deploy** once, so the worker exists — then
+`worker.js` into the editor and **Deploy** once, so the worker exists — then
 → **Settings**:
 
 - **Bindings → KV namespace binding** → create a new namespace (name it e.g.
@@ -173,7 +174,10 @@ crossing into range, phone locked or not.
   existing `toggleNotify()`.
 - `sw.js` — the service worker's `push`/`notificationclick` handlers (new file —
   CourtReach had no service worker before this).
-- `worker.js` (this repo) — CourtReach's own worker: board relay, `/cr-push-*` with
+- `worker.js` (**not in this repo** — `~/Projects/CourtReach/worker.js`, gitignored while
+  the repo is public, since the worker is the one part users never receive a copy of;
+  earlier revisions remain in git history) — CourtReach's own worker: board relay,
+  `/cr-push-*` with
   Firebase ID-token verification, the autonomous watcher, Firestore REST +
   service-account auth, and `board-engine.js` embedded **whole** between explicit BEGIN
   and END markers. The dashboard editor can't import across repos, so the engine is a

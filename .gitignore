@@ -4,3 +4,11 @@ courtreach-demo.html
 
 firestore.rules
 __pycache__/
+
+# CourtReach's Cloudflare Worker source. Deliberately NOT tracked while this repo is public:
+# it is the one part of the system users never receive a copy of — the app's HTML is
+# distributed to every browser by definition, but the worker only ever runs on Cloudflare —
+# so publishing it gives away the server side for nothing in return. Nothing here builds or
+# deploys from it; it is pasted into the Cloudflare dashboard by hand (see PUSH-SETUP.md).
+# The file itself stays on the owner's machine, and earlier revisions remain in git history.
+worker.js
