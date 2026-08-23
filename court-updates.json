@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-23T19:24:12.763251Z",
+  "generated_at": "2026-08-23T19:46:10.786639Z",
   "parser_version": 9,
   "window": [
     "2026-08-24",
@@ -24,7 +24,8 @@
         "Chamber (supp)",
         "Single Judge (main)",
         "Single Judge (supp)",
-        "Registrar (main)"
+        "Registrar (main)",
+        "Registrar (supp)"
       ],
       "lists": {
         "Miscellaneous": {
@@ -5277,7 +5278,7 @@
         "Registrar": {
           "1": {
             "coram": "SH. APOORV SINGH, REGISTRAR",
-            "total": "32",
+            "total": "34",
             "fresh": "",
             "items": {
               "1": "SLP(C) No. 419/2022 PRINCIPAL COMMISSIONER OF INCOM TAX 12 VERSUS BINDU GARG",
@@ -5316,7 +5317,9 @@
               "29": "SLP(C) No. 22629/2026 APEKSHA CHS LTD. VERSUS B.K. CORPORATION AND ORS.",
               "30": "Diary No. 38684-2026 RAHUL@ LAHLA VERSUS STATE OF PUNJAB",
               "31": "T.P.(C) No. 1964/2026 RHYTHM KOCHAR VERSUS SAURABH JAIN ALIAS SAURABH KOCHAR",
-              "32": "ORGNL.SUIT No. STATE OF ASSAM VERSUS UNION OF INDIA AND ORS."
+              "32": "ORGNL.SUIT No. STATE OF ASSAM VERSUS UNION OF INDIA AND ORS.",
+              "33": "SLP(C) No. 3328/2026 M/S.T P TRADING COMPANY VERSUS THE TRANSPORT COMMISSIONER (KERALA STATE)",
+              "34": "SLP(Crl) No. CHANDRAMOHAN KUMAR AND ANR. VERSUS THE STATE OF BIHAR AND ANR."
             },
             "advocates": {
               "1": {
@@ -5443,11 +5446,18 @@
               "32": {
                 "pet": "SHUVODEEP ROY",
                 "resp": "ARVIND KUMAR SHARMA SAHIL TAGOTRA TATINI BASU"
+              },
+              "33": {
+                "pet": "AAKASH NANDOLIA",
+                "resp": "C. K. SASI"
+              },
+              "34": {
+                "pet": "MANISH KUMAR"
               }
             },
             "times": {},
             "main": 32,
-            "supp": 0
+            "supp": 2
           },
           "2": {
             "coram": "MS. GRACY L. BAWITLUNG, REGISTRAR",
@@ -13518,7 +13528,8 @@
       "M_C_2": 514571,
       "M_S_1": 531207,
       "M_S_2": 517269,
-      "M_R_1": 522174
+      "M_R_1": 522174,
+      "M_R_2": 505323
     },
     "2026-08-25": {
       "M_J_1": 1009920,
