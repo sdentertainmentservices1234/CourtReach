@@ -1,8 +1,7 @@
 {
-  "generated_at": "2026-08-25T18:31:24.301890Z",
+  "generated_at": "2026-08-25T21:38:04.276700Z",
   "parser_version": 9,
   "window": [
-    "2026-08-25",
     "2026-08-26",
     "2026-08-27",
     "2026-08-28",
@@ -13,9 +12,21 @@
     "2026-09-04",
     "2026-09-07",
     "2026-09-08",
-    "2026-09-09"
+    "2026-09-09",
+    "2026-09-10"
   ],
   "by_date": {},
-  "sources": {},
+  "sources": {
+    "2026-08-31": {
+      "M_C_1": 546564,
+      "M_S_1": 532820,
+      "M_R_1": 526978
+    },
+    "2026-09-01": {
+      "F_J_1": 621315,
+      "M_R_1": 525426,
+      "M_CC_1": 558276
+    }
+  },
   "note": "Per-court bench + per-item case line from the SC published lists. Drafting aid only — the court's published list is authoritative."
 }
