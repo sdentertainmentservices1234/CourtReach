@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-30T20:35:46.853298Z",
+  "generated_at": "2026-08-30T21:20:11.180751Z",
   "parser_version": 9,
   "window": [
     "2026-08-31",
@@ -23,7 +23,8 @@
         "Chamber (main)",
         "Single Judge (main)",
         "Single Judge (supp)",
-        "Registrar (main)"
+        "Registrar (main)",
+        "Registrar (supp)"
       ],
       "lists": {
         "Miscellaneous": {
@@ -6674,7 +6675,7 @@
           },
           "2": {
             "coram": "MS. GRACY L. BAWITLUNG, REGISTRAR",
-            "total": "40",
+            "total": "43",
             "fresh": "",
             "items": {
               "1": "Diary No. 45987-2026 UNION TERRITORY OF J AND K VERSUS FARZANA ARA NAQASHBANDI",
@@ -6724,7 +6725,10 @@
               "37.1": "Connected YOGAMAYA M G VERSUS UNION OF INDIA AND ORS.",
               "38": "SLP(Crl) No. MATLOOB KHAN AND ANR. VERSUS THE STATE OF UTTAR PRADESH AND ANR.",
               "39": "T.P.(C) No. 2021/2026 POOJA SURESH TAMAGOND VERSUS RAVIKIRAN DAYANAND MUNGARWADI",
-              "40": "W.P.(C) No. 869/2026 RITESH GOYAL AND ORS. VERSUS HIGH COURT OF GUJARAT AND ANR."
+              "40": "W.P.(C) No. 869/2026 RITESH GOYAL AND ORS. VERSUS HIGH COURT OF GUJARAT AND ANR.",
+              "41": "SLP(C) No. 14074/2026 KRISHNA AND ORS. VERSUS GOBIND GODARA AND ORS.",
+              "42": "SLP(C) No. 18901/2026 ASHA GARG AND ORS. VERSUS MRINAL KANTIDAS AND ANR.",
+              "43": "SLP(C) No. 19322/2026 POONAM DEVI AND ANR. VERSUS MAHENDER SINGH AND ORS."
             },
             "advocates": {
               "1": {
@@ -6885,11 +6889,22 @@
               },
               "40": {
                 "pet": "ANKITA GAUTAM"
+              },
+              "41": {
+                "pet": "MUKESH KUMAR SHARMA",
+                "resp": "UMANG SHANKAR"
+              },
+              "42": {
+                "pet": "AMRENDRA KUMAR MEHTA",
+                "resp": "SIDDHARTH"
+              },
+              "43": {
+                "pet": "MANISH RAGHAV"
               }
             },
             "times": {},
             "main": 40,
-            "supp": 0
+            "supp": 3
           }
         }
       }
@@ -18013,7 +18028,8 @@
       "M_C_1": 546564,
       "M_S_1": 532820,
       "M_S_2": 506237,
-      "M_R_1": 526978
+      "M_R_1": 526978,
+      "M_R_2": 505216
     },
     "2026-09-01": {
       "M_J_1": 1041284,
