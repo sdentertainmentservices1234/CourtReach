@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-30T21:20:11.180751Z",
+  "generated_at": "2026-08-31T08:51:28.179065Z",
   "parser_version": 9,
   "window": [
     "2026-08-31",
@@ -1724,7 +1724,7 @@
           },
           "6": {
             "coram": "HON'BLE MR. JUSTICE DIPANKAR DATTA HON'BLE MR. JUSTICE SHEEL NAGU",
-            "total": "71",
+            "total": "72",
             "fresh": "",
             "items": {
               "1": "SLP(Crl) No. HINA VERSUS THE STATE OF HARYANA AND ORS.",
@@ -1802,6 +1802,7 @@
               "59.1": "Connected OUM PRAKASH SHARMA VERSUS INDIRA GANDHI NATIONAL OPEN UNIVERSITY AND",
               "59.2": "Connected BIJAYALAXMI MISHRA VERSUS INDIRA GANDHI NATIONAL OPEN UNIVERSITY AND",
               "60": "SLP(Crl) No. RAHUL MODI AND ORS. VERSUS STATE OF RAJASTHAN AND ORS.",
+              "1501": "Crl.A. No. 4083/2026 VIJAY KUMAR RAJPOOT ALIAS VIJJU VERSUS STATE OF CHHATTISGARH AND ORS.",
               "61": "SLP(Crl) No. MOHD. TARIK KHAN @TARIQ KHAN VERSUS STATE OF THE UTTAR PRADESH",
               "62": "SLP(Crl) No. SHUBHANSHU DIXIT VERSUS STATE OF RAJASTHAN",
               "63": "SLP(Crl) No. VIPIN YADAV VERSUS THE STATE OF UTTARAKHAND",
@@ -2068,6 +2069,10 @@
               "60": {
                 "pet": "PALLAVI SHARMA"
               },
+              "1501": {
+                "pet": "PALLAV MONGIA",
+                "resp": "ANKITA SHARMA"
+              },
               "61": {
                 "pet": "ASHUTOSH YADAV",
                 "resp": "RUCHIRA GOEL"
@@ -2111,7 +2116,7 @@
             },
             "times": {},
             "main": 60,
-            "supp": 11
+            "supp": 12
           },
           "7": {
             "coram": "HON'BLE MR. JUSTICE SANJAY KUMAR HON'BLE MR. JUSTICE SANJEEV SACHDEVA",
@@ -4229,7 +4234,7 @@
           },
           "13": {
             "coram": "HON'BLE MR. JUSTICE UJJAL BHUYAN HON'BLE MR. JUSTICE ATUL S. CHANDURKAR",
-            "total": "67",
+            "total": "68",
             "fresh": "",
             "items": {
               "1": "Diary No. 17855-2026 BHARAT VERSUS THE STATE THROUGH ITS HOME SECRETARY",
@@ -4300,6 +4305,7 @@
               "58.1": "Connected BHAGWANTI DEVI VERSUS BHERU LAL",
               "59": "Diary No. 34507-2026 SHARATH VERSUS THE STATE OF KARNATAKA",
               "60": "CONMT.PET.(C) No. NAZISH PRAVEEN VERSUS EZAZ AHMAD",
+              "1501": "C.A. No. SHRI PRAKASH NARAIN SHARMA DEAD THROUGH VERSUS M/S. BURMAH SHELL COOPERATIVE HOUSING",
               "61": "SLP(Crl) No. AJEET KUMAR @ AJIT KUMAR VERSUS THE STATE OF BIHAR AND ANR.",
               "62": "Diary No. 46947-2026 NITESH KUMAR VERSUS THE STATE OF BIHAR AND ANR.",
               "63": "SLP(Crl) No. JAMRUL @ MD. JAMRUL VERSUS THE STATE OF BIHAR",
@@ -4528,6 +4534,10 @@
                 "pet": "RAJESH KUMAR CHAURASIA",
                 "resp": "KUNDAN KUMAR MISHRA"
               },
+              "1501": {
+                "pet": "T. V. RATNAM",
+                "resp": "SHANTANU KUMAR"
+              },
               "61": {
                 "pet": "KUMAR MIHIR",
                 "resp": "MANISH KUMAR"
@@ -4565,7 +4575,7 @@
             },
             "times": {},
             "main": 60,
-            "supp": 7
+            "supp": 8
           },
           "14": {
             "coram": "HON'BLE MR. JUSTICE S.V.N. BHATTI HON'BLE MR. JUSTICE N.V. ANJARIA",
@@ -18024,7 +18034,7 @@
   "sources": {
     "2026-08-31": {
       "M_J_1": 940363,
-      "M_J_2": 576721,
+      "M_J_2": 580211,
       "M_C_1": 546564,
       "M_S_1": 532820,
       "M_S_2": 506237,
