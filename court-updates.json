@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-01T17:37:57.618204Z",
+  "generated_at": "2026-09-01T17:57:41.316114Z",
   "parser_version": 9,
   "window": [
     "2026-09-01",
@@ -21,7 +21,6 @@
         "Miscellaneous (main)",
         "Miscellaneous (supp)",
         "Regular (main)",
-        "Regular (supp)",
         "Registrar (main)",
         "Registrar (supp)",
         "Curative & Review (main)"
@@ -6004,7 +6003,7 @@
           },
           "14": {
             "coram": "HON'BLE MR. JUSTICE UJJAL BHUYAN HON'BLE MR. JUSTICE ATUL S. CHANDURKAR",
-            "total": "21",
+            "total": "20",
             "fresh": "",
             "items": {
               "101": "Crl.A. No. 662/2022 ASHISH BAGGA VERSUS THE STATE OF RAJASTHAN AND ANR.",
@@ -6036,8 +6035,7 @@
               "119": "Crl.A. No. 205/2020 RAM DAS YADAV VERSUS THE STATE OF BIHAR",
               "119.1": "Crl.A. No. 206/2020 SIDHESHWAR YADAV VERSUS THE STATE OF BIHAR",
               "120": "Crl.A. No. 400/2024 SANTOSH MEENA VERSUS THE STATE OF MADHYA PRADESH",
-              "120.1": "Crl.A. No. 743/2024 ANAND TIWARI VERSUS THE STATE OF MADHYA PRADESH",
-              "1501": "C.A. No. 1052/2013 M/S SAUDI ARABIAN AIRLINES VERSUS UNION OF INDIA AND ORS."
+              "120.1": "Crl.A. No. 743/2024 ANAND TIWARI VERSUS THE STATE OF MADHYA PRADESH"
             },
             "advocates": {
               "101": {
@@ -6119,15 +6117,11 @@
               "120": {
                 "pet": "VIKAS UPADHYAY",
                 "resp": "PASHUPATHI NATH RAZDAN"
-              },
-              "1501": {
-                "pet": "SYED JAFAR ALAM",
-                "resp": "GURMEET SINGH MAKKER"
               }
             },
             "times": {},
             "main": 20,
-            "supp": 1
+            "supp": 0
           },
           "3": {
             "coram": "",
@@ -18082,7 +18076,6 @@
       "M_J_1": 1041284,
       "M_J_2": 602486,
       "F_J_1": 621315,
-      "F_J_2": 505217,
       "M_R_1": 525426,
       "M_R_2": 507582,
       "M_CC_1": 558276
