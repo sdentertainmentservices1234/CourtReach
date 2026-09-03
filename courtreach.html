@@ -194,10 +194,16 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px 12px;-webkit-over
    want the camera icon. I want the clickable link to appear in the Court Island popup").
    The island stays a pure court/item/how-far readout; joining is a deliberate act you take
    after opening the court, so it belongs behind the tap, as a labelled button rather than
-   an icon anyone has to decode. */
-.cm-vc{display:flex;align-items:center;gap:9px;width:100%;padding:11px 13px;border-radius:11px;
-  background:var(--accent);color:#fff;font-weight:700;font-size:14px;border:none;margin-bottom:10px}
-.cm-vc i{font-size:16px}
+   an icon anyone has to decode.
+   Styled navy-with-gold rather than the bright accent blue it started as: it is the sheet's
+   one action and should read as the most considered thing on it, not the loudest. The gold
+   chevron on the right is the app's own "go" mark, borrowed from the wordmark. */
+.cm-vc{display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border-radius:12px;
+  background:var(--navy);color:#fff;font-weight:650;font-size:14px;border:none;margin-bottom:2px;
+  letter-spacing:.01em;text-align:left}
+.cm-vc i:first-child{font-size:17px;color:var(--gold)}
+.cm-vc .cm-vc-go{margin-left:auto;font-size:15px;color:var(--gold);opacity:.85}
+.cm-vc:active{background:#0c1016}
 /* full island head (split variant, ISLAND_STACKED=false): LEFT half carries the court no.,
    RIGHT half the item now on. Same rule as the stacked head — the band stays light and the
    NUMBER carries the sitting/not-sitting colour. */
@@ -391,28 +397,60 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px 12px;-webkit-over
 .case-del:active{color:var(--now)}
 /* Court detail modal — always-visible info cards, no tabs (owner: "why do i need to
    click on the passover tab to see the passover items - they should be readily available") */
-.cm-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 34px 10px 0;
-  padding-bottom:14px;border-bottom:1.5px solid var(--line)}
-.cm-court{font-family:Fraunces,serif;font-weight:600;font-size:32px;line-height:1;color:var(--navy)}
+/* ===== COURT SHEET =====
+   Rebuilt for looks (owner: "work on the Court Island pop up aesthetics. It doesnt look
+   nice"). What was wrong: four identical flat-grey slabs stacked with no hierarchy, so a
+   court's coram, its sequence and its passovers all shouted equally; a bright blue join
+   button that was the loudest thing on a navy-and-gold sheet; and a red status pill that
+   read as an alarm when it was only saying which item is on.
+   The fix is hierarchy, not decoration — a masthead that states the court, then the one
+   ACTION, then your own matters, then reference material in quieter cards. */
+.cm-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 34px 14px 0;
+  padding-bottom:13px;border-bottom:1px solid var(--line)}
+.cm-court{font-family:Fraunces,serif;font-weight:600;font-size:30px;line-height:1;color:var(--navy);
+  letter-spacing:-.01em}
 .cm-court b{font-weight:700}
-.cm-status{flex:none;font-size:11.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--now);background:#fff2f0;border-radius:20px;padding:6px 13px}
-.cm-status.idle{color:#5a6672;background:var(--panel2)}
+/* The live item, stated not shouted: mono numerals on a tinted chip, gold rather than red.
+   Red is reserved in this app for "your case is reaching" — spending it on an ordinary
+   status line made every court look urgent. */
+.cm-status{flex:none;font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.02em;
+  color:#7a4f0d;background:var(--soon-bg);border:1px solid #ecdcb4;border-radius:8px;padding:5px 10px}
+.cm-status.idle{color:var(--mut);background:var(--panel2);border-color:var(--line)}
 .cm-none{font-size:13px;color:var(--mut);line-height:1.5}
-.cm-card{background:var(--panel2);border-radius:14px;padding:13px 14px;margin-top:10px}
-.cm-h{display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--gold);margin-bottom:7px}
-.cm-h i{font-size:12px}
+/* Cards are outlined on white rather than filled grey — the sheet reads as one surface with
+   sections on it, instead of a stack of separate grey boxes. */
+.cm-card{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:12px 14px;margin-top:9px}
+.cm-h{display:flex;align-items:center;gap:7px;font-size:10px;font-weight:800;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--mut);margin-bottom:8px}
+.cm-h i{font-size:13px;color:var(--gold)}
 .cm-h .cm-count{font-family:var(--mono);color:var(--mut);font-weight:700;letter-spacing:0;text-transform:none}
-.cm-body{font-size:14px;color:var(--ink);line-height:1.4}
+.cm-body{font-size:14px;color:var(--ink);line-height:1.45}
 .cm-chips{display:flex;flex-wrap:wrap;gap:6px}
-.cm-chips span{font-family:var(--mono);font-size:13px;font-weight:800;border-radius:8px;padding:4px 10px}
-.cm-po{color:#7a4f0d;background:#f2e2b8}
-.cm-empty{margin-top:14px;font-size:13px;color:var(--mut);line-height:1.5;background:var(--panel2);border-radius:12px;padding:14px}
+.cm-chips span{font-family:var(--mono);font-size:13px;font-weight:700;border-radius:7px;padding:4px 10px}
+.cm-po{color:#7a4f0d;background:var(--soon-bg);border:1px solid #ecdcb4}
+.cm-empty{margin-top:12px;font-size:13px;color:var(--mut);line-height:1.5;background:var(--panel2);
+  border-radius:12px;padding:14px}
+/* Section label above your own matters — the one part of this sheet that is about YOU, so it
+   gets a real heading rather than another card header. */
+.cm-sec{display:flex;align-items:center;gap:7px;font-size:10px;font-weight:800;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--navy);margin:14px 0 8px}
+.cm-sec i{font-size:13px;color:var(--gold)}
 /* align to the top now that a long cause title wraps to two or three lines instead of
    being cut off mid-word (owner: "the name of cases in the island pop up are not fitting
    in full — reduce their font to make them fit") */
-.cm-mine{display:flex;align-items:flex-start;gap:10px;background:#fbf3df;border:1px solid #e6d29a;border-radius:11px;padding:9px 12px;margin-bottom:6px}
-.cm-mine-it{font-family:var(--mono);font-size:15px;font-weight:800;color:var(--navy);flex:none;line-height:1.35}
-.cm-mine-t{flex:1;min-width:0;font-size:12.5px;line-height:1.35;color:var(--ink);overflow-wrap:anywhere}
+/* Your matters read as a LIST, not as stacked cream boxes: one surface, hairline rules
+   between rows, and a gold spine down the left to mark the whole block as yours. The old
+   per-row border+fill made three matters look like three unrelated alerts. */
+.cm-mine{display:flex;align-items:flex-start;gap:11px;background:#fdfaf2;border:1px solid #ecdcb4;
+  border-left:3px solid var(--gold);border-radius:0;padding:10px 13px;margin:0}
+.cm-mine + .cm-mine{border-top:none}
+.cm-mine:first-of-type{border-radius:12px 12px 0 0}
+.cm-mine:last-of-type{border-radius:0 0 12px 12px;margin-bottom:2px}
+.cm-mine:only-of-type{border-radius:12px}
+/* the item number, given the weight of a real reference number rather than body text */
+.cm-mine-it{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--navy);flex:none;
+  line-height:1.35;min-width:26px}
+.cm-mine-t{flex:1;min-width:0;font-size:12.5px;line-height:1.4;color:var(--ink);overflow-wrap:anywhere}
 .cm-mine-rmk{display:block;font-size:11px;font-weight:700;color:var(--accent);margin-top:2px}
 .cm-mine-time{display:block;font-size:11px;font-weight:700;color:#9a7c1f;margin-top:2px}
 .cm-mine-s{flex:none;font-size:10px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;border-radius:20px;padding:3px 8px;white-space:nowrap}
@@ -2111,14 +2149,58 @@ async function fetchBoard(){
   paintFresh(); if(curTab==="board" && boardDate===todayISO()) renderBoard();
   try{ runFlash(); }catch(e){}
 }
-function startPolling(){ stopPolling(); pollOn=true; tickId=setInterval(paintFresh,1000); (async function loop(){ if(!pollOn) return; await fetchBoard(); if(!pollOn) return; pollId=setTimeout(loop, 6000); })(); }
-function stopPolling(){ pollOn=false; if(pollId)clearTimeout(pollId); if(tickId)clearInterval(tickId); pollId=tickId=null; }
+/* HOW OFTEN TO HIT THE RELAY.
+   ------------------------------------------------------------------------------------------
+   This used to be a flat 6 seconds, always, for every open app — 10 board fetches a minute
+   plus the sequence line plus a remark fetch per tracked court, so ~12-14 requests a minute,
+   ~750 an hour, whether or not anyone was looking at the screen and whether or not anything
+   of ours was anywhere near being called. Ten people leaving the app open through a court day
+   is ~45,000 Cloudflare requests against a 100,000/day free allowance, spent mostly on
+   re-reading a board that had not moved.
+   Six seconds exists for ONE job: catching "3 away" become "2 away" while you still have time
+   to walk. That is worth every request. Nothing else is:
+     - outside sitting hours the board does not move at all;
+     - with nothing of ours within seven items, a 20-second lag costs nothing;
+     - with nothing listed today there is no case to be close to.
+   So the interval follows the situation instead of a constant. Full speed is preserved
+   exactly where it matters. */
+function pollIntervalMs(){
+  const m=nowMinsIST();
+  if(m<615 || m>1020) return 120000;              // before ~10:15 / after ~17:00 IST
+  try{ if(inRangeMatters().length) return 6000; }catch(e){ return 6000; }   // something reaching
+  return activeMatters().length ? 20000 : 45000;  // listed today, but nothing close / nothing listed
+}
+/* Split from start/stopPolling so the tab-hidden pause can suspend the loop WITHOUT losing
+   the fact that polling is wanted — otherwise returning to the app leaves a dead board.
+   pollWanted is the intent (signed in, entitled, unlocked); the loop is the mechanism. */
+let pollWanted=false;
+function _startLoop(){
+  _stopLoop(); pollOn=true;
+  tickId=setInterval(paintFresh,1000);
+  (async function loop(){ if(!pollOn) return; await fetchBoard(); if(!pollOn) return;
+    pollId=setTimeout(loop, pollIntervalMs()); })();
+}
+function _stopLoop(){ pollOn=false; if(pollId)clearTimeout(pollId); if(tickId)clearInterval(tickId); pollId=tickId=null; }
+function startPolling(){ pollWanted=true; _startLoop(); }
+function stopPolling(){ pollWanted=false; _stopLoop(); }
+/* A backgrounded app has nobody to show a board to. It used to keep polling anyway — a phone
+   left open overnight was a request every six seconds for nothing. Resuming re-runs the loop,
+   which fetches IMMEDIATELY, so coming back to the app shows fresh data rather than whatever
+   was on screen when it was put away. */
+document.addEventListener("visibilitychange", ()=>{
+  if(document.hidden) _stopLoop();
+  else if(pollWanted) _startLoop();
+});
 function paintFresh(){
   const dot=$("freshDot"), txt=$("freshTxt"); if(!dot||!txt) return;   // only on the live board
   if(boardErr==="empty"||boardErr){ dot.className="freshdot stale"; txt.textContent="board offline"; return; }
   if(!boardAt){ dot.className="freshdot off"; txt.textContent="connecting…"; return; }
   const age=Math.round((Date.now()-boardAt)/1000);
-  dot.className="freshdot"+(age>45?" stale":"");
+  // Stale is relative to how often we've CHOSEN to poll, not a fixed 45s — otherwise the
+  // slower off-peak intervals would permanently show a warning for a board that is being
+  // read exactly as often as it needs to be. Two missed cycles (plus slack) is genuinely late.
+  const staleAfter=Math.max(45, Math.round(pollIntervalMs()/1000)*2 + 15);
+  dot.className="freshdot"+(age>staleAfter?" stale":"");
   txt.textContent="updated "+(age<60?age+"s":Math.round(age/60)+"m")+" ago";
 }
 const freshLineHTML = () => `<div class="fresh-line"><span class="freshdot off" id="freshDot"></span><span id="freshTxt">connecting…</span></div>`;
@@ -2461,10 +2543,10 @@ function openCourtModal(court,_refetched){
   const nothing=!mineHere.length&&!coram&&!seq.length&&!pass.length&&!totals.length;
   $("modalRoot").innerHTML=`<div class="ovl" data-close><div class="sheet" data-court="${esc(court)}"><button class="sh-x" data-close>&times;</button>
     <div class="cm-top"><div class="cm-court">Court <b>${esc(court)}</b></div>
-      <span class="cm-status ${idle?"idle":""}">${idle?"–":"On item "+esc(bc?.item||"·")}</span></div>
-    ${VC_LINKS[court]?`<button class="cm-vc" data-vc="${esc(court)}"><i class="ti ti-video"></i> Join virtual hearing</button>`:""}
+      <span class="cm-status ${idle?"idle":""}">${idle?"Not sitting":"On item "+esc(bc?.item||"·")}</span></div>
+    ${VC_LINKS[court]?`<button class="cm-vc" data-vc="${esc(court)}"><i class="ti ti-video"></i> Join virtual hearing<i class="ti ti-chevron-right cm-vc-go"></i></button>`:""}
     ${coram?`<div class="cm-card"><div class="cm-h"><i class="ti ti-gavel"></i> Coram</div><div class="cm-body">${coramHTML(coram)}</div></div>`:""}
-    ${mineHere.length?`<div class="cm-h"><i class="ti ti-star-filled"></i> ${inOrg()?"Chamber case":"Your case"}${mineHere.length>1?"s":""} here</div>${mineHere.map(e=>{ const k=classify(e);
+    ${mineHere.length?`<div class="cm-sec"><i class="ti ti-star-filled"></i> ${inOrg()?"Chamber case":"Your case"}${mineHere.length>1?"s":""} here</div>${mineHere.map(e=>{ const k=classify(e);
       // on a chamber board, say whose matter each item is
       const who = inOrg() ? (e.byName||"") : "";   // already resolved by shape() — byLabel first, then account name
       // the board's own remark for THIS specific item — a multi-case court can have a
@@ -2559,9 +2641,9 @@ function openDateCourtModal(court,date){
   $("modalRoot").innerHTML=`<div class="ovl" data-close><div class="sheet"><button class="sh-x" data-close>&times;</button>
     <div class="cm-top"><div class="cm-court">Court <b>${esc(court)}</b></div>
       <span class="cm-status idle">${esc(fmtDateLong(date))}</span></div>
-    ${VC_LINKS[court]?`<button class="cm-vc" data-vc="${esc(court)}"><i class="ti ti-video"></i> Join virtual hearing</button>`:""}
+    ${VC_LINKS[court]?`<button class="cm-vc" data-vc="${esc(court)}"><i class="ti ti-video"></i> Join virtual hearing<i class="ti ti-chevron-right cm-vc-go"></i></button>`:""}
     ${coram?`<div class="cm-card"><div class="cm-h"><i class="ti ti-gavel"></i> Coram</div><div class="cm-body">${coramHTML(coram)}</div></div>`:""}
-    ${mine.length?`<div class="cm-h"><i class="ti ti-star-filled"></i> Listed here</div>${mine.map(e=>{
+    ${mine.length?`<div class="cm-sec"><i class="ti ti-star-filled"></i> Listed here</div>${mine.map(e=>{
       const who = e.byName||"";   // already resolved by shape() — byLabel first, then account name
       // Causelist data (unlike remarks, which are live-board-only), so a Special Bench time
       // already published for a future date shows here too.
