@@ -191,19 +191,7 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px 12px;-webkit-over
 .cell:active{transform:scale(.985)}
 .cell.mini{flex:1 1 calc(20% - 6.5px);max-width:calc(20% - 6.5px);padding:8px 5px}
 /* The join button lives ONLY in the court sheet, never on the island itself (owner: "I dont
-   want the camera icon. I want the clickable link to appear in the Court Island popup").
-   The island stays a pure court/item/how-far readout; joining is a deliberate act you take
-   after opening the court, so it belongs behind the tap, as a labelled button rather than
-   an icon anyone has to decode.
-   Styled navy-with-gold rather than the bright accent blue it started as: it is the sheet's
-   one action and should read as the most considered thing on it, not the loudest. The gold
-   chevron on the right is the app's own "go" mark, borrowed from the wordmark. */
-.cm-vc{display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border-radius:12px;
-  background:var(--navy);color:#fff;font-weight:650;font-size:14px;border:none;margin-bottom:2px;
-  letter-spacing:.01em;text-align:left}
-.cm-vc i:first-child{font-size:17px;color:var(--gold)}
-.cm-vc .cm-vc-go{margin-left:auto;font-size:15px;color:var(--gold);opacity:.85}
-.cm-vc:active{background:#0c1016}
+   want the camera icon"). It is styled with the court sheet — see the COURT SHEET block. */
 /* full island head (split variant, ISLAND_STACKED=false): LEFT half carries the court no.,
    RIGHT half the item now on. Same rule as the stacked head — the band stays light and the
    NUMBER carries the sitting/not-sitting colour. */
@@ -398,66 +386,83 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px 12px;-webkit-over
 /* Court detail modal — always-visible info cards, no tabs (owner: "why do i need to
    click on the passover tab to see the passover items - they should be readily available") */
 /* ===== COURT SHEET =====
-   Rebuilt for looks (owner: "work on the Court Island pop up aesthetics. It doesnt look
-   nice"). What was wrong: four identical flat-grey slabs stacked with no hierarchy, so a
-   court's coram, its sequence and its passovers all shouted equally; a bright blue join
-   button that was the loudest thing on a navy-and-gold sheet; and a red status pill that
-   read as an alarm when it was only saying which item is on.
-   The fix is hierarchy, not decoration — a masthead that states the court, then the one
-   ACTION, then your own matters, then reference material in quieter cards. */
-.cm-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 34px 14px 0;
-  padding-bottom:13px;border-bottom:1px solid var(--line)}
-.cm-court{font-family:Fraunces,serif;font-weight:600;font-size:30px;line-height:1;color:var(--navy);
-  letter-spacing:-.01em}
-.cm-court b{font-weight:700}
-/* The live item, stated not shouted: mono numerals on a tinted chip, gold rather than red.
-   Red is reserved in this app for "your case is reaching" — spending it on an ordinary
-   status line made every court look urgent. */
-.cm-status{flex:none;font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.02em;
-  color:#7a4f0d;background:var(--soon-bg);border:1px solid #ecdcb4;border-radius:8px;padding:5px 10px}
-.cm-status.idle{color:var(--mut);background:var(--panel2);border-color:var(--line)}
-.cm-none{font-size:13px;color:var(--mut);line-height:1.5}
-/* Cards are outlined on white rather than filled grey — the sheet reads as one surface with
-   sections on it, instead of a stack of separate grey boxes. */
-.cm-card{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:12px 14px;margin-top:9px}
-.cm-h{display:flex;align-items:center;gap:7px;font-size:10px;font-weight:800;letter-spacing:.09em;
-  text-transform:uppercase;color:var(--mut);margin-bottom:8px}
-.cm-h i{font-size:13px;color:var(--gold)}
-.cm-h .cm-count{font-family:var(--mono);color:var(--mut);font-weight:700;letter-spacing:0;text-transform:none}
-.cm-body{font-size:14px;color:var(--ink);line-height:1.45}
-.cm-chips{display:flex;flex-wrap:wrap;gap:6px}
-.cm-chips span{font-family:var(--mono);font-size:13px;font-weight:700;border-radius:7px;padding:4px 10px}
-.cm-po{color:#7a4f0d;background:var(--soon-bg);border:1px solid #ecdcb4}
-.cm-empty{margin-top:12px;font-size:13px;color:var(--mut);line-height:1.5;background:var(--panel2);
-  border-radius:12px;padding:14px}
-/* Section label above your own matters — the one part of this sheet that is about YOU, so it
-   gets a real heading rather than another card header. */
-.cm-sec{display:flex;align-items:center;gap:7px;font-size:10px;font-weight:800;letter-spacing:.09em;
-  text-transform:uppercase;color:var(--navy);margin:14px 0 8px}
-.cm-sec i{font-size:13px;color:var(--gold)}
-/* align to the top now that a long cause title wraps to two or three lines instead of
-   being cut off mid-word (owner: "the name of cases in the island pop up are not fitting
-   in full — reduce their font to make them fit") */
-/* Your matters read as a LIST, not as stacked cream boxes: one surface, hairline rules
-   between rows, and a gold spine down the left to mark the whole block as yours. The old
-   per-row border+fill made three matters look like three unrelated alerts. */
-.cm-mine{display:flex;align-items:flex-start;gap:11px;background:#fdfaf2;border:1px solid #ecdcb4;
-  border-left:3px solid var(--gold);border-radius:0;padding:10px 13px;margin:0}
-.cm-mine + .cm-mine{border-top:none}
-.cm-mine:first-of-type{border-radius:12px 12px 0 0}
-.cm-mine:last-of-type{border-radius:0 0 12px 12px;margin-bottom:2px}
-.cm-mine:only-of-type{border-radius:12px}
-/* the item number, given the weight of a real reference number rather than body text */
-.cm-mine-it{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--navy);flex:none;
-  line-height:1.35;min-width:26px}
-.cm-mine-t{flex:1;min-width:0;font-size:12.5px;line-height:1.4;color:var(--ink);overflow-wrap:anywhere}
-.cm-mine-rmk{display:block;font-size:11px;font-weight:700;color:var(--accent);margin-top:2px}
-.cm-mine-time{display:block;font-size:11px;font-weight:700;color:#9a7c1f;margin-top:2px}
-.cm-mine-s{flex:none;font-size:10px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;border-radius:20px;padding:3px 8px;white-space:nowrap}
-.cm-mine-s.now{color:#fff;background:var(--now)}
-.cm-mine-s.soon{color:#7a4f0d;background:#f8efd8}
-.cm-mine-s.later{color:#1e6b3a;background:#e3f2e8}
-.cm-mine-s.passed,.cm-mine-s.idle{color:#5a6672;background:var(--panel2)}
+   Reworked from the ground up (owner: "Dont like the aesthetic makeover. Its slave to the
+   old design. I want you to rework it and make it efficient, aesthetic and complementing to
+   our CourtReach design"). The previous pass restyled the same skeleton — it kept the action
+   above the answer, gave the coram a labelled card of its own, and spent a third of the sheet
+   on three boxes that usually read "Not declared yet" and "None yet".
+
+   Rebuilt around what you actually opened it to learn, in that order:
+     1. WHICH COURT, and who is sitting     -> one navy hero, the app's own masthead colour,
+                                               so the sheet reads as the island expanded
+                                               rather than a different object
+     2. WHERE YOUR MATTER STANDS            -> immediately under it, with the distance
+                                               carrying the same tier colour the island had
+     3. EVERYTHING ELSE                     -> a compact key/value register, not cards. Empty
+                                               values collapse to a dash instead of a
+                                               sentence in a box.
+   The coram moves INTO the hero because it is the court's identity, not a fact about it, and
+   the join action becomes a gold-edged pill beside the live item instead of a full-width slab
+   competing with your own case. */
+.sheet.cs{padding-top:0}                      /* the hero runs to the sheet's own edge */
+.sheet.cs .sh-x{color:rgba(255,255,255,.7);z-index:3}
+.cs-hero{background:var(--navy);color:#fff;margin:0 -18px 14px;padding:20px 18px 15px;
+  border-radius:22px 22px 0 0}
+.cs-eyebrow{font-size:9.5px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--gold);opacity:.95}
+.cs-num{font-family:Fraunces,serif;font-weight:600;font-size:40px;line-height:.92;
+  letter-spacing:-.015em;margin-top:3px}
+.cs-liverow{display:flex;align-items:center;gap:10px;margin-top:12px}
+.cs-live{font-family:var(--mono);font-size:12.5px;font-weight:600;color:#c8d0da;
+  background:rgba(255,255,255,.07);border-radius:7px;padding:5px 10px}
+.cs-live b{color:#fff;font-weight:700}
+.cs-live.idle{color:#93a0ad}
+/* The one action. Gold-edged rather than filled: present and findable, but it never
+   out-shouts the case you came to check. */
+.cs-join{margin-left:auto;display:flex;align-items:center;gap:6px;flex:none;
+  background:rgba(194,168,106,.13);border:1px solid rgba(194,168,106,.55);color:var(--gold);
+  border-radius:8px;padding:6px 11px;font-size:12.5px;font-weight:700;letter-spacing:.01em}
+.cs-join i{font-size:14px}
+.cs-join:active{background:rgba(194,168,106,.28)}
+.cs-coram{font-size:12.5px;line-height:1.5;color:#aab4c0;margin-top:13px;padding-top:12px;
+  border-top:1px solid rgba(255,255,255,.13)}
+.cs-coram b{color:#e8ecf1;font-weight:600}
+/* your matters — the answer, given the weight of one */
+.cs-sec{font-size:9.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--mut);margin:0 0 8px 2px}
+.cs-mine{display:flex;align-items:center;gap:12px;padding:12px 13px;margin-bottom:7px;
+  border:1px solid var(--line);border-left:3px solid var(--passed);border-radius:11px;background:var(--panel)}
+.cs-mine.now{border-left-color:var(--now);background:var(--now-bg)}
+.cs-mine.soon{border-left-color:var(--soon);background:var(--soon-bg)}
+.cs-mine.later{border-left-color:var(--later);background:var(--later-bg)}
+.cs-it{font-family:var(--mono);font-size:16px;font-weight:700;color:var(--navy);flex:none;min-width:26px}
+.cs-it.struck{text-decoration:line-through;text-decoration-thickness:1.6px;opacity:.65}
+.cs-body{flex:1;min-width:0}
+.cs-title{font-size:13px;line-height:1.35;color:var(--ink);overflow-wrap:anywhere}
+.cs-who{color:var(--mut)}
+.cs-note{display:block;font-size:11px;font-weight:700;margin-top:3px}
+.cs-note.rmk{color:var(--accent)}
+.cs-note.time{color:#8a6d14}
+/* the distance, in the same mono as the island's own numbers */
+.cs-dist{flex:none;font-family:var(--mono);font-size:12.5px;font-weight:700;letter-spacing:.02em;
+  border-radius:8px;padding:5px 9px;white-space:nowrap;text-transform:uppercase}
+.cs-dist.now{color:#fff;background:var(--now)}
+.cs-dist.soon{color:#7a4f0d;background:#f4e3bd}
+.cs-dist.later{color:#1e6b3a;background:#dcecE2}
+.cs-dist.passed,.cs-dist.idle{color:#5a6672;background:var(--panel2)}
+/* the register: everything else, as rows rather than cards */
+.cs-reg{border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:12px}
+.cs-row{display:flex;gap:12px;padding:11px 13px;align-items:baseline}
+.cs-row + .cs-row{border-top:1px solid var(--line)}
+.cs-k{flex:none;width:92px;font-size:9.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--mut);line-height:1.6}
+.cs-val{flex:1;min-width:0;font-size:13px;color:var(--ink);line-height:1.5;overflow-wrap:anywhere}
+.cs-val.dim{color:var(--mut)}
+.cs-chips{display:flex;flex-wrap:wrap;gap:5px}
+.cs-chips span{font-family:var(--mono);font-size:12px;font-weight:700;color:#7a4f0d;
+  background:var(--soon-bg);border:1px solid #ecdcb4;border-radius:6px;padding:2px 7px}
+.cs-empty{font-size:13px;color:var(--mut);line-height:1.5;background:var(--panel2);
+  border-radius:12px;padding:14px;margin-top:12px}
 .big-btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:13px;border-radius:12px;
   border:none;background:linear-gradient(180deg,#1c242e,#12171e);color:#fff;font-weight:600;font-size:14px;margin-bottom:14px}
 .big-btn.danger{background:linear-gradient(180deg,#c1362b,#8f2820)}
@@ -2541,12 +2546,17 @@ function openCourtModal(court,_refetched){
   const seq=(ENG.seqInfo?ENG.seqInfo(seqByCourt[court]||""):{seq:[]}).seq||[];
   const pass=courtPassovers(court), totals=courtTotals(court);
   const nothing=!mineHere.length&&!coram&&!seq.length&&!pass.length&&!totals.length;
-  $("modalRoot").innerHTML=`<div class="ovl" data-close><div class="sheet" data-court="${esc(court)}"><button class="sh-x" data-close>&times;</button>
-    <div class="cm-top"><div class="cm-court">Court <b>${esc(court)}</b></div>
-      <span class="cm-status ${idle?"idle":""}">${idle?"Not sitting":"On item "+esc(bc?.item||"·")}</span></div>
-    ${VC_LINKS[court]?`<button class="cm-vc" data-vc="${esc(court)}"><i class="ti ti-video"></i> Join virtual hearing<i class="ti ti-chevron-right cm-vc-go"></i></button>`:""}
-    ${coram?`<div class="cm-card"><div class="cm-h"><i class="ti ti-gavel"></i> Coram</div><div class="cm-body">${coramHTML(coram)}</div></div>`:""}
-    ${mineHere.length?`<div class="cm-sec"><i class="ti ti-star-filled"></i> ${inOrg()?"Chamber case":"Your case"}${mineHere.length>1?"s":""} here</div>${mineHere.map(e=>{ const k=classify(e);
+  $("modalRoot").innerHTML=`<div class="ovl" data-close><div class="sheet cs" data-court="${esc(court)}"><button class="sh-x" data-close>&times;</button>
+    <div class="cs-hero">
+      <div class="cs-eyebrow">Court</div>
+      <div class="cs-num">${esc(court)}</div>
+      <div class="cs-liverow">
+        <span class="cs-live ${idle?"idle":""}">${idle?"Not sitting":`On item <b>${esc(bc?.item||"·")}</b>`}</span>
+        ${VC_LINKS[court]?`<button class="cs-join" data-vc="${esc(court)}"><i class="ti ti-video"></i> Join hearing</button>`:""}
+      </div>
+      ${coram?`<div class="cs-coram">${coramHTML(coram)}</div>`:""}
+    </div>
+    ${mineHere.length?`<div class="cs-sec">${inOrg()?"Chamber case":"Your case"}${mineHere.length>1?"s":""} here</div>${mineHere.map(e=>{ const k=classify(e);
       // on a chamber board, say whose matter each item is
       const who = inOrg() ? (e.byName||"") : "";   // already resolved by shape() — byLabel first, then account name
       // the board's own remark for THIS specific item — a multi-case court can have a
@@ -2556,22 +2566,23 @@ function openCourtModal(court,_refetched){
       const rmk=remarkFor(court, e.itemNo);
       const sbTime=specialBenchTimeFor(court, e.itemNo, todayISO());
       // Same rule as the island: a time-fixed item's "away" badge is not shown at all — the
-      // causelist already says exactly when it sits, and an item-number-derived distance would
-      // just be noise next to that (owner: "When it is time fixed case remove how far it is.
-      // That is not required.").
-      // Struck for the same reason the island strikes it, so the two can never disagree about
-      // whether a matter is finished. Here the remark is also spelled out — this sheet is
-      // where the words belong.
+      // causelist already says exactly when it sits, and an item-number-derived distance
+      // would just be noise next to that. Struck for the same reason the island strikes it,
+      // so the two can never disagree about whether a matter is finished.
       const done=!!k.over || remarkEndsToday(rmk);
-      return `<div class="cm-mine"><span class="cm-mine-it${done?" struck":""}">${esc(e.itemNo)}</span><span class="cm-mine-t">${esc(e.caseTitle||("item "+e.itemNo))}${who?` <span style="color:var(--mut)">· ${esc(who)}</span>`:""}${sbTime?`<span class="cm-mine-time"><i class="ti ti-clock"></i> ${esc(sbTime)}</span>`:""}${rmk?`<span class="cm-mine-rmk">${esc(rmk)}</span>`:""}</span>${(sbTime||done)?"":`<span class="cm-mine-s ${proxBandOf(k)}">${esc(k.short||"—")}</span>`}</div>`; }).join("")}`:""}
-    <div class="cm-card"><div class="cm-h"><i class="ti ti-list-numbers"></i> Declared sequence</div>${seq.length
-      ?`<div class="cm-body">${esc(seqRanges(seq))}, then the rest of the cases</div>`
-      :`<div class="cm-none">Not declared yet.</div>`}</div>
-    <div class="cm-card"><div class="cm-h"><i class="ti ti-corner-up-left"></i> Passed over${pass.length?` <span class="cm-count">· ${pass.length}</span>`:""}</div>${pass.length
-      ?`<div class="cm-chips">${pass.map(n=>`<span class="cm-po">${esc(n)}</span>`).join("")}</div>`
-      :`<div class="cm-none">None yet.</div>`}</div>
-    ${totals.length?`<div class="cm-card"><div class="cm-h"><i class="ti ti-clipboard-list"></i> Cases today</div><div class="cm-body">${totals.map(esc).join(" · ")}</div></div>`:""}
-    ${nothing?`<div class="cm-empty">No sequence, coram or passover published for this court yet — it fills in as the bench updates the list.</div>`:""}
+      const band=proxBandOf(k);
+      return `<div class="cs-mine ${(sbTime||done)?"":esc(band)}">
+        <span class="cs-it${done?" struck":""}">${esc(e.itemNo)}</span>
+        <span class="cs-body"><span class="cs-title">${esc(e.caseTitle||("item "+e.itemNo))}${who?` <span class="cs-who">· ${esc(who)}</span>`:""}</span>${sbTime?`<span class="cs-note time"><i class="ti ti-clock"></i> ${esc(sbTime)}</span>`:""}${rmk?`<span class="cs-note rmk">${esc(rmk)}</span>`:""}</span>
+        ${(sbTime||done)?"":`<span class="cs-dist ${esc(band)}">${esc(k.short||"—")}</span>`}</div>`; }).join("")}`:""}
+    <div class="cs-reg">
+      <div class="cs-row"><span class="cs-k">Sequence</span><span class="cs-val${seq.length?"":" dim"}">${seq.length
+        ?esc(seqRanges(seq))+", then the rest":"Not declared yet"}</span></div>
+      <div class="cs-row"><span class="cs-k">Passed over</span><span class="cs-val${pass.length?"":" dim"}">${pass.length
+        ?`<span class="cs-chips">${pass.map(n=>`<span>${esc(n)}</span>`).join("")}</span>`:"None yet"}</span></div>
+      ${totals.length?`<div class="cs-row"><span class="cs-k">On the board</span><span class="cs-val">${totals.map(esc).join("<br>")}</span></div>`:""}
+    </div>
+    ${nothing?`<div class="cs-empty">No sequence, coram or passover published for this court yet — it fills in as the bench updates the list.</div>`:""}
   </div></div>`;
   wireVcButtons();
 }
@@ -2638,21 +2649,29 @@ function openDateCourtModal(court,date){
   const entries=dateCourtsFor(date)[court]||[];
   const coram=entries.map(e=>cleanCoram(e.rec.coram)).find(Boolean)||"";
   const totals=entries.filter(e=>e.rec.total).map(e=>e.type+": "+e.rec.total);
-  $("modalRoot").innerHTML=`<div class="ovl" data-close><div class="sheet"><button class="sh-x" data-close>&times;</button>
-    <div class="cm-top"><div class="cm-court">Court <b>${esc(court)}</b></div>
-      <span class="cm-status idle">${esc(fmtDateLong(date))}</span></div>
-    ${VC_LINKS[court]?`<button class="cm-vc" data-vc="${esc(court)}"><i class="ti ti-video"></i> Join virtual hearing<i class="ti ti-chevron-right cm-vc-go"></i></button>`:""}
-    ${coram?`<div class="cm-card"><div class="cm-h"><i class="ti ti-gavel"></i> Coram</div><div class="cm-body">${coramHTML(coram)}</div></div>`:""}
-    ${mine.length?`<div class="cm-sec"><i class="ti ti-star-filled"></i> Listed here</div>${mine.map(e=>{
+  // Same shape as the live sheet, minus everything that only exists today — there is no
+  // "on item N", no sequence and no passover for a day that hasn't happened.
+  $("modalRoot").innerHTML=`<div class="ovl" data-close><div class="sheet cs"><button class="sh-x" data-close>&times;</button>
+    <div class="cs-hero">
+      <div class="cs-eyebrow">Court</div>
+      <div class="cs-num">${esc(court)}</div>
+      <div class="cs-liverow">
+        <span class="cs-live idle">${esc(fmtDateLong(date))}</span>
+        ${VC_LINKS[court]?`<button class="cs-join" data-vc="${esc(court)}"><i class="ti ti-video"></i> Join hearing</button>`:""}
+      </div>
+      ${coram?`<div class="cs-coram">${coramHTML(coram)}</div>`:""}
+    </div>
+    ${mine.length?`<div class="cs-sec">Listed here</div>${mine.map(e=>{
       const who = e.byName||"";   // already resolved by shape() — byLabel first, then account name
       // Causelist data (unlike remarks, which are live-board-only), so a Special Bench time
       // already published for a future date shows here too.
       const sbTime = specialBenchTimeFor(court, e.itemNo, date);
-      return `<div class="cm-mine"><span class="cm-mine-it">${esc(e.itemNo)}</span>
-        <span class="cm-mine-t">${esc(e.caseTitle||("item "+e.itemNo))}${who?` <span style="color:var(--mut)">· ${esc(who)}</span>`:""}${sbTime?`<span class="cm-mine-time"><i class="ti ti-clock"></i> ${esc(sbTime)}</span>`:""}</span></div>`;
+      return `<div class="cs-mine">
+        <span class="cs-it">${esc(e.itemNo)}</span>
+        <span class="cs-body"><span class="cs-title">${esc(e.caseTitle||("item "+e.itemNo))}${who?` <span class="cs-who">· ${esc(who)}</span>`:""}</span>${sbTime?`<span class="cs-note time"><i class="ti ti-clock"></i> ${esc(sbTime)}</span>`:""}</span></div>`;
     }).join("")}`:""}
-    ${totals.length?`<div class="cm-card"><div class="cm-h"><i class="ti ti-clipboard-list"></i> Board that day</div><div class="cm-body">${totals.map(esc).join(" · ")}</div></div>`:""}
-    ${!coram&&!totals.length?`<div class="cm-empty">The cause list for ${esc(fmtDateLong(date))} hasn't been published yet — coram and the day's board size fill in once it is.</div>`:""}
+    ${totals.length?`<div class="cs-reg"><div class="cs-row"><span class="cs-k">On the board</span><span class="cs-val">${totals.map(esc).join("<br>")}</span></div></div>`:""}
+    ${!coram&&!totals.length?`<div class="cs-empty">The cause list for ${esc(fmtDateLong(date))} hasn't been published yet — coram and the day's board size fill in once it is.</div>`:""}
   </div></div>`;
   wireVcButtons();
 }
