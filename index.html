@@ -406,17 +406,21 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px 12px;-webkit-over
    competing with your own case. */
 .sheet.cs{padding-top:0}                      /* the hero runs to the sheet's own edge */
 .sheet.cs .sh-x{color:rgba(255,255,255,.7);z-index:3}
-.cs-hero{background:var(--navy);color:#fff;margin:0 -18px 14px;padding:20px 18px 15px;
+/* The hero earns its space by carrying the court's POSITION IN ITS DAY, not by carrying a
+   40px numeral on a line of its own (owner: "the top blue band ... is not using the space
+   properly at all. It can be better used for information").
+   "On item 20" and "76 matters listed" were previously in different places — the first in
+   this band, the second buried in the register at the bottom — and neither is worth much
+   alone. Together they are the one thing you actually want at a glance: how far through its
+   list this court has got, and therefore whether yours is likely to be reached. The bar is
+   the only element here that genuinely wants the full width. */
+.cs-hero{background:var(--navy);color:#fff;margin:0 -18px 14px;padding:16px 18px 15px;
   border-radius:22px 22px 0 0}
-.cs-eyebrow{font-size:9.5px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;
-  color:var(--gold);opacity:.95}
-.cs-num{font-family:Fraunces,serif;font-weight:600;font-size:40px;line-height:.92;
-  letter-spacing:-.015em;margin-top:3px}
-.cs-liverow{display:flex;align-items:center;gap:10px;margin-top:12px}
-.cs-live{font-family:var(--mono);font-size:12.5px;font-weight:600;color:#c8d0da;
-  background:rgba(255,255,255,.07);border-radius:7px;padding:5px 10px}
-.cs-live b{color:#fff;font-weight:700}
-.cs-live.idle{color:#93a0ad}
+.cs-idrow{display:flex;align-items:center;gap:12px;padding-right:26px}
+.cs-id{font-family:Fraunces,serif;font-weight:600;font-size:22px;line-height:1.1;letter-spacing:-.01em}
+.cs-id b{font-weight:700}
+.cs-coram{font-size:12.5px;line-height:1.5;color:#aab4c0;margin-top:7px}
+.cs-coram b{color:#e8ecf1;font-weight:600}
 /* The one action. Gold-edged rather than filled: present and findable, but it never
    out-shouts the case you came to check. */
 .cs-join{margin-left:auto;display:flex;align-items:center;gap:6px;flex:none;
@@ -424,9 +428,14 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px 12px;-webkit-over
   border-radius:8px;padding:6px 11px;font-size:12.5px;font-weight:700;letter-spacing:.01em}
 .cs-join i{font-size:14px}
 .cs-join:active{background:rgba(194,168,106,.28)}
-.cs-coram{font-size:12.5px;line-height:1.5;color:#aab4c0;margin-top:13px;padding-top:12px;
-  border-top:1px solid rgba(255,255,255,.13)}
-.cs-coram b{color:#e8ecf1;font-weight:600}
+/* position in the day: label left, count right, bar under */
+.cs-prog{margin-top:13px;padding-top:12px;border-top:1px solid rgba(255,255,255,.13)}
+.cs-progline{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.cs-on{font-family:var(--mono);font-size:13.5px;font-weight:700;color:#fff;letter-spacing:.01em}
+.cs-on.idle{color:#93a0ad;font-weight:600}
+.cs-of{font-family:var(--mono);font-size:11.5px;color:#93a0ad;white-space:nowrap}
+.cs-bar{height:4px;border-radius:3px;background:rgba(255,255,255,.14);margin-top:9px;overflow:hidden}
+.cs-bar i{display:block;height:100%;background:var(--gold);border-radius:3px;transition:width .4s ease}
 /* your matters — the answer, given the weight of one */
 .cs-sec{font-size:9.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
   color:var(--mut);margin:0 0 8px 2px}
@@ -2546,15 +2555,30 @@ function openCourtModal(court,_refetched){
   const seq=(ENG.seqInfo?ENG.seqInfo(seqByCourt[court]||""):{seq:[]}).seq||[];
   const pass=courtPassovers(court), totals=courtTotals(court);
   const nothing=!mineHere.length&&!coram&&!seq.length&&!pass.length&&!totals.length;
+  /* How far through its list is this court? Only meaningful against the Miscellaneous total,
+     and only while the court is actually working that list: the reserved series are a court
+     PHASE, not a position (800s mentioning, 1500s judgments, 1600s Single Judge, 1700s
+     Chamber), so a bar drawn against them would be nonsense. When it doesn't apply we simply
+     say what item is on and draw no bar, rather than inventing a number. */
+  const curNum=parseFloat(bc?.item);
+  const miscTotal=miscTotalByCourt()[court]||0;
+  const showProg=!idle && !isNaN(curNum) && curNum>0 && curNum<800 && miscTotal>0;
+  const pct=showProg ? Math.max(2, Math.min(100, Math.round(curNum/miscTotal*100))) : 0;
   $("modalRoot").innerHTML=`<div class="ovl" data-close><div class="sheet cs" data-court="${esc(court)}"><button class="sh-x" data-close>&times;</button>
     <div class="cs-hero">
-      <div class="cs-eyebrow">Court</div>
-      <div class="cs-num">${esc(court)}</div>
-      <div class="cs-liverow">
-        <span class="cs-live ${idle?"idle":""}">${idle?"Not sitting":`On item <b>${esc(bc?.item||"·")}</b>`}</span>
+      <div class="cs-idrow">
+        <span class="cs-id">Court <b>${esc(court)}</b></span>
         ${VC_LINKS[court]?`<button class="cs-join" data-vc="${esc(court)}"><i class="ti ti-video"></i> Join hearing</button>`:""}
       </div>
       ${coram?`<div class="cs-coram">${coramHTML(coram)}</div>`:""}
+      <div class="cs-prog">
+        <div class="cs-progline">
+          <span class="cs-on ${idle?"idle":""}">${idle?"Not sitting":`On item ${esc(bc?.item||"·")}`}</span>
+          ${showProg?`<span class="cs-of">${esc(String(Math.floor(curNum)))} of ${miscTotal} · ${pct}%</span>`
+            :(miscTotal?`<span class="cs-of">${miscTotal} listed</span>`:"")}
+        </div>
+        ${showProg?`<div class="cs-bar"><i style="width:${pct}%"></i></div>`:""}
+      </div>
     </div>
     ${mineHere.length?`<div class="cs-sec">${inOrg()?"Chamber case":"Your case"}${mineHere.length>1?"s":""} here</div>${mineHere.map(e=>{ const k=classify(e);
       // on a chamber board, say whose matter each item is
@@ -2653,13 +2677,15 @@ function openDateCourtModal(court,date){
   // "on item N", no sequence and no passover for a day that hasn't happened.
   $("modalRoot").innerHTML=`<div class="ovl" data-close><div class="sheet cs"><button class="sh-x" data-close>&times;</button>
     <div class="cs-hero">
-      <div class="cs-eyebrow">Court</div>
-      <div class="cs-num">${esc(court)}</div>
-      <div class="cs-liverow">
-        <span class="cs-live idle">${esc(fmtDateLong(date))}</span>
+      <div class="cs-idrow">
+        <span class="cs-id">Court <b>${esc(court)}</b></span>
         ${VC_LINKS[court]?`<button class="cs-join" data-vc="${esc(court)}"><i class="ti ti-video"></i> Join hearing</button>`:""}
       </div>
       ${coram?`<div class="cs-coram">${coramHTML(coram)}</div>`:""}
+      <div class="cs-prog"><div class="cs-progline">
+        <span class="cs-on idle">${esc(fmtDateLong(date))}</span>
+        ${totals.length?`<span class="cs-of">${esc(totals.map(t=>t.split(": ")[1]).join(" · "))} listed</span>`:""}
+      </div></div>
     </div>
     ${mine.length?`<div class="cs-sec">Listed here</div>${mine.map(e=>{
       const who = e.byName||"";   // already resolved by shape() — byLabel first, then account name
