@@ -187,20 +187,14 @@ main#main{flex:1;min-height:0;overflow-y:auto;padding:8px 12px 12px;-webkit-over
 /* board grid */
 .grid{display:flex;flex-wrap:wrap;gap:8px}
 .cell{flex:1 1 calc(33.33% - 6px);max-width:calc(33.33% - 6px);background:var(--panel);border:1.5px solid var(--line);
-  border-radius:13px;padding:10px 8px;text-align:center;min-width:0;cursor:pointer;position:relative}
+  border-radius:13px;padding:10px 8px;text-align:center;min-width:0;cursor:pointer}
 .cell:active{transform:scale(.985)}
 .cell.mini{flex:1 1 calc(20% - 6.5px);max-width:calc(20% - 6.5px);padding:8px 5px}
-/* The island's join button — a corner tap target, not a headline. It sits ON the court's
-   own card (owner: "the court islands to house the link"), separate from opening the court
-   sheet, so tapping it must never also open the modal underneath — see the stopPropagation
-   on its click handler where it's wired. */
-.vc-btn{position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;background:var(--panel2);
-  border:1px solid var(--line);color:var(--mut);font-size:12px;z-index:2}
-.vc-btn:active{transform:scale(.9);background:var(--accent);color:#fff;border-color:transparent}
-.cell.mini .vc-btn{width:18px;height:18px;font-size:10px;top:4px;right:4px}
-/* The court sheet's own join row — full labelled button, not an icon, since this is the
-   deliberate tap once you already know which court you're after. */
+/* The join button lives ONLY in the court sheet, never on the island itself (owner: "I dont
+   want the camera icon. I want the clickable link to appear in the Court Island popup").
+   The island stays a pure court/item/how-far readout; joining is a deliberate act you take
+   after opening the court, so it belongs behind the tap, as a labelled button rather than
+   an icon anyone has to decode. */
 .cm-vc{display:flex;align-items:center;gap:9px;width:100%;padding:11px 13px;border-radius:11px;
   background:var(--accent);color:#fff;font-weight:700;font-size:14px;border:none;margin-bottom:10px}
 .cm-vc i{font-size:16px}
@@ -2248,7 +2242,6 @@ function renderBoard(){
     toggleStrikeOverride(el.dataset.strikeCourt, el.dataset.strikeItem);
     renderBoard();
   });
-  wireVcButtons();
 }
 function wireBoardStrip(){
   $("main").querySelectorAll("[data-bv]").forEach(b=>b.onclick=()=>{ boardView=b.dataset.bv; render(); });
@@ -2257,16 +2250,8 @@ function wireBoardStrip(){
 // top, ongoing item below (then our item + how-many-away for our courts). Set it false to
 // revert to the court-left / item-right split head. (One-line revert.)
 const ISLAND_STACKED = true;
-// The island's corner join button — one shared bit of markup for every cell shape (empty,
-// full, mini, date-board), so the icon and its wiring can't drift between them. Absent
-// entirely outside 1-17, rather than a dead icon that does nothing when tapped.
-const vcButtonHTML = court => VC_LINKS[String(court)]
-  ? `<button class="vc-btn" data-vc="${esc(court)}" title="Join virtual hearing — Court ${esc(court)}" aria-label="Join virtual hearing"><i class="ti ti-video"></i></button>`
-  : "";
-// Wired after EVERY render that can contain a [data-vc] — the board grid, the date board,
-// AND the court-sheet modals (root:document covers both #main and #modalRoot in one call).
-// stopPropagation so a tap opens the room and does nothing else — never also the court sheet
-// underneath it on the island, and harmless-but-redundant inside the modal itself.
+// Wired by each court sheet after it renders — the only place a join button exists. Both
+// sheets (today's and a picked date's) call this, so the two can't drift.
 function wireVcButtons(){
   document.querySelectorAll("[data-vc]").forEach(b=>b.onclick=ev=>{
     ev.stopPropagation();
@@ -2280,15 +2265,14 @@ function boardCell(c, mini){
   const dc=`data-court="${esc(c.court)}"`;
   const poNow=!idle && wasRecalledPO(c.court, c.item);
   const onLabel=(c.item||"·") + "";
-  const vcBtn=vcButtonHTML(c.court);
   // two header styles — a stacked big header (default) or the left/right split (revert)
   const splitHead=`<div class="cell-head">
     <div class="ct-side"><span class="ct-num">C<span class="cd">${esc(c.court)}</span></span></div>
     <div class="on-side">${idle?`<span class="on-num">–</span>`
       :`<span class="on-lab">on</span><span class="on-num">${poNow?`<span class="po-tag" title="Passed over, now recalled">PO</span>`:""}${esc(onLabel)}</span>`}</div>
-  </div>${vcBtn}`;
+  </div>`;
   const stackHead=`<div class="cell-topbar">C<span class="cd">${esc(c.court)}</span></div>
-    <div class="cell-on"><span class="cell-on-num">${idle?"–":`${poNow?`<span class="po-tag" title="Passed over, now recalled">PO</span>`:""}${esc(onLabel)}`}</span></div>${vcBtn}`;
+    <div class="cell-on"><span class="cell-on-num">${idle?"–":`${poNow?`<span class="po-tag" title="Passed over, now recalled">PO</span>`:""}${esc(onLabel)}`}</span></div>`;
   const head = ISLAND_STACKED ? stackHead : splitHead;
   const stk = ISLAND_STACKED ? " stk" : "";
   if(!ours.length && !mine){ return `<div class="cell${stk}${mini?" mini":""}${idle?" idle":""}" ${dc}>${head}</div>`; }
@@ -2535,7 +2519,7 @@ function dateCourtCell(court, entries){
   const cnt = ordered.length>=4?" cnt4p":ordered.length===3?" cnt3":"";
   return `<div class="cell stk ours later datecell" data-datecourt="${esc(court)}">
     <div class="cell-topbar">C<span class="cd">${esc(court)}</span></div>
-    <div class="cell-ours${cnt}"><span class="oi">${ordered.map(e=>`<span class="oi-it">${esc(e.itemNo)}</span>`).join(`<span class="oi-sep">·</span>`)}</span></div>${vcButtonHTML(court)}</div>`;
+    <div class="cell-ours${cnt}"><span class="oi">${ordered.map(e=>`<span class="oi-it">${esc(e.itemNo)}</span>`).join(`<span class="oi-sep">·</span>`)}</span></div></div>`;
 }
 // That court's total listed items for the date, from the fetched cause list (may be absent).
 // Used only in the court sheet now, not on the island itself.
@@ -2563,7 +2547,6 @@ function renderDateBoard(date){
   $("main").innerHTML=h;
   wireDateBack(); wireBoardStrip();
   $("main").querySelectorAll("[data-datecourt]").forEach(el=>el.onclick=()=>openDateCourtModal(el.dataset.datecourt,date));
-  wireVcButtons();
 }
 // Court sheet for a picked date: our matters there, plus coram/total from the cause list.
 function openDateCourtModal(court,date){
