@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-03T20:00:26.020575Z",
+  "generated_at": "2026-09-04T07:21:25.478448Z",
   "parser_version": 9,
   "window": [
     "2026-09-04",
@@ -16,6 +16,32 @@
     "2026-09-21"
   ],
   "by_date": {
+    "2026-09-04": {
+      "lists_found": [
+        "Miscellaneous (main)"
+      ],
+      "lists": {
+        "Miscellaneous": {
+          "3": {
+            "coram": "HON'BLE MR. JUSTICE M.M. SUNDRESH HON'BLE MR. JUSTICE SATISH CHANDRA SHARMA",
+            "total": "1",
+            "fresh": "",
+            "items": {
+              "1": "Diary No. 54513-2026 MANOJ SINGH SOMVANSHI VERSUS THE STATE OF MADHYA PRADESH"
+            },
+            "advocates": {
+              "1": {
+                "pet": "DEEPAK GOEL",
+                "resp": "KUMAR MURLIDHAR"
+              }
+            },
+            "times": {},
+            "main": 1,
+            "supp": 0
+          }
+        }
+      }
+    },
     "2026-09-07": {
       "lists_found": [
         "Miscellaneous (main)",
@@ -12445,6 +12471,9 @@
     }
   },
   "sources": {
+    "2026-09-04": {
+      "M_J_1": 505116
+    },
     "2026-09-07": {
       "M_J_1": 929567,
       "M_C_1": 541913,
