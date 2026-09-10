@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-09T19:55:55.628957Z",
+  "generated_at": "2026-09-10T07:28:43.830328Z",
   "parser_version": 9,
   "window": [
     "2026-09-10",
@@ -1503,7 +1503,7 @@
               "49.1": "Connected TAMILVANI AND ORS. VERSUS STATE OF TAMIL NADU AND ORS.",
               "49.2": "Connected DR. P RAMANATH REDDY AND ORS. VERSUS DAREZ AHMED AND ORS.",
               "50": "SLP(C) No. 29669/2026 PARDEEP GOYAL AND ORS. VERSUS SUBHASH CHANDER AND ORS.",
-              "1501": "SLP(C) No. 3680/2025 UNION OF INDIA AND ORS. VERSUS NC ISAAC (RETD.)",
+              "1501": "SLP(C) No./3680/2025 Vs.",
               "51": "Diary No. 48014-2026 THE STATE OF ANDHRA PRADESH AND ANR. VERSUS M/S. S BAGS CONSTRUCTIONS AND ANR.",
               "52": "SLP(C) No. 32013/2026 SIDDHANT VIJAY AVAHANE VERSUS THE STATE OF MAHARASHTRA AND ORS.",
               "53": "SLP(C) No. 32326/2026 ASTHA SINGH VERSUS UNION OF INDIA AND ORS."
@@ -1695,8 +1695,7 @@
                 "pet": "PALLAVI SINGH"
               },
               "1501": {
-                "pet": "SHREEKANT NEELAPPA",
-                "resp": "TEJAS PATEL T. HARI HARA SUDHAN"
+                "pet": "DELETED"
               },
               "51": {
                 "pet": "SAHIL BHALAIK"
@@ -12644,7 +12643,7 @@
   "sources": {
     "2026-09-10": {
       "M_J_1": 847632,
-      "M_J_2": 627250,
+      "M_J_2": 574051,
       "M_C_1": 586187,
       "M_S_1": 545342,
       "M_R_1": 527630,
